@@ -1,3 +1,7 @@
+from abstract_structure import AbstractStructure
+from abstraction_classifier import AbstractionClassifier
+
+
 class OmgModelChecker(object):
     """
     This is the main tool's class.
@@ -11,6 +15,7 @@ class OmgModelChecker(object):
         self._unwinding_trees = [] ## TODO: ## OPTIMIZE: in the future
 
     def initialize_abstraction(self):
+
         self._abstract_structure = AbstractStructure(self._kripke_structure)
         self._abstraction = AbstractionClassifier()
 
@@ -30,9 +35,8 @@ class OmgModelChecker(object):
         return positive_answer, negative_answer
 
     def check(self, state, specification):
-        pass
-
-
+        raise NotImplementedError()
+        return None
 
 if __name__ == '__main__':
     print 'Welcome to the OMG model checker!'

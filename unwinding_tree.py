@@ -13,8 +13,8 @@ class UnwindingTree(object):
 
     def is_abstract_lasso(self):
         current = self._parent
-        abstract_labelings = set([self._abstract_label])
-        while (current != None):
+        abstract_labelings = {self._abstract_label}
+        while current is not None:
             if current._abstract_label == self._abstract_label:
                 return True, current, abstract_labelings
             abstract_labelings.add(current._abstract_label)
@@ -22,7 +22,7 @@ class UnwindingTree(object):
         return False
 
     def get_abstract_labels_in_tree(self):
-        abs_labelings = set([self._abstract_label])
+        abs_labelings = {self._abstract_label}
         successors_labelings = [successor.get_abstract_labels_in_tree() for successor in self._successors]
         for successor_labelings in successors_labelings:
             abs_labelings |= successor_labelings
