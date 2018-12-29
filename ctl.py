@@ -1,8 +1,11 @@
-from typing import List, Any
-
-
 def par(text):
     return '(' + text + ')'
+
+
+def remove_spaces_from_edges(text):
+    text = text[next(i for i in range(len(text)) if text[i] != ' '):]
+    text = text[:-1*next(i for i in range(len(text)) if text[len(text)-1-i] != ' ')]
+    return text
 
 
 def remove_spaces(text):
@@ -52,31 +55,42 @@ class CtlFormula(object):
         super(CtlFormula, self).__init__()
         self._node_data = node_data
         self._operands = operands
-        self._unary_logical_operators = ['!', '~']
-        self._unary_temporal_operators = ['EX', 'AX', 'AG', 'EG', 'AF', 'EF']
-        self._unary_operators = self._unary_logical_operators + self._unary_temporal_operators
-        self._binary_logical_operators = ['->', '&', '|']
-        self._binary_temporal_operators = ['AV', 'EV', 'AU', 'EU', 'AR', 'ER']
-        self._binary_operators = self._binary_logical_operators + self._binary_temporal_operators
-        self._allowed_operators = self._unary_operators + self._binary_operators
+        self.unary_logical_operators = ['!', '~']
+        self.unary_temporal_operators = ['EX', 'AX', 'AG', 'EG', 'AF', 'EF']
+        self.unary_operators = self.unary_logical_operators + self.unary_temporal_operators
+        self.binary_logical_operators = ['->', '&', '|']
+        self.binary_temporal_operators = ['AV', 'EV', 'AU', 'EU', 'AR', 'ER']
+        self.binary_operators = self.binary_logical_operators + self.binary_temporal_operators
+        self.allowed_operators = self.unary_operators + self.binary_operators
 
     def str_math(self):
         if not self._operands:  # list is empty.
             return str(self._node_data)
-        if self._node_data in self._unary_operators:
+        if self._node_data in self.unary_operators:
             first_operand = self._operands[0].str_math()
             return self._node_data + par(first_operand)
         else:
             first_operand = self._operands[0].str_math()
             second_operand = self._operands[1].str_math()
-            if self._node_data in self._binary_temporal_operators:
+            if self._node_data in self.binary_temporal_operators:
                 return self._node_data[0] + par(first_operand) + self._node_data[1] + par(second_operand)
-            if self._node_data in self._binary_logical_operators:
+            if self._node_data in self.binary_logical_operators:
                 return par(first_operand) + str(self._node_data) + par(second_operand)
 
     def __str__(self):
         return par(str(self._node_data) + ' '.join([str(op) for op in self._operands]))
 
+    def is_atomic_proposition(self):
+        return not self._operands
+
+    def get_arity(self):
+        return len(self._operands)
+
+    def get_operands(self):
+        return self._operands
+
+    def get_main_connective(self):
+        return self._node_data
 
 class CtlParser(object):
     """
@@ -121,15 +135,12 @@ class CtlParser(object):
     def parse_math_format(self, input_formula):
         #        print 'ENTERING WITH: '+input_formula
 
-        while input_formula[0] == ' ':
-            input_formula = input_formula[1:]
-
-        while input_formula[-1] == ' ':
-            input_formula = input_formula[:-1]
+       input_formula = remove_spaces_from_edges(input_formula)
 
         while input_formula[0] == '(' and input_formula[-1] == ')' and is_balanced_brackets(input_formula[1:-1]):
             #        print 'NOW :'+input_formula
             input_formula = input_formula[1:-1]
+            remove_spaces_from_edges(input_formula)
 
         if input_formula[:2] in self._unary_temporal_operators:
             return CtlFormula(input_formula[:2], [self.parse_math_format(input_formula[2:])])
