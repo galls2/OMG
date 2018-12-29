@@ -4,12 +4,13 @@ def par(text):
 
 def remove_spaces_from_edges(text):
     text = text[next(i for i in range(len(text)) if text[i] != ' '):]
-    text = text[:-1*next(i for i in range(len(text)) if text[len(text)-1-i] != ' ')]
+    last_space = next(i for i in range(len(text)) if text[len(text)-1-i] != ' ')
+    text = text if text[-1] != ' ' else text[:-1*last_space]
     return text
 
 
-def remove_spaces(text):
-    return ''.join([ch for ch in text if ch != ' '])
+def remove_characters(text, characters_to_remove):
+    return ''.join([ch for ch in text if ch not in characters_to_remove])
 
 
 def is_balanced_brackets(text):
@@ -133,12 +134,12 @@ class CtlParser(object):
         return CtlFormula(main_operator, parsed_operands)
 
     def parse_math_format(self, input_formula):
-        #        print 'ENTERING WITH: '+input_formula
+        # print 'ENTERING WITH: '+input_formula
 
-       input_formula = remove_spaces_from_edges(input_formula)
+        input_formula = remove_spaces_from_edges(input_formula)
 
         while input_formula[0] == '(' and input_formula[-1] == ')' and is_balanced_brackets(input_formula[1:-1]):
-            #        print 'NOW :'+input_formula
+        #    print 'NOW :'+input_formula
             input_formula = input_formula[1:-1]
             remove_spaces_from_edges(input_formula)
 
@@ -166,32 +167,39 @@ class CtlParser(object):
 
 
 def test_formula(formula, parse_method):
-    print 'INPUT: ' + formula
+    print 'Testing: ' + formula,
     parsed = parse_method(formula)
-    print 'RESULT: '
-    print 'SMTLIB FORMAT: ' + str(parsed)
-    print 'REGULAR FORMAT: ' + parsed.str_math()
-    print '\n\n'
-
+  #  print 'RESULT: '
+  #  print 'SMTLIB FORMAT: ' + str(parsed)
+  #  print 'REGULAR FORMAT: ' + parsed.str_math()
+  #  print '\n\n'
+    to_remove = [' ', '(', ')']
+    if remove_characters(formula, to_remove) == remove_characters(parsed.str_math(), to_remove):
+        print ' PASSED!'
+    else:
+        print ' FAILED!!!!!!!!!!!!!!!!!!!'
+        print remove_characters(formula, to_remove)
+        print remove_characters(parsed.str_math(), to_remove)
+        print '*******************************************************************'
 
 def test_ctl_parser():
-    ctlParser = CtlParser()
+    ctl_parser = CtlParser()
 
     f1 = '(AU (& (p) (q)) (EX (q)))'
-    test_formula(f1, lambda x: ctlParser.parse_smtlib_format(x))
+    test_formula(f1, lambda x: ctl_parser.parse_smtlib_format(x))
+
     f2 = 'AG((dataOut3<2> & ~dataOut3<1> & dataOut3<0>) -> AX AF(dataOut3<2> & ~dataOut3<1> & dataOut3<0>))'
-    test_formula(f2, lambda x: ctlParser.parse_math_format(x))
+    test_formula(f2, lambda x: ctl_parser.parse_math_format(x))
 
     f3 = 'AG(full<0> -> AF(dataOut1<1> | dataOut1<0>))'
-    test_formula(f3, lambda x: ctlParser.parse_math_format(x))
+    test_formula(f3, lambda x: ctl_parser.parse_math_format(x))
 
     f4 = '~E safe U final'
-    test_formula(f4, lambda x: ctlParser.parse_math_format(x))
+    test_formula(f4, lambda x: ctl_parser.parse_math_format(x))
 
     f5 = 'AG(~u_ack<1> -> (A u_req<1> R ~u_ack<1>))'
-    test_formula(f5, lambda x: ctlParser.parse_math_format(x))
+    test_formula(f5, lambda x: ctl_parser.parse_math_format(x))
 
 
 if __name__ == '__main__':
     test_ctl_parser()
-    print is_balanced_brackets('dataOut3<2> & ~dataOut3<1> & dataOut3<0>')
