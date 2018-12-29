@@ -1,3 +1,9 @@
+class AbstractState(object):
+
+    def __init__(self):
+        super(AbstractState, self).__init__()
+
+
 class AbstractStructure(object):
     """docstring for AbstractStructure."""
     def __init__(self, kripke_structure):

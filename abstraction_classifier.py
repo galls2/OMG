@@ -6,3 +6,6 @@ class AbstractionClassifier(object):
 
     def classify(self, concrete_state):
         raise NotImplementedError()
+
+    def split(self, abstract_state, criteria):
+        raise NotImplementedError()

@@ -102,6 +102,7 @@ class OmgModelChecker(object):
                           }
         return method_mapping[main_connective](self, state, *operands)
 
+
 if __name__ == '__main__':
     print 'Welcome to the OMG model checker!'
     print 'a'

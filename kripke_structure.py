@@ -1,7 +1,10 @@
 class KripkeStructure(object):
-    def __init__(self):
+    def __init__(self, atomic_propositions):
         super(KripkeStructure, self).__init__()
+        self._atomic_propositions = atomic_propositions
 
+    def get_atomic_propositions(self):
+        return self._atomic_propositions
     def get_successors(self, state):
         raise NotImplementedError()
 
@@ -13,7 +16,7 @@ class KripkeStructure(object):
 
 
 class DummyKripkeStructure(KripkeStructure):
-    def __init__(self):
-        super(KripkeStructure, self).__init__()
+    def __init__(self, atomic_propositions):
+        super(KripkeStructure, self).__init__(atomic_propositions)
 
 

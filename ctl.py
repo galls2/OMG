@@ -93,6 +93,11 @@ class CtlFormula(object):
     def get_main_connective(self):
         return self._node_data
 
+    def get_atomic_propositions(self):
+        if self.is_atomic_proposition():
+            return [self._node_data]
+        return list(set([ap for operand in self._operands for ap in operand.get_atomic_propositions()]))
+
 class CtlParser(object):
     """
     Format:
@@ -181,6 +186,7 @@ def test_formula(formula, parse_method):
         print remove_characters(formula, to_remove)
         print remove_characters(parsed.str_math(), to_remove)
         print '*******************************************************************'
+    print 'AP: '+str(parsed.get_atomic_propositions())
 
 def test_ctl_parser():
     ctl_parser = CtlParser()
