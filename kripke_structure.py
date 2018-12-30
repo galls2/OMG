@@ -5,6 +5,7 @@ class KripkeStructure(object):
 
     def get_atomic_propositions(self):
         return self._atomic_propositions
+    
     def get_successors(self, state):
         raise NotImplementedError()
 
