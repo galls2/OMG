@@ -50,34 +50,34 @@ class OmgModelChecker(object):
     def handle_not(self, state, operand):
         return not self.check(state, operand)
 
-    def handle_AV(self, state, left_operand, right_operand):
+    def handle_av(self, state, left_operand, right_operand):
         raise NotImplementedError()
 
-    def handle_EV(self, state, left_operand, right_operand):
+    def handle_ev(self, state, left_operand, right_operand):
         raise NotImplementedError()
 
-    def handle_EU(self, state, left_operand, right_operand):
+    def handle_eu(self, state, left_operand, right_operand):
         raise NotImplementedError()
 
-    def handle_AU(self, state, left_operand, right_operand):
+    def handle_au(self, state, left_operand, right_operand):
         raise NotImplementedError()
 
-    def handle_AG(self, state, operand):
+    def handle_ag(self, state, operand):
         raise NotImplementedError()
 
-    def handle_EG(self, state, operand):
+    def handle_eg(self, state, operand):
         raise NotImplementedError()
 
-    def handle_AF(self, state, operand):
+    def handle_af(self, state, operand):
         raise NotImplementedError()
 
-    def handle_EF(self, state, operand):
+    def handle_ef(self, state, operand):
         raise NotImplementedError()
 
-    def handle_AX(self, state, operand):
+    def handle_ax(self, state, operand):
         raise NotImplementedError()
 
-    def handle_EX(self, state, operand):
+    def handle_ex(self, state, operand):
         raise NotImplementedError()
 
     def check(self, state, specification):
@@ -90,16 +90,16 @@ class OmgModelChecker(object):
                           '->': OmgModelChecker.handle_arrow,
                           '~': OmgModelChecker.handle_not,
                           '!': OmgModelChecker.handle_not,
-                          'AV': OmgModelChecker.handle_AV,
-                          'EV': OmgModelChecker.handle_EV,
-                          'AU': OmgModelChecker.handle_AU,
-                          'EU': OmgModelChecker.handle_EU,
-                          'AG': OmgModelChecker.handle_AG,
-                          'EG': OmgModelChecker.handle_EG,
-                          'EX': OmgModelChecker.handle_EX,
-                          'AX': OmgModelChecker.handle_AX,
-                          'AF': OmgModelChecker.handle_AF,
-                          'EF': OmgModelChecker.handle_EF,
+                          'AV': OmgModelChecker.handle_av,
+                          'EV': OmgModelChecker.handle_ev,
+                          'AU': OmgModelChecker.handle_au,
+                          'EU': OmgModelChecker.handle_eu,
+                          'AG': OmgModelChecker.handle_ag,
+                          'EG': OmgModelChecker.handle_eg,
+                          'EX': OmgModelChecker.handle_ex,
+                          'AX': OmgModelChecker.handle_ax,
+                          'AF': OmgModelChecker.handle_af,
+                          'EF': OmgModelChecker.handle_ef,
                           }
         return method_mapping[main_connective](self, state, *operands)
 

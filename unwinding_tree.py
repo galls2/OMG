@@ -1,3 +1,6 @@
+import functools
+
+
 class UnwindingTree(object):
     def __init__(self, kripke_structure, parent, successors, concrete_label, abstract_label):
         super(UnwindingTree, self).__init__()
@@ -24,10 +27,8 @@ class UnwindingTree(object):
         return False
 
     def get_abstract_labels_in_tree(self):
-        abs_labels = {self._abstract_label}
-        successors_labels = [successor.get_abstract_labels_in_tree() for successor in self._successors]
-        for successor_labels in successors_labels:
-            abs_labels |= successor_labels #### CONVERT TO REDUCE
+        partial_abstract_labels = [self._abstract_label]+[successor.get_abstract_labels_in_tree() for successor in self._successors]
+        abs_labels = functools.reduce(lambda x, y: x | y, partial_abstract_labels)
         return abs_labels
 
     def get_depth(self):

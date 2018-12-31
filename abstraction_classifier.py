@@ -25,9 +25,8 @@ class AbstractionClassifierInternal(AbstractionClassifier):
         return False
 
     def replace_successor(self, old_successor, new_successor):
-        keys_to_replace = [key for key in self._successors if self._successors[key] == old_successor]
-        for key in keys_to_replace:
-            self._successors[key] = new_successor
+        self._successors.update({key: new_successor for key in self._successors \
+                                 if self._successors[key] == old_successor})
 
 
 class AbstractionClassifierLeaf(AbstractionClassifier):
