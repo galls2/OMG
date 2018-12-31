@@ -11,11 +11,12 @@ class OmgModelChecker(object):
     def __init__(self, kripke_structure):
         super(OmgModelChecker, self).__init__()
         self._kripke_structure = kripke_structure
+        self._abstract_structure = None
+        self._abstraction = None
         self.initialize_abstraction()
         self._unwinding_trees = []  ## TODO: ## OPTIMIZE: in the future
 
     def initialize_abstraction(self):
-
         self._abstract_structure = AbstractStructure(self._kripke_structure)
         self._abstraction = AbstractionClassifier(self._kripke_structure)
 

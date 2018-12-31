@@ -7,6 +7,9 @@ class AbstractionClassifier(object):
     def classify(self, concrete_state):
         raise NotImplementedError()
 
+    def is_leaf(self):
+        raise NotImplementedError()
+
 
 class AbstractionClassifierInternal(AbstractionClassifier):
     """docstring for AbstractionClassifier."""
@@ -18,7 +21,10 @@ class AbstractionClassifierInternal(AbstractionClassifier):
     def classify(self, concrete_state):
         return self._successors[self._query(concrete_state)].classify(concrete_state)
 
-    def split(self, abstract_state, criteria):
+    def is_leaf(self):
+        return False
+
+    def split(self, abstract_state, query, successors):
         raise NotImplementedError()
 
 
@@ -29,5 +35,12 @@ class AbstractionClassifierLeaf(AbstractionClassifier):
         super(AbstractionClassifierLeaf, self).__init__(kripke_structure)
         self._value = value
 
+
     def classify(self, concrete_state):
         return self._value
+
+    def split(self, abstract_state, criteria):
+        raise NotImplementedError()
+
+    def is_leaf(self):
+        return True
