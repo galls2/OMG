@@ -1,6 +1,6 @@
 from abstract_structure import AbstractStructure
 from abstraction_classifier import AbstractionClassifier
-
+from heapq import *
 
 class OmgModelChecker(object):
     """
@@ -38,51 +38,70 @@ class OmgModelChecker(object):
     def handle_atomic_propositions(self, state, specification):
         return self._kripke_structure.is_state_labeled_with(state, specification)
 
-    def handle_and(self, state, left_operand, right_operand):
-        return self.check(state, left_operand) and self.check(state, right_operand)
+    def handle_and(self, state, left_operand, right_operand, full_spec):
+        raise NotImplementedError()
+      #  return self.check(state, left_operand) and self.check(state, right_operand)
 
-    def handle_or(self, state, left_operand, right_operand):
-        return self.check(state, left_operand) or self.check(state, right_operand)
+    def handle_or(self, state, left_operand, right_operand, full_spec):
+        raise NotImplementedError()
+        res = self.check(state, left_operand) or self.check(state, right_operand)
+        #if res:
 
-    def handle_arrow(self, state, left_operand, right_operand):
-        return (not self.check(state, left_operand)) or (self.check(state, right_operand))
+      #  return
+    def handle_arrow(self, state, left_operand, right_operand, full_spec):
+        raise NotImplementedError()
+     #   return (not self.check(state, left_operand)) or (self.check(state, right_operand))
 
-    def handle_not(self, state, operand):
-        return not self.check(state, operand)
+    def handle_not(self, state, operand, full_spec):
+        raise NotImplementedError()
+    #    return not self.check(state, operand)
 
-    def handle_av(self, state, left_operand, right_operand):
+    def handle_av(self, state, p, q, full_spec):
+        to_visit = heapify([state])
+        while to_visit:
+            node_to_explore = heappop(to_visit)
+            self.check(node_to_explore, q)
+            if node_to_explore.is_labeled_negatively_with(q):
+                current = node_to_explore
+                while current is not None:
+                    current.add_negative_label(full_spec)
+                return False
+
+
+    def handle_ev(self, state, p, q, full_spec):
         raise NotImplementedError()
 
-    def handle_ev(self, state, left_operand, right_operand):
+    def handle_eu(self, state, p, q, full_spec):
         raise NotImplementedError()
 
-    def handle_eu(self, state, left_operand, right_operand):
+    def handle_au(self, state, p, q, full_spec):
         raise NotImplementedError()
 
-    def handle_au(self, state, left_operand, right_operand):
+    def handle_ag(self, state, operand, full_spec):
         raise NotImplementedError()
 
-    def handle_ag(self, state, operand):
+    def handle_eg(self, state, operand, full_spec):
         raise NotImplementedError()
 
-    def handle_eg(self, state, operand):
+    def handle_af(self, state, operand, full_spec):
         raise NotImplementedError()
 
-    def handle_af(self, state, operand):
+    def handle_ef(self, state, operand, full_spec):
         raise NotImplementedError()
 
-    def handle_ef(self, state, operand):
+    def handle_ax(self, state, operand, full_spec):
         raise NotImplementedError()
 
-    def handle_ax(self, state, operand):
-        raise NotImplementedError()
-
-    def handle_ex(self, state, operand):
+    def handle_ex(self, state, operand, full_spec):
         raise NotImplementedError()
 
     def check(self, state, specification):
+        if specification in [True, False]:
+            return specification
+
         if specification.is_atomic_proposition():
             return self.handle_atomic_propositions(state, specification)
+
         main_connective = specification.get_main_connective()
         operands = specification.get_operands()
         method_mapping = {'&': OmgModelChecker.handle_and,

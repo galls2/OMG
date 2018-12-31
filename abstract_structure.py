@@ -1,12 +1,25 @@
 class AbstractState(object):
 
-    def __init__(self, atomic_labels):
+    def __init__(self, atomic_labels, kripke_structure):
         super(AbstractState, self).__init__()
-        self._labels = atomic_labels
+        self._kripke_structure = kripke_structure
+
+        self._positive_labels = atomic_labels
+        self._negative_labels = set(self._kripke_structure.get_atomic_propositions()) - self._positive_labels
+
         self._classification_leaf = None
 
-    def add_label(self, label):
-        self._labels.append(label)
+    def add_positive_label(self, label):
+        self._positive_labels.append(label)
+
+    def add_negative_label(self, label):
+        self._negative_labels.append(label)
+
+    def is_positive_label(self, label):
+        return label in self._positive_labels
+
+    def is_negative_label(self, label):
+        return label in self._negative_labels
 
     def get_classification_leaf(self):
         return self._classification_leaf
