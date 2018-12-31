@@ -3,9 +3,17 @@ class AbstractState(object):
     def __init__(self, atomic_labels):
         super(AbstractState, self).__init__()
         self._labels = atomic_labels
+        self._classification_leaf = None
 
     def add_label(self, label):
-        self._labelings.append(label)
+        self._labels.append(label)
+
+    def get_classification_leaf(self):
+        return self._classification_leaf
+
+    def set_classification_leaf(self, classification_leaf):
+        self._classification_leaf = classification_leaf
+
 
 class AbstractStructure(object):
     """docstring for AbstractStructure."""

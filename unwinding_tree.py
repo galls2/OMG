@@ -6,6 +6,8 @@ class UnwindingTree(object):
         self._successors = successors
         self._concrete_label = concrete_label
         self._abstract_label = abstract_label
+        self._depth = 0 if parent is None else parent.get_depth()
+        self._URGNET = False
 
     def unwind_further(self):
         concrete_successors = self._kripke_structure.get_successors(self._concrete_label)
@@ -22,8 +24,15 @@ class UnwindingTree(object):
         return False
 
     def get_abstract_labels_in_tree(self):
-        abs_labelings = {self._abstract_label}
-        successors_labelings = [successor.get_abstract_labels_in_tree() for successor in self._successors]
-        for successor_labelings in successors_labelings:
-            abs_labelings |= successor_labelings
-        return abs_labelings
+        abs_labels = {self._abstract_label}
+        successors_labels = [successor.get_abstract_labels_in_tree() for successor in self._successors]
+        for successor_labels in successors_labels:
+            abs_labels |= successor_labels #### CONVERT TO REDUCE
+        return abs_labels
+
+    def get_depth(self):
+        return self._depth
+
+    def set_urgent(self):
+        self._URGENT = True
+

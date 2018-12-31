@@ -24,23 +24,31 @@ class AbstractionClassifierInternal(AbstractionClassifier):
     def is_leaf(self):
         return False
 
-    def split(self, abstract_state, query, successors):
-        raise NotImplementedError()
+    def replace_successor(self, old_successor, new_successor):
+        keys_to_replace = [key for key in self._successors if self._successors[key] == old_successor]
+        for key in keys_to_replace:
+            self._successors[key] = new_successor
 
 
 class AbstractionClassifierLeaf(AbstractionClassifier):
     """docstring for AbstractionClassifier."""
 
-    def __init__(self, kripke_structure, value):
+    def __init__(self, kripke_structure, value, parent):
         super(AbstractionClassifierLeaf, self).__init__(kripke_structure)
         self._value = value
+        self._parent = parent
+        self._classifees = [] # Elements that are classified
 
+    def add_classifee(self, classifee):
+        self._classifees.append(classifee)
 
     def classify(self, concrete_state):
         return self._value
 
-    def split(self, abstract_state, criteria):
-        raise NotImplementedError()
+    def split(self, query, successors):
+        parent = self._parent
+        new_classification_node = AbstractionClassifierInternal(self._kripke_structure, query, successors)
+        parent.replace_successor(self, new_classification_node)
 
     def is_leaf(self):
         return True
