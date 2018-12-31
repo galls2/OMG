@@ -51,31 +51,31 @@ def split_components(f):
 
 class CtlFormula(object):
     """docstring for CtlFormula."""
+    unary_logical_operators = ['!', '~']
+    unary_temporal_operators = ['EX', 'AX', 'AG', 'EG', 'AF', 'EF']
+    unary_operators = unary_logical_operators + unary_temporal_operators
+    binary_logical_operators = ['->', '&', '|']
+    binary_temporal_operators = ['AV', 'EV', 'AU', 'EU', 'AR', 'ER']
+    binary_operators = binary_logical_operators + binary_temporal_operators
+    allowed_operators = unary_operators + binary_operators
 
     def __init__(self, node_data, operands):
         super(CtlFormula, self).__init__()
         self._node_data = node_data
         self._operands = operands
-        self.unary_logical_operators = ['!', '~']
-        self.unary_temporal_operators = ['EX', 'AX', 'AG', 'EG', 'AF', 'EF']
-        self.unary_operators = self.unary_logical_operators + self.unary_temporal_operators
-        self.binary_logical_operators = ['->', '&', '|']
-        self.binary_temporal_operators = ['AV', 'EV', 'AU', 'EU', 'AR', 'ER']
-        self.binary_operators = self.binary_logical_operators + self.binary_temporal_operators
-        self.allowed_operators = self.unary_operators + self.binary_operators
 
     def str_math(self):
         if not self._operands:  # list is empty.
             return str(self._node_data)
-        if self._node_data in self.unary_operators:
+        if self._node_data in CtlFormula.unary_operators:
             first_operand = self._operands[0].str_math()
             return self._node_data + par(first_operand)
         else:
             first_operand = self._operands[0].str_math()
             second_operand = self._operands[1].str_math()
-            if self._node_data in self.binary_temporal_operators:
+            if self._node_data in CtlFormula.binary_temporal_operators:
                 return self._node_data[0] + par(first_operand) + self._node_data[1] + par(second_operand)
-            if self._node_data in self.binary_logical_operators:
+            if self._node_data in CtlFormula.binary_logical_operators:
                 return par(first_operand) + str(self._node_data) + par(second_operand)
 
     def __str__(self):
@@ -98,6 +98,7 @@ class CtlFormula(object):
             return [self._node_data]
         return list(set([ap for operand in self._operands for ap in operand.get_atomic_propositions()]))
 
+
 class CtlParser(object):
     """
     Format:
@@ -105,16 +106,16 @@ class CtlParser(object):
     CTL -> (unary_connective, CTL)
     CTL -> (binary_connective, CTL, CTL)
     """
+    unary_logical_operators = ['!', '~']
+    unary_temporal_operators = ['EX', 'AX', 'AG', 'EG', 'AF', 'EF']
+    unary_operators = unary_logical_operators + unary_temporal_operators
+    binary_logical_operators = ['->', '&', '|']
+    binary_temporal_operators = ['AV', 'EV', 'AU', 'EU', 'AR', 'ER']
+    binary_operators = binary_logical_operators + binary_temporal_operators
+    allowed_operators = unary_operators + binary_operators
 
     def __init__(self):
         super(CtlParser, self).__init__()
-        self._unary_logical_operators = ['!', '~']
-        self._unary_temporal_operators = ['EX', 'AX', 'AG', 'EG', 'AF', 'EF']
-        self._unary_operators = self._unary_logical_operators + self._unary_temporal_operators
-        self._binary_logical_operators = ['->', '&', '|']
-        self._binary_temporal_operators = ['AV', 'EV', 'AU', 'EU', 'AR', 'ER']
-        self._binary_operators = self._binary_logical_operators + self._binary_temporal_operators
-        self._allowed_operators = self._unary_operators + self._binary_operators
 
     def parse_smtlib_format(self, input_formula):
         if input_formula[0] != '(' or input_formula[-1] != ')':
@@ -129,11 +130,11 @@ class CtlParser(object):
         if not input_operands:
             return CtlFormula(parts[0], [])
         #    print main_operator +str(len(main_operator))
-        if main_operator not in self._allowed_operators:
+        if main_operator not in CtlParser.allowed_operators:
             raise Exception('Error in parsing CTL formula ' + input_formula + ': unrecognized operator')
-        if (main_operator in self._unary_operators) and (len(input_operands) != 1):
+        if (main_operator in CtlParser.unary_operators) and (len(input_operands) != 1):
             raise Exception('Error in parsing CTL formula ' + input_formula + ': unary operator')
-        if (main_operator in self._binary_operators) and (len(input_operands) != 2):
+        if (main_operator in CtlParser.binary_operators) and (len(input_operands) != 2):
             raise Exception('Error in parsing CTL formula ' + input_formula + ': binary operator')
         parsed_operands = [self.parse_smtlib_format(sub_part) for sub_part in input_operands]
         return CtlFormula(main_operator, parsed_operands)
@@ -148,7 +149,7 @@ class CtlParser(object):
             input_formula = input_formula[1:-1]
             remove_spaces_from_edges(input_formula)
 
-        if input_formula[:2] in self._unary_temporal_operators:
+        if input_formula[:2] in CtlParser.unary_temporal_operators:
             return CtlFormula(input_formula[:2], [self.parse_math_format(input_formula[2:])])
         parts = split_components(input_formula)
         # AP, binary temporal or binary logical
@@ -160,12 +161,12 @@ class CtlParser(object):
             second_operand = self.parse_math_format(' '.join(parts[3:]))
             return CtlFormula(main_connective, [first_operand, second_operand])
         #    print parts
-        if len(parts) > 1 and parts[1] in self._binary_logical_operators:
+        if len(parts) > 1 and parts[1] in CtlParser.binary_logical_operators:
             main_connective = parts[1]
             first_operand = self.parse_math_format(parts[0])
             second_operand = self.parse_math_format(' '.join(parts[2:]))
             return CtlFormula(main_connective, [first_operand, second_operand])
-        if input_formula[:1] in self._unary_logical_operators:
+        if input_formula[:1] in CtlParser.unary_logical_operators:
             return CtlFormula(input_formula[:1], [self.parse_math_format(input_formula[1:])])
         else:  # this is ap
             return CtlFormula(input_formula, [])

@@ -13,9 +13,12 @@ class UnwindingTree(object):
         self.URGENT = False
 
     def unwind_further(self):
-        concrete_successors = self._kripke_structure.get_successors(self.concrete_label)
-        self._successors = [UnwindingTree(self._kripke_structure, self, [], concrete_successor, None) \
-                            for concrete_successor in concrete_successors]
+        if self._successors is None:
+            concrete_successors = self._kripke_structure.get_successors(self.concrete_label)
+            successor_nodes = [UnwindingTree(self._kripke_structure, self, [], concrete_successor, None) \
+                               for concrete_successor in concrete_successors]
+            self._successors = successor_nodes
+            return successor_nodes
 
     def is_abstract_lasso(self):
         current = self._parent
@@ -29,7 +32,7 @@ class UnwindingTree(object):
 
     def get_abstract_labels_in_tree(self):
         partial_abstract_labels = [self.abstract_label] + [successor.get_abstract_labels_in_tree() for successor in
-                                                            self._successors]
+                                                           self._successors]
         abs_labels = functools.reduce(lambda x, y: x | y, partial_abstract_labels)
         return abs_labels
 

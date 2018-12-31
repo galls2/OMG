@@ -2,6 +2,7 @@
   <dictionary name="galls2">
     <words>
       <w>kripke</w>
+      <w>smtlib</w>
       <w>urgnet</w>
     </words>
   </dictionary>
