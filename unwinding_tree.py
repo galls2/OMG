@@ -53,3 +53,6 @@ class UnwindingTree(object):
 
     def add_negative_label(self, label):
         self.abstract_label.add_negative_label(label)
+
+    def set_abstract_label(self, abstract_label):
+        self.abstract_label = abstract_label

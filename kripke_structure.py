@@ -13,7 +13,10 @@ class KripkeStructure(object):
         raise NotImplementedError()
 
     def is_state_labeled_with(self, state, ap):
-        raise NotImplementedError
+        raise NotImplementedError()
+
+    def get_labels(self, state):
+        raise NotImplementedError()
 
 
 class DummyKripkeStructure(KripkeStructure):
@@ -30,8 +33,9 @@ class DummyKripkeStructure(KripkeStructure):
     def get_initial_states(self):
         return self._initial_states
 
-    def is_state_labeled_with(self, state, ap):
-        return ap in self._labeling[state]
+    def is_state_labeled_with(self, state, ap_str):
+        # ap is assumed to be a string
+        return ap_str in self._labeling[state]
 
     def __str__(self):
         acc = '--- States ---\n'
@@ -51,13 +55,16 @@ class DummyKripkeStructure(KripkeStructure):
             acc += '\n'
         return acc
 
+    def get_labels(self, state):
+        return self._labeling[state]
+
 
 def get_simple_kripke_structure():
     return DummyKripkeStructure({'p', 'q'},
-                                 [i for i in range(3)],
-                                 {i: [(i + 1) % 3] for i in range(3)},
-                                 [0, 2],
-                                 {0: ['p'], 1: ['p','q'], 2: ['q']})
+                                [i for i in range(3)],
+                                {i: [(i + 1) % 3] for i in range(3)},
+                                [0, 1, 2],
+                                {0: ['p'], 1: ['p', 'q'], 2: ['q']})
 
 
 def test_kripke_printing():

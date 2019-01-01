@@ -4,8 +4,8 @@ def par(text):
 
 def remove_spaces_from_edges(text):
     text = text[next(i for i in range(len(text)) if text[i] != ' '):]
-    last_space = next(i for i in range(len(text)) if text[len(text)-1-i] != ' ')
-    text = text if text[-1] != ' ' else text[:-1*last_space]
+    last_space = next(i for i in range(len(text)) if text[len(text) - 1 - i] != ' ')
+    text = text if text[-1] != ' ' else text[:-1 * last_space]
     return text
 
 
@@ -27,7 +27,6 @@ def accumulate(list_num, addition=0):
 
 
 def split_components(f):
-
     '''
     Written by Tal Shinkar. Many thanks.
     '''
@@ -93,6 +92,10 @@ class CtlFormula(object):
     def get_main_connective(self):
         return self._node_data
 
+    def get_ap_text(self):
+        assert self.is_atomic_proposition()
+        return self._node_data
+
     def get_atomic_propositions(self):
         if self.is_atomic_proposition():
             return [self._node_data]
@@ -145,7 +148,7 @@ class CtlParser(object):
         input_formula = remove_spaces_from_edges(input_formula)
 
         while input_formula[0] == '(' and input_formula[-1] == ')' and is_balanced_brackets(input_formula[1:-1]):
-        #    print 'NOW :'+input_formula
+            #    print 'NOW :'+input_formula
             input_formula = input_formula[1:-1]
             remove_spaces_from_edges(input_formula)
 
@@ -175,10 +178,10 @@ class CtlParser(object):
 def test_formula(formula, parse_method):
     print 'Testing: ' + formula,
     parsed = parse_method(formula)
-  #  print 'RESULT: '
-  #  print 'SMTLIB FORMAT: ' + str(parsed)
-  #  print 'REGULAR FORMAT: ' + parsed.str_math()
-  #  print '\n\n'
+    #  print 'RESULT: '
+    #  print 'SMTLIB FORMAT: ' + str(parsed)
+    #  print 'REGULAR FORMAT: ' + parsed.str_math()
+    #  print '\n\n'
     to_remove = [' ', '(', ')']
     if remove_characters(formula, to_remove) == remove_characters(parsed.str_math(), to_remove):
         print ' PASSED!'
@@ -187,7 +190,8 @@ def test_formula(formula, parse_method):
         print remove_characters(formula, to_remove)
         print remove_characters(parsed.str_math(), to_remove)
         print '*******************************************************************'
-    print 'AP: '+str(parsed.get_atomic_propositions())
+    print 'AP: ' + str(parsed.get_atomic_propositions())
+
 
 def test_ctl_parser():
     ctl_parser = CtlParser()

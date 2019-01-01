@@ -1,5 +1,5 @@
-from abstract_structure import AbstractStructure
-from abstraction_classifier import AbstractionClassifier
+from abstract_structure import AbstractStructure, AbstractState
+from abstraction_classifier import AbstractionClassifier, AbstractionClassifierLeaf
 from heapq import *
 
 from ctl import CtlParser
@@ -50,25 +50,25 @@ class OmgModelChecker(object):
 
     def _handle_atomic_propositions(self, node, spec):
         concrete_state = node.concrete_label
-        return self._kripke_structure.is_state_labeled_with(concrete_state, spec)
+        res = self._kripke_structure.is_state_labeled_with(concrete_state, spec.get_ap_text())
+        return res
 
-    def _handle_and(self, node, left_operand, right_operand, spec):
-        concrete_state = node.concrete_label
-        return _label_state(self._handle_ctl_and_recur(concrete_state, left_operand) and self._handle_ctl_and_recur(concrete_state, right_operand),
-                            node, spec)
-
-    def _handle_or(self, node, left_operand, right_operand, spec):
-        concrete_state = node.concrete_label
-        return _label_state(self._handle_ctl_and_recur(concrete_state, left_operand) or self._handle_ctl_and_recur(concrete_state, right_operand),
-                            node, spec)
-
-    def _handle_arrow(self, node, left_operand, right_operand, spec):
-        concrete_state = node.concrete_label
+    def _handle_and(self, node, spec, left_operand, right_operand):
         return _label_state(
-            (not self._handle_ctl_and_recur(concrete_state, left_operand)) or (self._handle_ctl_and_recur(concrete_state, right_operand)),
+            self._handle_ctl_and_recur(node, left_operand) and self._handle_ctl_and_recur(node, right_operand),
             node, spec)
 
-    def _handle_not(self, node, operand, spec):
+    def _handle_or(self, node, spec, left_operand, right_operand):
+        return _label_state(
+            self._handle_ctl_and_recur(node, left_operand) or self._handle_ctl_and_recur(node, right_operand),
+            node, spec)
+
+    def _handle_arrow(self, node, spec, left_operand, right_operand):
+        return _label_state(
+            (not self._handle_ctl_and_recur(node, left_operand)) or (self._handle_ctl_and_recur(node, right_operand)),
+            node, spec)
+
+    def _handle_not(self, node, spec, operand):
         res = self._handle_ctl_and_recur(node, operand)
         if res:
             node.add_negative_label(spec)
@@ -76,7 +76,7 @@ class OmgModelChecker(object):
             node.add_positive_label(spec)
         return res
 
-    def _handle_av(self, node, p, q, spec):
+    def _handle_av(self, node, spec, p, q):
         to_visit = heapify([node])
         while to_visit:
             node_to_explore = heappop(to_visit)
@@ -96,42 +96,53 @@ class OmgModelChecker(object):
                 while current is not None:
                     current.add_positive_label(spec)
                 continue
-            #update abstract things
+            # update abstract things
 
         node.add_positive_label(spec)
         return True
 
-            #update abstract data structures according to transitions
+        # update abstract data structures according to transitions
 
-    def _handle_ev(self, node, p, q, spec):
+    def _handle_ev(self, node, spec, p, q):
         raise NotImplementedError()
 
-    def _handle_eu(self, node, p, q, spec):
+    def _handle_eu(self, node, spec, p, q):
         raise NotImplementedError()
 
-    def _handle_au(self, node, p, q, spec):
+    def _handle_au(self, node, spec, p, q):
         raise NotImplementedError()
 
-    def _handle_ag(self, node, operand, spec):
+    def _handle_ag(self, node, spec, operand):
         raise NotImplementedError()
 
-    def _handle_eg(self, node, operand, spec):
+    def _handle_eg(self, node, spec, operand):
         raise NotImplementedError()
 
-    def _handle_af(self, node, operand, spec):
+    def _handle_af(self, node, spec, operand):
         raise NotImplementedError()
 
-    def _handle_ef(self, node, operand, spec):
+    def _handle_ef(self, node, spec, operand):
         raise NotImplementedError()
 
-    def _handle_ax(self, node, operand, spec):
+    def _handle_ax(self, node, spec, operand):
         raise NotImplementedError()
 
-    def _handle_ex(self, node, operand, spec):
+    def _handle_ex(self, node, spec, operand):
         raise NotImplementedError()
 
     def handle_ctl(self, state, specification):
         unwinding_tree = UnwindingTree(self._kripke_structure, None, [], state)
+        abstract_classification = self._abstraction.classify(state)
+        if abstract_classification is None:
+            atomic_propositions = self._kripke_structure.get_labels(state)
+            abstract_state = AbstractState(atomic_propositions, self._kripke_structure)
+            unwinding_tree.set_abstract_label(abstract_state)
+            classification_leaf = self._abstraction.add_classification_tree(
+                atomic_propositions, AbstractionClassifierLeaf(self._kripke_structure, abstract_state, None))
+            abstract_state.set_classification_leaf(classification_leaf)
+        else:
+            unwinding_tree.set_abstract_label(abstract_classification)
+
         # TODO check or add to the collection of unwinding trees that are saved in this omg_checker as a member.
         return self._handle_ctl_and_recur(unwinding_tree, specification)
 
@@ -162,20 +173,20 @@ class OmgModelChecker(object):
         main_connective = specification.get_main_connective()
         operands = specification.get_operands()
 
-        return method_mapping[main_connective](self, node, *operands)
+        return method_mapping[main_connective](self, node, specification, *operands)
 
 
 def test_propositional_logic():
     kripke_structure = get_simple_kripke_structure()
-
+    print kripke_structure
     ctl_parser = CtlParser()
     raw_specification = '(q & p) | (q -> p)'
     specification = ctl_parser.parse_math_format(raw_specification)
 
     omg_model_checker = OmgModelChecker(kripke_structure)
     pos, neg = omg_model_checker.check_all_initial_states(specification)
-    print 'M, s |= '+specification.str_math() + 'for s in '+str(pos)
-    print 'M, s |/= '+specification.str_math() + 'for s in '+str(neg)
+    print 'M, s |= ' + specification.str_math() + 'for s in ' + str(pos)
+    print 'M, s |/= ' + specification.str_math() + 'for s in ' + str(neg)
 
 
 if __name__ == '__main__':
