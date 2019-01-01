@@ -81,12 +81,17 @@ class OmgModelChecker(object):
         while to_visit:
             node_to_explore = heappop(to_visit)
             self._handle_ctl_and_recur(node_to_explore, q)
-            if node_to_explore.is_labeled_negatively_with(q):
+
+            if node_to_explore.is_labeled_negatively_with(
+                    q):  # fix so if label already exists than TILL (before previous line maybe?)
+
+                # also be sure to update abstract label beforehand. -- add it to latex
+
                 current = node_to_explore
                 while current is not None:
                     current.add_negative_label(spec)
                 return False
-            self._handle_ctl_and_recur(node_to_explore, p)
+            self._handle_ctl_and_recur(node_to_explore, p)  # likewise
             if node_to_explore.is_labeled_negatively_with(p):
                 children_nodes = node_to_explore.unwind_further()
                 for child_node in children_nodes:
@@ -163,6 +168,11 @@ class OmgModelChecker(object):
                           'AF': OmgModelChecker._handle_af,
                           'EF': OmgModelChecker._handle_ef,
                           }
+        if node.get_abstract_labels_in_tree().is_positive_label(specification):
+            return True
+
+        if node.get_abstract_labels_in_tree().is_negative_label(specification):
+            return False
 
         if specification in [True, False]:
             return specification
