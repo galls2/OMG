@@ -1,3 +1,6 @@
+from kripke_structure import get_simple_kripke_structure
+
+
 class AbstractState(object):
     def __init__(self, atomic_labels, kripke_structure):
         super(AbstractState, self).__init__()
@@ -32,10 +35,32 @@ class AbstractStructure(object):
     def __init__(self, kripke_structure):
         super(AbstractStructure, self).__init__()
         self._kripke_structure = kripke_structure
-        self._existing_may_transitions = []
-        self._non_existing_may_transitions = []
-        self._may_transitions_over_approximations = []
-        self._non_existing_may_transitions_over_approximations = []
-        self._existing_must_transitions = []
-        self._non_existing_must_transitions = []
+        self._abstract_states = set()
+        self._existing_may_transitions = {}
+        self._non_existing_may_transitions = {}
+        self._may_transitions_over_approximations = {}
+        self._non_existing_may_transitions_over_approximations = {}
+        self._existing_must_transitions = {}
+        self._non_existing_must_transitions = {}
 
+    def add_abstract_state(self, abstract_state):
+        self._abstract_states.add(abstract_state)
+
+    def add_may_transition(self, src, dst):
+        if src not in self._existing_may_transitions.keys():
+            self._existing_may_transitions[src] = set()
+        self._existing_may_transitions[src].add(dst)
+
+
+def test_dummy():
+    kripke = get_simple_kripke_structure()
+
+    abs_state = AbstractState(['p'], kripke)
+    abs_state2 = AbstractState(['q'], kripke)
+    abs_structure = AbstractStructure(kripke)
+    abs_structure.add_may_transition(abs_state,abs_state2)
+    print 'upupu'
+
+
+if __name__ == '__main__':
+    test_dummy()

@@ -68,10 +68,10 @@ class AbstractionClassifierLeaf(AbstractionClassifierTree):
         super(AbstractionClassifierLeaf, self).__init__(kripke_structure)
         self._value = value
         self._parent = parent
-        self._classifees = []  # Elements that are classified
+        self._classifees = set()  # Elements that are classified
 
     def add_classifee(self, classifee):
-        self._classifees.append(classifee)
+        self._classifees.add(classifee)
 
     def classify(self, concrete_state):
         return self._value

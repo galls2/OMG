@@ -15,7 +15,7 @@ class UnwindingTree(object):
     def unwind_further(self):
         if self._successors is None:
             concrete_successors = self._kripke_structure.get_successors(self.concrete_label)
-            successor_nodes = [UnwindingTree(self._kripke_structure, self, [], concrete_successor, None) \
+            successor_nodes = [UnwindingTree(self._kripke_structure, self, [], concrete_successor) \
                                for concrete_successor in concrete_successors]
             self._successors = successor_nodes
             return successor_nodes
@@ -56,3 +56,42 @@ class UnwindingTree(object):
 
     def set_abstract_label(self, abstract_label):
         self.abstract_label = abstract_label
+
+    def get_parent(self):
+        return self._parent
+
+    def __lt__(self, other):
+        if self.URGENT and not other.URGENT:
+            return False
+        if not self.URGENT and other.URGENT:
+            return True
+        return self.depth < other.depth
+
+
+def test_order():
+    a = UnwindingTree([], None, [], [], [])
+    b = UnwindingTree([], None, [], [], [])
+
+    a.URGENT = False
+    b.URGENT = True
+    assert (a < b)
+
+    a.URGENT = True
+    b.URGENT = False
+    assert (b < a)
+
+    a.URGENT = True
+    b.URGENT = True
+    a.depth = 3
+    b.depth = 4
+    assert (a < b)
+
+    a.URGENT = False
+    b.URGENT = False
+    a.depth = 4
+    b.depth = 3
+    assert (b < a)
+
+
+if __name__ == '__main__':
+    test_order()
