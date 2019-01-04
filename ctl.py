@@ -10,7 +10,7 @@ def remove_spaces_from_edges(text):
 
 
 def remove_characters(text, characters_to_remove):
-    return ''.join([ch for ch in text if ch not in characters_to_remove])
+    return ''.join([ch for ch in text if ch not in characters_to_remove]).replace('R','V')
 
 
 def is_balanced_brackets(text):
@@ -81,6 +81,9 @@ class CtlFormula(object):
         return par(str(self._node_data) + ' '.join([str(op) for op in self._operands]))
 
     def is_atomic_proposition(self):
+        return self.is_leaf() and self._node_data not in [True, False]
+
+    def is_leaf(self):
         return not self._operands
 
     def get_arity(self):
@@ -100,6 +103,57 @@ class CtlFormula(object):
         if self.is_atomic_proposition():
             return [self._node_data]
         return list(set([ap for operand in self._operands for ap in operand.get_atomic_propositions()]))
+
+    def convert_to_omg(self):
+        # base
+        if self.is_leaf():
+            return self
+
+        # step
+
+        main_connective = self.get_main_connective()
+        if main_connective in CtlFormula.unary_operators:
+            operand = self.get_operands()[0].convert_to_omg()
+
+            if main_connective in ['EX', '~', '!']:
+                return CtlFormula(main_connective, [operand])
+
+            if main_connective == 'AX':
+                return CtlFormula('~', [CtlFormula('EX', [CtlFormula('~', [operand])])])
+
+            if main_connective in ['AG', 'EG']:
+                new_main_connective = main_connective[0] + 'V'
+                return CtlFormula(new_main_connective, [CtlFormula(False, []), operand])
+
+            if main_connective in ['AF', 'EF']:
+                negated_main_connective = ('E' if main_connective[0] == 'A' else 'A') + 'V'
+                return CtlFormula('~', [
+                    CtlFormula(negated_main_connective, [CtlFormula(False, []), CtlFormula('~', [operand])])])
+        else:
+            left_operand = self.get_operands()[0].convert_to_omg()
+            right_operand = self.get_operands()[1].convert_to_omg()
+            if main_connective in ['AV', 'EV', '&', '->', '|']:
+                return CtlFormula(main_connective, [left_operand, right_operand])
+
+            if main_connective in ['AU', 'EU']:
+
+                negated_main_connective = ('E' if main_connective[0] == 'A' else 'A') + 'V'
+                return CtlFormula('~', [CtlFormula(negated_main_connective, [CtlFormula('~', [left_operand]),
+                                                                             CtlFormula('~', [right_operand])])])
+
+    def remove_double_negations(self):
+        if self.is_leaf():
+            return self
+        reduced_operands = [op.remove_double_negations() for op in self._operands]
+
+        if self._node_data not in CtlFormula.unary_logical_operators:
+            return CtlFormula(self._node_data, reduced_operands)
+
+        operand = reduced_operands[0]
+        if operand.get_main_connective() in CtlFormula.unary_logical_operators:
+            return operand.get_operands()[0]
+        else:
+            return CtlFormula(self._node_data, reduced_operands)
 
 
 class CtlParser(object):
@@ -140,6 +194,7 @@ class CtlParser(object):
         if (main_operator in CtlParser.binary_operators) and (len(input_operands) != 2):
             raise Exception('Error in parsing CTL formula ' + input_formula + ': binary operator')
         parsed_operands = [self.parse_smtlib_format(sub_part) for sub_part in input_operands]
+
         return CtlFormula(main_operator, parsed_operands)
 
     def parse_math_format(self, input_formula):
@@ -159,6 +214,8 @@ class CtlParser(object):
         if input_formula[0] in ['A', 'E']:
             path_quantifier = input_formula[0]
             temporal_operator = parts[2][0]
+            if temporal_operator == 'R':
+                temporal_operator = 'V'
             main_connective = path_quantifier + temporal_operator
             first_operand = self.parse_math_format(parts[1])
             second_operand = self.parse_math_format(' '.join(parts[3:]))
@@ -185,6 +242,11 @@ def test_formula(formula, parse_method):
     to_remove = [' ', '(', ')']
     if remove_characters(formula, to_remove) == remove_characters(parsed.str_math(), to_remove):
         print ' PASSED!'
+        print parsed.str_math()
+        omg = parsed.convert_to_omg()
+        print omg.str_math()
+        no_double_negs = omg.remove_double_negations()
+        print no_double_negs.str_math()
     else:
         print ' FAILED!!!!!!!!!!!!!!!!!!!'
         print remove_characters(formula, to_remove)
@@ -197,10 +259,11 @@ def test_ctl_parser():
     ctl_parser = CtlParser()
 
     f1 = '(AU (& (p) (q)) (EX (q)))'
-    test_formula(f1, lambda x: ctl_parser.parse_smtlib_format(x))
+  #  test_formula(f1, lambda x: ctl_parser.parse_smtlib_format(x))
 
     f2 = 'AG((dataOut3<2> & ~dataOut3<1> & dataOut3<0>) -> AX AF(dataOut3<2> & ~dataOut3<1> & dataOut3<0>))'
     test_formula(f2, lambda x: ctl_parser.parse_math_format(x))
+
 
     f3 = 'AG(full<0> -> AF(dataOut1<1> | dataOut1<0>))'
     test_formula(f3, lambda x: ctl_parser.parse_math_format(x))
