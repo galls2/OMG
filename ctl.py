@@ -1,3 +1,6 @@
+DEBUG = False
+
+
 def par(text):
     return '(' + text + ')'
 
@@ -9,8 +12,10 @@ def remove_spaces_from_edges(text):
     return text
 
 
-def remove_characters(text, characters_to_remove):
-    return ''.join([ch for ch in text if ch not in characters_to_remove]).replace('R','V')
+def remove_characters(text):
+    characters_to_remove = [' ', '(', ')']
+    characters_removed = ''.join([ch for ch in text if ch not in characters_to_remove])
+    return characters_removed.replace('R', 'V')
 
 
 def is_balanced_brackets(text):
@@ -27,9 +32,9 @@ def accumulate(list_num, addition=0):
 
 
 def split_components(f):
-    '''
+    """
     Written by Tal Shinkar. Many thanks.
-    '''
+    """
     values = {"(": 1, ")": -1}
     contribution = [values[c] if c in values else 0 for c in f]
     counts = list(accumulate(contribution))
@@ -53,18 +58,20 @@ class CtlFormula(object):
     unary_logical_operators = ['!', '~']
     unary_temporal_operators = ['EX', 'AX', 'AG', 'EG', 'AF', 'EF']
     unary_operators = unary_logical_operators + unary_temporal_operators
-    binary_logical_operators = ['->', '&', '|']
+    binary_logical_operators = ['&', '|', '->']
     binary_temporal_operators = ['AV', 'EV', 'AU', 'EU', 'AR', 'ER']
     binary_operators = binary_logical_operators + binary_temporal_operators
     allowed_operators = unary_operators + binary_operators
 
-    def __init__(self, node_data, operands):
+    def __init__(self, node_data, operands=None):
         super(CtlFormula, self).__init__()
+        if operands is None:
+            operands = []
         self._node_data = node_data
         self._operands = operands
 
     def str_math(self):
-        if not self._operands:  # list is empty.
+        if not self._operands:
             return str(self._node_data)
         if self._node_data in CtlFormula.unary_operators:
             first_operand = self._operands[0].str_math()
@@ -104,48 +111,50 @@ class CtlFormula(object):
             return [self._node_data]
         return list(set([ap for operand in self._operands for ap in operand.get_atomic_propositions()]))
 
-    def convert_to_omg(self):
-        # base
+    def negate(self):
+        if self._node_data in CtlFormula.unary_logical_operators:
+            return self._operands[0]
+        else:
+            return CtlFormula('~', [self])
+
+    def convert_to_omg_format(self):
+        # base case
         if self.is_leaf():
             return self
 
-        # step
-
+        # induction step
         main_connective = self.get_main_connective()
         if main_connective in CtlFormula.unary_operators:
-            operand = self.get_operands()[0].convert_to_omg()
+            operand = self.get_operands()[0].convert_to_omg_format()
 
             if main_connective in ['EX', '~', '!']:
                 return CtlFormula(main_connective, [operand])
 
             if main_connective == 'AX':
-                return CtlFormula('~', [CtlFormula('EX', [CtlFormula('~', [operand])])])
+                return CtlFormula('EX', [operand.negate()]).negate()
 
             if main_connective in ['AG', 'EG']:
                 new_main_connective = main_connective[0] + 'V'
-                return CtlFormula(new_main_connective, [CtlFormula(False, []), operand])
+                return CtlFormula(new_main_connective, [CtlFormula(False), operand])
 
             if main_connective in ['AF', 'EF']:
-                negated_main_connective = ('E' if main_connective[0] == 'A' else 'A') + 'V'
-                return CtlFormula('~', [
-                    CtlFormula(negated_main_connective, [CtlFormula(False, []), CtlFormula('~', [operand])])])
+                new_main_connective = ('E' if main_connective[0] == 'A' else 'A') + 'V'
+                return CtlFormula(new_main_connective, [CtlFormula(False), operand.negate()]).negate()
         else:
-            left_operand = self.get_operands()[0].convert_to_omg()
-            right_operand = self.get_operands()[1].convert_to_omg()
+            left_operand = self.get_operands()[0].convert_to_omg_format()
+            right_operand = self.get_operands()[1].convert_to_omg_format()
             if main_connective in ['AV', 'EV', '&', '->', '|']:
                 return CtlFormula(main_connective, [left_operand, right_operand])
 
             if main_connective in ['AU', 'EU']:
-
                 negated_main_connective = ('E' if main_connective[0] == 'A' else 'A') + 'V'
-                return CtlFormula('~', [CtlFormula(negated_main_connective, [CtlFormula('~', [left_operand]),
-                                                                             CtlFormula('~', [right_operand])])])
+                return CtlFormula(negated_main_connective, [left_operand.negate(), right_operand.negate()]).negate()
 
     def remove_double_negations(self):
         if self.is_leaf():
             return self
-        reduced_operands = [op.remove_double_negations() for op in self._operands]
 
+        reduced_operands = [op.remove_double_negations() for op in self._operands]
         if self._node_data not in CtlFormula.unary_logical_operators:
             return CtlFormula(self._node_data, reduced_operands)
 
@@ -163,13 +172,6 @@ class CtlParser(object):
     CTL -> (unary_connective, CTL)
     CTL -> (binary_connective, CTL, CTL)
     """
-    unary_logical_operators = ['!', '~']
-    unary_temporal_operators = ['EX', 'AX', 'AG', 'EG', 'AF', 'EF']
-    unary_operators = unary_logical_operators + unary_temporal_operators
-    binary_logical_operators = ['->', '&', '|']
-    binary_temporal_operators = ['AV', 'EV', 'AU', 'EU', 'AR', 'ER']
-    binary_operators = binary_logical_operators + binary_temporal_operators
-    allowed_operators = unary_operators + binary_operators
 
     def __init__(self):
         super(CtlParser, self).__init__()
@@ -187,83 +189,110 @@ class CtlParser(object):
         if not input_operands:
             return CtlFormula(parts[0], [])
         #    print main_operator +str(len(main_operator))
-        if main_operator not in CtlParser.allowed_operators:
+        if main_operator not in CtlFormula.allowed_operators:
             raise Exception('Error in parsing CTL formula ' + input_formula + ': unrecognized operator')
-        if (main_operator in CtlParser.unary_operators) and (len(input_operands) != 1):
+        if (main_operator in CtlFormula.unary_operators) and (len(input_operands) != 1):
             raise Exception('Error in parsing CTL formula ' + input_formula + ': unary operator')
-        if (main_operator in CtlParser.binary_operators) and (len(input_operands) != 2):
+        if (main_operator in CtlFormula.binary_operators) and (len(input_operands) != 2):
             raise Exception('Error in parsing CTL formula ' + input_formula + ': binary operator')
         parsed_operands = [self.parse_smtlib_format(sub_part) for sub_part in input_operands]
 
         return CtlFormula(main_operator, parsed_operands)
 
+    def split_by_operator(self, parts, operator):
+        operator_locations = [i for i in range(len(parts)) if parts[i] == operator]
+        if operator_locations:
+            and_location = operator_locations[0]
+            first_operand = self.parse_math_format(' '.join(parts[:and_location]))
+            second_operand = self.parse_math_format(' '.join(parts[and_location + 1:]))
+            return CtlFormula(operator, [first_operand, second_operand])
+        return None
+
     def parse_math_format(self, input_formula):
         # print 'ENTERING WITH: '+input_formula
+        """
+        Precedence order:
+        %left '^' "==" "->";
+        %left '|';
+        %left '&';
+        %nonassoc '~' '!';
+        %left EX EF EG AX AF AG EQUANT AQUANT UNTIL RELEASES WEAK_UNTIL;  // We do not support weak until.
+
+        I don't think so. Negations are reduced last for me.
+        """
 
         input_formula = remove_spaces_from_edges(input_formula)
-
         while input_formula[0] == '(' and input_formula[-1] == ')' and is_balanced_brackets(input_formula[1:-1]):
-            #    print 'NOW :'+input_formula
+            if DEBUG:
+                print 'NOW :' + input_formula
             input_formula = input_formula[1:-1]
             remove_spaces_from_edges(input_formula)
 
-        if input_formula[:2] in CtlParser.unary_temporal_operators:
+        if input_formula[:2] in CtlFormula.unary_temporal_operators:
             return CtlFormula(input_formula[:2], [self.parse_math_format(input_formula[2:])])
+
         parts = split_components(input_formula)
-        # AP, binary temporal or binary logical
+        if DEBUG:
+            print parts
+
+        # First checking if this is a binary temporal operator.
         if input_formula[0] in ['A', 'E']:
             path_quantifier = input_formula[0]
-            temporal_operator = parts[2][0]
-            if temporal_operator == 'R':
-                temporal_operator = 'V'
+            temporal_operator = parts[2][0].replace('R', 'V')
             main_connective = path_quantifier + temporal_operator
+
             first_operand = self.parse_math_format(parts[1])
             second_operand = self.parse_math_format(' '.join(parts[3:]))
+
             return CtlFormula(main_connective, [first_operand, second_operand])
-        #    print parts
-        if len(parts) > 1 and parts[1] in CtlParser.binary_logical_operators:
-            main_connective = parts[1]
-            first_operand = self.parse_math_format(parts[0])
-            second_operand = self.parse_math_format(' '.join(parts[2:]))
-            return CtlFormula(main_connective, [first_operand, second_operand])
-        if input_formula[:1] in CtlParser.unary_logical_operators:
+
+        # Handle &, |, -> (in that order)
+        if len(parts) > 2:
+            for operator in CtlFormula.binary_logical_operators:
+                split_result = self.split_by_operator(parts, operator)
+                if split_result is not None:
+                    return split_result
+
+        # Handle negations
+        if input_formula[:1] in CtlFormula.unary_logical_operators:
             return CtlFormula(input_formula[:1], [self.parse_math_format(input_formula[1:])])
-        else:  # this is ap
-            return CtlFormula(input_formula, [])
+
+        else:  # Otherwise, it is an atomic proposition
+            return CtlFormula(input_formula)
 
 
-def test_formula(formula, parse_method):
+def test_formula(formula, parse_method, verbose=False):
     print 'Testing: ' + formula,
     parsed = parse_method(formula)
-    #  print 'RESULT: '
-    #  print 'SMTLIB FORMAT: ' + str(parsed)
-    #  print 'REGULAR FORMAT: ' + parsed.str_math()
-    #  print '\n\n'
-    to_remove = [' ', '(', ')']
-    if remove_characters(formula, to_remove) == remove_characters(parsed.str_math(), to_remove):
+    if verbose:
+        print 'RESULT: '
+        print 'SMTLIB FORMAT: ' + str(parsed)
+        print 'REGULAR FORMAT: ' + parsed.str_math()
+        print '\n\n'
+
+    if remove_characters(formula) == remove_characters(parsed.str_math()):
         print ' PASSED!'
-        print parsed.str_math()
-        omg = parsed.convert_to_omg()
-        print omg.str_math()
-        no_double_negs = omg.remove_double_negations()
-        print no_double_negs.str_math()
+        if verbose:
+            print parsed.str_math()
+            omg = parsed.convert_to_omg_format()
+            print omg.str_math()
+            no_double_negs = omg.remove_double_negations()
+            print no_double_negs.str_math()
     else:
         print ' FAILED!!!!!!!!!!!!!!!!!!!'
-        print remove_characters(formula, to_remove)
-        print remove_characters(parsed.str_math(), to_remove)
-        print '*******************************************************************'
-    print 'AP: ' + str(parsed.get_atomic_propositions())
+        if verbose:
+            print remove_characters(formula)
+            print remove_characters(parsed.str_math())
+            print '*******************************************************************'
+    if verbose:
+        print 'AP: ' + str(parsed.get_atomic_propositions())
 
 
 def test_ctl_parser():
     ctl_parser = CtlParser()
 
-    f1 = '(AU (& (p) (q)) (EX (q)))'
-  #  test_formula(f1, lambda x: ctl_parser.parse_smtlib_format(x))
-
     f2 = 'AG((dataOut3<2> & ~dataOut3<1> & dataOut3<0>) -> AX AF(dataOut3<2> & ~dataOut3<1> & dataOut3<0>))'
     test_formula(f2, lambda x: ctl_parser.parse_math_format(x))
-
 
     f3 = 'AG(full<0> -> AF(dataOut1<1> | dataOut1<0>))'
     test_formula(f3, lambda x: ctl_parser.parse_math_format(x))
@@ -277,3 +306,5 @@ def test_ctl_parser():
 
 if __name__ == '__main__':
     test_ctl_parser()
+
+    # current problem: ~ is parsed before &. What is the truth?
