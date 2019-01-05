@@ -31,7 +31,7 @@ class UnwindingTree(object):
         return False
 
     def get_abstract_labels_in_tree(self):
-        partial_abstract_labels = [self.abstract_label] + [successor.get_abstract_labels_in_tree() for successor in
+        partial_abstract_labels = [(self.abstract_label, self)] + [successor.get_abstract_labels_in_tree() for successor in
                                                            self._successors]
         abs_labels = functools.reduce(lambda x, y: x | y, partial_abstract_labels)
         return abs_labels

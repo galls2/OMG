@@ -32,6 +32,7 @@ class AbstractState(object):
 
 class AbstractStructure(object):
     """docstring for AbstractStructure."""
+
     def __init__(self, kripke_structure):
         super(AbstractStructure, self).__init__()
         self._kripke_structure = kripke_structure
@@ -51,6 +52,20 @@ class AbstractStructure(object):
             self._existing_may_transitions[src] = set()
         self._existing_may_transitions[src].add(dst)
 
+    def add_must_hyper_transition(self, src, hyper_dst):
+        if src not in self._existing_must_transitions.keys():
+            self._existing_must_transitions[src] = set()
+        self._existing_must_transitions[src].add(hyper_dst)
+
+    def is_EE_closure(self, to_close, close_with):
+        if to_close in self._may_transitions_over_approximations.keys():
+            known_closers = self._may_transitions_over_approximations[to_close]
+            if close_with.issubset(known_closers):
+                return True
+
+        # Check actually! Return Either True or CEX
+        raise NotImplementedError()  # TODO
+
 
 def test_dummy():
     kripke = get_simple_kripke_structure()
@@ -58,7 +73,7 @@ def test_dummy():
     abs_state = AbstractState(['p'], kripke)
     abs_state2 = AbstractState(['q'], kripke)
     abs_structure = AbstractStructure(kripke)
-    abs_structure.add_may_transition(abs_state,abs_state2)
+    abs_structure.add_may_transition(abs_state, abs_state2)
     print 'upupu'
 
 

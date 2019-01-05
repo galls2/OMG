@@ -1,7 +1,7 @@
-from abstract_structure import AbstractStructure, AbstractState
-from abstraction_classifier import AbstractionClassifier, AbstractionClassifierLeaf
 from heapq import *
 
+from abstract_structure import AbstractStructure, AbstractState
+from abstraction_classifier import AbstractionClassifier, AbstractionClassifierLeaf
 from ctl import CtlParser
 from kripke_structure import get_simple_kripke_structure
 from unwinding_tree import UnwindingTree
@@ -110,17 +110,26 @@ class OmgModelChecker(object):
 
             self._add_may_edge_to(node_to_explore)  # finished updating the abstract structure
 
-            abs_states = node.get_abstract_labels_in_tree()
-            abs_states_lead = filter(lambda abs_state: abs_state.is_negative_label(p), abs_states)
+            abs_states_with_nodes = node.get_abstract_labels_in_tree()
+            abs_states_lead = filter(lambda abs_state: abs_state.is_negative_label(p), abs_states_with_nodes)
             while abs_states_lead:
                 to_close = abs_states_lead[0]
-                closure_result = self.is_EE_closure(to_close, abs_states)
-                if closure_result is None:
-                    #update overapprox in abs strucutre
+                witness_node = self._abstract_structure.is_EE_closure(to_close, abs_states_with_nodes)
+                if witness_node is True:
                     abs_states_lead = abs_states_lead[1:]
+                    self._abstract_structure.add_must_hyper_transition(to_close, abs_states_with_nodes)
                 else:
-                    pass
-
+                    concretization_result = self._is_witness_concrete(to_close, witness_node)
+                    if concretization_result:
+                        to_close_node = to_close[1]
+                        to_close_node.set_urgent()
+                    else:
+                        self.refine_abstract_label(to_close, witness_node)
+                    break
+                    #  TODO fill holes
+            if not abs_states_lead:
+                node.add_positive_label(spec)
+                return True
 
         node.add_positive_label(spec)
         return True
@@ -128,27 +137,6 @@ class OmgModelChecker(object):
         # update abstract data structures according to transitions
 
     def _handle_ev(self, node, spec, p, q):
-        raise NotImplementedError()
-
-    def _handle_eu(self, node, spec, p, q):
-        raise NotImplementedError()
-
-    def _handle_au(self, node, spec, p, q):
-        raise NotImplementedError()
-
-    def _handle_ag(self, node, spec, operand):
-        raise NotImplementedError()
-
-    def _handle_eg(self, node, spec, operand):
-        raise NotImplementedError()
-
-    def _handle_af(self, node, spec, operand):
-        raise NotImplementedError()
-
-    def _handle_ef(self, node, spec, operand):
-        raise NotImplementedError()
-
-    def _handle_ax(self, node, spec, operand):
         raise NotImplementedError()
 
     def _handle_ex(self, node, spec, operand):
@@ -182,17 +170,9 @@ class OmgModelChecker(object):
                           '|': OmgModelChecker._handle_or,
                           '->': OmgModelChecker._handle_arrow,
                           '~': OmgModelChecker._handle_not,
-                          '!': OmgModelChecker._handle_not,
                           'AV': OmgModelChecker._handle_av,
                           'EV': OmgModelChecker._handle_ev,
-                          'AU': OmgModelChecker._handle_au,
-                          'EU': OmgModelChecker._handle_eu,
-                          'AG': OmgModelChecker._handle_ag,
-                          'EG': OmgModelChecker._handle_eg,
                           'EX': OmgModelChecker._handle_ex,
-                          'AX': OmgModelChecker._handle_ax,
-                          'AF': OmgModelChecker._handle_af,
-                          'EF': OmgModelChecker._handle_ef,
                           }
         if node.get_abstract_labels_in_tree().is_positive_label(specification):
             return True
@@ -211,19 +191,13 @@ class OmgModelChecker(object):
 
         return method_mapping[main_connective](self, node, specification, *operands)
 
-    def is_EE_closure(self, to_close, abs_states):
-        raise NotImplementedError()
-    '''
-    return None if closed, witness otherwise
-    '''
-
 
 def test_propositional_logic():
     kripke_structure = get_simple_kripke_structure()
     print kripke_structure
     ctl_parser = CtlParser()
     raw_specification = '(q & p) | (q -> p)'
-    specification = ctl_parser.parse_math_format(raw_specification)
+    specification = ctl_parser.parse_omg(raw_specification)
 
     omg_model_checker = OmgModelChecker(kripke_structure)
     pos, neg = omg_model_checker.check_all_initial_states(specification)

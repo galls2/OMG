@@ -15,7 +15,7 @@ def remove_spaces_from_edges(text):
 def remove_characters(text):
     characters_to_remove = [' ', '(', ')']
     characters_removed = ''.join([ch for ch in text if ch not in characters_to_remove])
-    return characters_removed.replace('R', 'V')
+    return characters_removed.replace('R', 'V').replace('!', '~')
 
 
 def is_balanced_brackets(text):
@@ -259,6 +259,9 @@ class CtlParser(object):
 
         else:  # Otherwise, it is an atomic proposition
             return CtlFormula(input_formula)
+
+    def parse_omg(self, raw_specification):
+        return self.parse_math_format(raw_specification).convert_to_omg_format().remove_double_negations()
 
 
 def test_formula(formula, parse_method, verbose=False):
