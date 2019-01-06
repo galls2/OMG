@@ -83,11 +83,6 @@ class OmgModelChecker(object):
             node.add_positive_label(spec)
         return res
 
-    def _add_may_edge_to(self, node_to_explore):
-        if node_to_explore.get_parent() is not None:
-            parent_node = node_to_explore.get_parent()
-            self._abstract_structure.add_may_transition(parent_node.abstract_label, node_to_explore.abstract_label)
-
     def _handle_av(self, node, spec, p, q):
         to_visit = heapify([node])
         while to_visit:
@@ -108,25 +103,25 @@ class OmgModelChecker(object):
                 _map_upward_from_node(node_to_explore, lambda current_node: current_node.add_positive_label(spec))
                 continue
 
-            self._add_may_edge_to(node_to_explore)  # finished updating the abstract structure
+            #  self._add_may_edge_to(node_to_explore)
 
-            abs_states_with_nodes = node.get_abstract_labels_in_tree()
+            abs_states_with_nodes = node.get_abstract_labels_in_tree()  # tuples of the form (abstract_label, node)
             abs_states_lead = filter(lambda abs_state: abs_state.is_negative_label(p), abs_states_with_nodes)
             while abs_states_lead:
                 to_close = abs_states_lead[0]
-                witness_node = self._abstract_structure.is_EE_closure(to_close, abs_states_with_nodes)
-                if witness_node is True:
+                witness_state = self._abstract_structure.is_EE_closure(to_close, abs_states_with_nodes)
+                if witness_state is True:
                     abs_states_lead = abs_states_lead[1:]
                     self._abstract_structure.add_must_hyper_transition(to_close, abs_states_with_nodes)
                 else:
-                    concretization_result = self._is_witness_concrete(to_close, witness_node)
+                    concretization_result = self._is_witness_concrete(to_close, witness_state)
                     if concretization_result:
                         to_close_node = to_close[1]
                         to_close_node.set_urgent()
                     else:
-                        self.refine_abstract_label(to_close, witness_node)
+                        self.refine_abstract_label(to_close, witness_state)
                     break
-                    #  TODO fill holes
+
             if not abs_states_lead:
                 node.add_positive_label(spec)
                 return True
@@ -142,21 +137,25 @@ class OmgModelChecker(object):
     def _handle_ex(self, node, spec, operand):
         raise NotImplementedError()
 
-    def find_abstract_classification_for_node(self, node):
-        concrete_state = node.concrete_label
+    def find_abstract_classification_for_state(self, concrete_state):
         abstract_classification = self._abstraction.classify(concrete_state)
         if abstract_classification is None:
             atomic_propositions = self._kripke_structure.get_labels(concrete_state)
             abstract_classification = AbstractState(atomic_propositions, self._kripke_structure)
             classification_leaf = self._abstraction.add_classification_tree(
-                atomic_propositions, AbstractionClassifierLeaf(self._kripke_structure, abstract_classification, None, self._abstraction))
+                atomic_propositions,
+                AbstractionClassifierLeaf(self._kripke_structure, abstract_classification, None, self._abstraction))
             abstract_classification.set_classification_leaf(classification_leaf)
             self._abstract_structure.add_abstract_state(abstract_classification)
-        else:
-            classification_leaf = abstract_classification.get_classification_leaf()
 
+        return abstract_classification
+
+    def find_abstract_classification_for_node(self, node):
+        concrete_state = node.concrete_label
+        abstract_classification = self.find_abstract_classification_for_state(concrete_state)
         node.set_abstract_label(abstract_classification)
-        classification_leaf.add_classifee(abstract_classification)
+        abstract_classification.get_classification_leaf().add_classifee(node)
+
         return abstract_classification
 
     def handle_ctl(self, state, specification):
@@ -190,6 +189,30 @@ class OmgModelChecker(object):
         operands = specification.get_operands()
 
         return method_mapping[main_connective](self, node, specification, *operands)
+
+    def _is_witness_concrete(self, to_close, witness_node):
+        pass
+
+    #  TODO fill holes
+
+    def refine_abstract_label(self, to_close, witness_state):
+        original_classification_leaf = to_close[0].get_classification_leaf()
+        witness_abstract_state = self.find_abstract_classification_for_state(witness_state)
+        new_abs_has_sons, new_abs_no_sons = self._abstract_structure.split_abstract_state(to_close,
+                                                                                          witness_abstract_state)
+
+        # change all previosuly labeled to the old leaf to the new ones -- classifiess
+
+        leaf_has_son = AbstractionClassifierLeaf(self._kripke_structure, new_abs_has_sons,
+                                                 original_classification_leaf.get_parent(),
+                                                 original_classification_leaf.abstract_classifier)
+
+        leaf_no_son = AbstractionClassifierLeaf(self._kripke_structure, new_abs_has_sons,
+                                                original_classification_leaf.get_parent(),
+                                                original_classification_leaf.abstract_classifier)
+
+        query = None  # TODO implement this
+        original_classification_leaf.split(query, [leaf_has_son, leaf_no_son])
 
 
 def test_propositional_logic():

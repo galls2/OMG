@@ -6,22 +6,23 @@ class AbstractState(object):
         super(AbstractState, self).__init__()
         self._kripke_structure = kripke_structure
 
-        self._positive_labels = set(atomic_labels)
-        self._negative_labels = set(self._kripke_structure.get_atomic_propositions()) - self._positive_labels
+        self.positive_labels = set(atomic_labels)
+        self.negative_labels = set(self._kripke_structure.get_atomic_propositions()) - self.positive_labels
 
+        self.atomic_labels = atomic_labels
         self._classification_leaf = None
 
-    def add_positive_label(self, label):
-        self._positive_labels.add(label)
+    def add_positive_labels(self, labels):
+        self.positive_labels |= labels
 
-    def add_negative_label(self, label):
-        self._negative_labels.add(label)
+    def add_negative_labels(self, labels):
+        self.negative_labels |= labels
 
     def is_positive_label(self, label):
-        return label in self._positive_labels
+        return label in self.positive_labels
 
     def is_negative_label(self, label):
-        return label in self._negative_labels
+        return label in self.negative_labels
 
     def get_classification_leaf(self):
         return self._classification_leaf
@@ -37,7 +38,7 @@ class AbstractStructure(object):
         super(AbstractStructure, self).__init__()
         self._kripke_structure = kripke_structure
         self._abstract_states = set()
-        self._existing_may_transitions = {}
+        #  self._existing_may_transitions = {}
         self._non_existing_may_transitions = {}
         self._may_transitions_over_approximations = {}
         self._non_existing_may_transitions_over_approximations = {}
@@ -47,10 +48,12 @@ class AbstractStructure(object):
     def add_abstract_state(self, abstract_state):
         self._abstract_states.add(abstract_state)
 
+    '''
     def add_may_transition(self, src, dst):
         if src not in self._existing_may_transitions.keys():
             self._existing_may_transitions[src] = set()
         self._existing_may_transitions[src].add(dst)
+    '''
 
     def add_must_hyper_transition(self, src, hyper_dst):
         if src not in self._existing_must_transitions.keys():
@@ -66,6 +69,41 @@ class AbstractStructure(object):
         # Check actually! Return Either True or CEX
         raise NotImplementedError()  # TODO
 
+    def split_abstract_state(self, to_close, witness_abstract_state):
+        new_abs_has_sons = AbstractState(to_close.atomic_labels, self._kripke_structure)
+        new_abs_has_sons.add_positive_labels(to_close.positive_labels)
+        new_abs_has_sons.add_negative_labels(to_close.negative_labels)
+
+        new_abs_no_sons = AbstractState(to_close.atomic_labels, self._kripke_structure)
+        new_abs_no_sons.add_positive_labels(to_close.positive_labels)
+        new_abs_no_sons.add_negative_labels(to_close.negative_labels)
+
+        self._abstract_states.remove(to_close[0])
+        self._abstract_states.add(new_abs_has_sons)
+        self._abstract_states.add(new_abs_no_sons)
+
+        # must-from
+
+        old_dst = self._existing_must_transitions.pop(to_close[0])
+        self._existing_must_transitions.update({new_abs_has_sons: old_dst, new_abs_no_sons: old_dst})
+
+        self._non_existing_must_transitions.pop(to_close[0])
+
+        # must-to
+        replace_old_value = lambda dct: dct.updare({key: dict[key]
+                                                   .difference(to_close[0])
+                                                   .union([new_abs_has_sons, new_abs_no_sons])
+                                                    for key in dct.keys()
+                                                    if to_close[0] in dct[key]})
+        replace_old_value(self._existing_must_transitions)
+        replace_old_value(self._non_existing_must_transitions)
+
+        # split info
+        self._existing_must_transitions[new_abs_has_sons].add({witness_abstract_state})
+        self._non_existing_may_transitions[new_abs_no_sons].append(witness_abstract_state)
+
+        return new_abs_has_sons, new_abs_no_sons
+
 
 def test_dummy():
     kripke = get_simple_kripke_structure()
@@ -73,8 +111,6 @@ def test_dummy():
     abs_state = AbstractState(['p'], kripke)
     abs_state2 = AbstractState(['q'], kripke)
     abs_structure = AbstractStructure(kripke)
-    abs_structure.add_may_transition(abs_state, abs_state2)
-    print 'upupu'
 
 
 if __name__ == '__main__':

@@ -44,7 +44,7 @@ class AbstractionClassifierTree(object):
     def __init__(self, kripke_structure, abstract_classifier):
         super(AbstractionClassifierTree, self).__init__()
         self._kripke_structure = kripke_structure
-        self._abstract_classifier = abstract_classifier
+        self.abstract_classifier = abstract_classifier
 
     def classify(self, concrete_state):
         raise NotImplementedError()
@@ -87,12 +87,27 @@ class AbstractionClassifierLeaf(AbstractionClassifierTree):
     def classify(self, concrete_state):
         return self._value
 
+    def get_value(self):
+        return self._value
+
     def split(self, query, successors):
         parent = self._parent
         new_classification_node = AbstractionClassifierInternal(self._kripke_structure, query, successors)
         parent.replace_successor(self, new_classification_node)
 
-        self._abstract_classifier.update_cache(self)
+        self.abstract_classifier.update_cache(self)
+
+        for classifee in self._classifees:
+            new_classification_leaf = query(classifee.concrete_label)
+            new_classification_leaf.get_classifees().add(classifee)
+            classifee.set_abstract_label(new_classification_leaf.get_value())
+
+    def get_parent(self):
+        return self._parent
 
     def is_leaf(self):
         return True
+
+    def get_classifees(self):
+        return self._classifees
+
