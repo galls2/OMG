@@ -56,8 +56,8 @@ class AbstractionClassifierTree(object):
 class AbstractionClassifierInternal(AbstractionClassifierTree):
     """docstring for AbstractionClassifier."""
 
-    def __init__(self, kripke_structure, query, successors):
-        super(AbstractionClassifierInternal, self).__init__(kripke_structure)
+    def __init__(self, kripke_structure, query, successors, abstract_classifier):
+        super(AbstractionClassifierInternal, self).__init__(kripke_structure, abstract_classifier)
         self._query = query
         self._successors = successors
 
@@ -76,11 +76,10 @@ class AbstractionClassifierLeaf(AbstractionClassifierTree):
     """docstring for AbstractionClassifier."""
 
     def __init__(self, kripke_structure, value, parent, abstract_classifier):
-        super(AbstractionClassifierLeaf, self).__init__(kripke_structure)
+        super(AbstractionClassifierLeaf, self).__init__(kripke_structure, abstract_classifier)
         self._value = value
         self._parent = parent
         self._classifees = set()  # Elements that are classified
-        self._abstract_classifier = abstract_classifier
 
     def add_classifee(self, classifee):
         self._classifees.add(classifee)

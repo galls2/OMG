@@ -149,7 +149,7 @@ class OmgModelChecker(object):
             atomic_propositions = self._kripke_structure.get_labels(concrete_state)
             abstract_classification = AbstractState(atomic_propositions, self._kripke_structure)
             classification_leaf = self._abstraction.add_classification_tree(
-                atomic_propositions, AbstractionClassifierLeaf(self._kripke_structure, abstract_classification, None))
+                atomic_propositions, AbstractionClassifierLeaf(self._kripke_structure, abstract_classification, None, self._abstraction))
             abstract_classification.set_classification_leaf(classification_leaf)
             self._abstract_structure.add_abstract_state(abstract_classification)
         else:
