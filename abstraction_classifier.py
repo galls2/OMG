@@ -1,4 +1,4 @@
-def ap_collection_to_ap_tuple(ap_collection):
+def _ap_collection_to_ap_tuple(ap_collection):
     ap_list = list(ap_collection)
     ap_tuple = tuple(sorted(ap_list))
     return ap_tuple
@@ -17,7 +17,7 @@ class AbstractionClassifier(object):
         if concrete_state in self._cache.keys():
             return self._cache[concrete_state]
 
-        concrete_labels = ap_collection_to_ap_tuple(self._kripke_structure.get_labels(concrete_state))
+        concrete_labels = _ap_collection_to_ap_tuple(self._kripke_structure.get_labels(concrete_state))
         if concrete_labels not in self._abstract_classification_trees.keys():
             return None
         abstract_label = self._abstract_classification_trees[concrete_labels].classify(concrete_state)
@@ -26,16 +26,17 @@ class AbstractionClassifier(object):
 
     def add_classification_tree(self, atomic_labels, classification_tree):
         assert atomic_labels not in self._abstract_classification_trees.keys()
-        ap_tuple = ap_collection_to_ap_tuple(atomic_labels)
+        ap_tuple = _ap_collection_to_ap_tuple(atomic_labels)
         self._abstract_classification_trees[ap_tuple] = classification_tree
         return classification_tree
 
     def is_exists_tree_for_atomic_labels(self, atomic_labels):
-        return ap_collection_to_ap_tuple(atomic_labels) in self._abstract_classification_trees.keys()
+        return _ap_collection_to_ap_tuple(atomic_labels) in self._abstract_classification_trees.keys()
 
     def _update_cache(self, abstract_state_to_remove):
         cache = self._cache
         self._cache = {key: cache[key] for key in cache.keys() if cache[key] != abstract_state_to_remove}
+        return self
 
 
 class AbstractionClassifierTree(object):
@@ -70,6 +71,7 @@ class AbstractionClassifierInternal(AbstractionClassifierTree):
     def replace_successor(self, old_successor, new_successor):
         self._successors.update({key: new_successor for key in self._successors \
                                  if self._successors[key] == old_successor})
+        return self
 
 
 class AbstractionClassifierLeaf(AbstractionClassifierTree):
@@ -83,6 +85,7 @@ class AbstractionClassifierLeaf(AbstractionClassifierTree):
 
     def add_classifee(self, classifee):
         self._classifees.add(classifee)
+        return self
 
     def classify(self, concrete_state):
         return self._value
@@ -99,8 +102,10 @@ class AbstractionClassifierLeaf(AbstractionClassifierTree):
 
         for classifee in self._classifees:
             new_classification_leaf = query(classifee.concrete_label)
-            new_classification_leaf.get_classifees().add(classifee)
+            new_classification_leaf.add_classifee(classifee)
             classifee.set_abstract_label(new_classification_leaf.get_value())
+
+        return self
 
     def get_parent(self):
         return self._parent
@@ -110,4 +115,3 @@ class AbstractionClassifierLeaf(AbstractionClassifierTree):
 
     def get_classifees(self):
         return self._classifees
-

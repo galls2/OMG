@@ -1,18 +1,18 @@
 DEBUG = False
 
 
-def par(text):
+def _par(text):
     return '(' + text + ')'
 
 
-def remove_spaces_from_edges(text):
+def _remove_spaces_from_edges(text):
     text = text[next(i for i in range(len(text)) if text[i] != ' '):]
     last_space = next(i for i in range(len(text)) if text[len(text) - 1 - i] != ' ')
     text = text if text[-1] != ' ' else text[:-1 * last_space]
     return text
 
 
-def remove_characters(text):
+def _remove_characters(text):
     characters_to_remove = [' ', '(', ')']
     characters_removed = ''.join([ch for ch in text if ch not in characters_to_remove])
     return characters_removed.replace('R', 'V').replace('!', '~')
@@ -21,23 +21,23 @@ def remove_characters(text):
 def is_balanced_brackets(text):
     values = {"(": 1, ")": -1}
     contribution = [values[c] if c in values else 0 for c in text]
-    counts = list(accumulate(contribution))
+    counts = list(_accumulate(contribution))
 
     return all(c >= 0 for c in counts) and counts[-1] == 0
 
 
-def accumulate(list_num, addition=0):
+def _accumulate(list_num, addition=0):
     return [] if list_num == [] else \
-        [list_num[0] + addition] + accumulate(list_num[1:], addition + list_num[0])
+        [list_num[0] + addition] + _accumulate(list_num[1:], addition + list_num[0])
 
 
-def split_components(f):
+def _split_components(f):
     """
     Written by Tal Shinkar. Many thanks.
     """
     values = {"(": 1, ")": -1}
     contribution = [values[c] if c in values else 0 for c in f]
-    counts = list(accumulate(contribution))
+    counts = list(_accumulate(contribution))
     assert (all(c >= 0 for c in counts) and counts[-1] == 0)  # f is balanced
 
     lsplits = [i + 1 for i in range(len(counts) - 1) if counts[i] == 0 and counts[i + 1] != 0]
@@ -51,6 +51,10 @@ def split_components(f):
         if cuts_no_blanks[i][0] != '(':
             cuts_no_blanks[i:i + 1] = [c for c in cuts_no_blanks[i].split(' ') if c != '']
     return cuts_no_blanks
+
+
+def _flip_ae(ch):
+    return 'A' if ch == 'E' else 'E'
 
 
 class CtlFormula(object):
@@ -75,17 +79,17 @@ class CtlFormula(object):
             return str(self._node_data)
         if self._node_data in CtlFormula.unary_operators:
             first_operand = self._operands[0].str_math()
-            return self._node_data + par(first_operand)
+            return self._node_data + _par(first_operand)
         else:
             first_operand = self._operands[0].str_math()
             second_operand = self._operands[1].str_math()
             if self._node_data in CtlFormula.binary_temporal_operators:
-                return self._node_data[0] + par(first_operand) + self._node_data[1] + par(second_operand)
+                return self._node_data[0] + _par(first_operand) + self._node_data[1] + _par(second_operand)
             if self._node_data in CtlFormula.binary_logical_operators:
-                return par(first_operand) + str(self._node_data) + par(second_operand)
+                return _par(first_operand) + str(self._node_data) + _par(second_operand)
 
     def __str__(self):
-        return par(str(self._node_data) + ' '.join([str(op) for op in self._operands]))
+        return _par(str(self._node_data) + ' '.join([str(op) for op in self._operands]))
 
     def is_atomic_proposition(self):
         return self.is_leaf() and self._node_data not in [True, False]
@@ -141,7 +145,7 @@ class CtlFormula(object):
                 return CtlFormula(new_main_connective, [CtlFormula(False), operand])
 
             if main_connective in ['AF', 'EF']:
-                new_main_connective = ('E' if main_connective[0] == 'A' else 'A') + 'V'
+                new_main_connective = _flip_ae(main_connective[0]) + 'V'
                 return CtlFormula(new_main_connective, [CtlFormula(False), operand.negate()]).negate()
         else:
             left_operand = self.get_operands()[0].convert_to_omg_format()
@@ -150,7 +154,7 @@ class CtlFormula(object):
                 return CtlFormula(main_connective, [left_operand, right_operand])
 
             if main_connective in ['AU', 'EU']:
-                negated_main_connective = ('E' if main_connective[0] == 'A' else 'A') + 'V'
+                negated_main_connective = _flip_ae(main_connective[0]) + 'V'
                 return CtlFormula(negated_main_connective, [left_operand.negate(), right_operand.negate()]).negate()
 
 
@@ -169,7 +173,7 @@ class CtlParser(object):
         if input_formula[0] != '(' or input_formula[-1] != ')':
             raise Exception('Error in parsing CTL formula ' + input_formula + ': brackets')
         input_formula = input_formula[1:-1]
-        parts = split_components(input_formula)
+        parts = _split_components(input_formula)
         if not parts:
             raise Exception('Error in parsing CTL formula ' + input_formula + ': brackets')
 
@@ -210,17 +214,17 @@ class CtlParser(object):
         I don't think so. Negations are reduced last for me.
         """
 
-        input_formula = remove_spaces_from_edges(input_formula)
+        input_formula = _remove_spaces_from_edges(input_formula)
         while input_formula[0] == '(' and input_formula[-1] == ')' and is_balanced_brackets(input_formula[1:-1]):
             if DEBUG:
                 print 'NOW :' + input_formula
             input_formula = input_formula[1:-1]
-            remove_spaces_from_edges(input_formula)
+            _remove_spaces_from_edges(input_formula)
 
         if input_formula[:2] in CtlFormula.unary_temporal_operators:
             return CtlFormula(input_formula[:2], [self.parse_math_format(input_formula[2:])])
 
-        parts = split_components(input_formula)
+        parts = _split_components(input_formula)
         if DEBUG:
             print parts
 
@@ -262,7 +266,7 @@ def test_formula(formula, parse_method, verbose=False):
         print 'REGULAR FORMAT: ' + parsed.str_math()
         print '\n\n'
 
-    if remove_characters(formula) == remove_characters(parsed.str_math()):
+    if _remove_characters(formula) == _remove_characters(parsed.str_math()):
         print ' PASSED!'
         if verbose:
             print parsed.str_math()
@@ -273,8 +277,8 @@ def test_formula(formula, parse_method, verbose=False):
     else:
         print ' FAILED!!!!!!!!!!!!!!!!!!!'
         if verbose:
-            print remove_characters(formula)
-            print remove_characters(parsed.str_math())
+            print _remove_characters(formula)
+            print _remove_characters(parsed.str_math())
             print '*******************************************************************'
     if verbose:
         print 'AP: ' + str(parsed.get_atomic_propositions())
