@@ -28,13 +28,14 @@ class OmgModelChecker(object):
     Create a new one for each structure.
     """
 
-    def __init__(self, kripke_structure):
+    def __init__(self, kripke_structure, produce_abstraction=False):
         super(OmgModelChecker, self).__init__()
         self._kripke_structure = kripke_structure
         self._abstract_structure = None
         self._abstraction = None
         self._initialize_abstraction()
         self._unwinding_trees = []
+        self._produce_abstraction = produce_abstraction
 
     def _initialize_abstraction(self):
         self._abstract_structure = AbstractStructure(self._kripke_structure)
@@ -92,6 +93,8 @@ class OmgModelChecker(object):
             self._handle_ctl_and_recur(node_to_explore, q)
             if node_to_explore.is_labeled_negatively_with(q):
                 _map_upward_from_node(node_to_explore, lambda current_node: current_node.add_negative_label(spec))
+                if self._produce_abstraction:
+                    self._strengthen_trace(node_to_explore)
                 return False
 
             self._handle_ctl_and_recur(node_to_explore, p)
@@ -213,6 +216,9 @@ class OmgModelChecker(object):
 
         query = None  # TODO implement this
         original_classification_leaf.split(query, [leaf_has_son, leaf_no_son])
+
+    def _strengthen_trace(self, node_to_explore):
+        raise NotImplementedError()
 
 
 def test_propositional_logic():

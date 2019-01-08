@@ -127,8 +127,11 @@ class CtlFormula(object):
         if main_connective in CtlFormula.unary_operators:
             operand = self.get_operands()[0].convert_to_omg_format()
 
-            if main_connective in ['EX', '~', '!']:
+            if main_connective in ['EX']:
                 return CtlFormula(main_connective, [operand])
+
+            if main_connective in CtlFormula.unary_logical_operators:
+                return operand.negate()
 
             if main_connective == 'AX':
                 return CtlFormula('EX', [operand.negate()]).negate()
@@ -149,20 +152,6 @@ class CtlFormula(object):
             if main_connective in ['AU', 'EU']:
                 negated_main_connective = ('E' if main_connective[0] == 'A' else 'A') + 'V'
                 return CtlFormula(negated_main_connective, [left_operand.negate(), right_operand.negate()]).negate()
-
-    def remove_double_negations(self):
-        if self.is_leaf():
-            return self
-
-        reduced_operands = [op.remove_double_negations() for op in self._operands]
-        if self._node_data not in CtlFormula.unary_logical_operators:
-            return CtlFormula(self._node_data, reduced_operands)
-
-        operand = reduced_operands[0]
-        if operand.get_main_connective() in CtlFormula.unary_logical_operators:
-            return operand.get_operands()[0]
-        else:
-            return CtlFormula(self._node_data, reduced_operands)
 
 
 class CtlParser(object):
@@ -261,7 +250,7 @@ class CtlParser(object):
             return CtlFormula(input_formula)
 
     def parse_omg(self, raw_specification):
-        return self.parse_math_format(raw_specification).convert_to_omg_format().remove_double_negations()
+        return self.parse_math_format(raw_specification).convert_to_omg_format()
 
 
 def test_formula(formula, parse_method, verbose=False):
@@ -278,9 +267,9 @@ def test_formula(formula, parse_method, verbose=False):
         if verbose:
             print parsed.str_math()
             omg = parsed.convert_to_omg_format()
-            print omg.str_math()
-            no_double_negs = omg.remove_double_negations()
-            print no_double_negs.str_math()
+
+            print 'OMGing: '+omg.str_math()
+
     else:
         print ' FAILED!!!!!!!!!!!!!!!!!!!'
         if verbose:
@@ -295,16 +284,16 @@ def test_ctl_parser():
     ctl_parser = CtlParser()
 
     f2 = 'AG((dataOut3<2> & ~dataOut3<1> & dataOut3<0>) -> AX AF(dataOut3<2> & ~dataOut3<1> & dataOut3<0>))'
-    test_formula(f2, lambda x: ctl_parser.parse_math_format(x))
+    test_formula(f2, lambda x: ctl_parser.parse_math_format(x), True)
 
     f3 = 'AG(full<0> -> AF(dataOut1<1> | dataOut1<0>))'
-    test_formula(f3, lambda x: ctl_parser.parse_math_format(x))
+    test_formula(f3, lambda x: ctl_parser.parse_math_format(x), True)
 
     f4 = '~E safe U final'
-    test_formula(f4, lambda x: ctl_parser.parse_math_format(x))
+    test_formula(f4, lambda x: ctl_parser.parse_math_format(x), True)
 
     f5 = 'AG(~u_ack<1> -> (A u_req<1> R ~u_ack<1>))'
-    test_formula(f5, lambda x: ctl_parser.parse_math_format(x))
+    test_formula(f5, lambda x: ctl_parser.parse_math_format(x), True)
 
 
 if __name__ == '__main__':
