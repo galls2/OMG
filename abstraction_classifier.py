@@ -13,6 +13,16 @@ class AbstractionClassifier(object):
         self._abstract_classification_trees = {}
         self._cache = {}
 
+    def update_classification(self, classification_node, concrete_state):
+        new_abstract_label = classification_node.classify(concrete_state)
+        new_classification_node = new_abstract_label.get_classification_node()
+
+        classification_node.remove_classifee(concrete_state)
+        new_classification_node.add_classifee(concrete_state)
+
+        self._update_cache(classification_node.get_value())
+        return new_abstract_label
+
     def classify(self, concrete_state):
         if concrete_state in self._cache.keys():
             return self._cache[concrete_state]
@@ -24,9 +34,10 @@ class AbstractionClassifier(object):
         self._cache[concrete_state] = abstract_label
         return abstract_label
 
-    def add_classification_tree(self, atomic_labels, classification_tree):
+    def add_classification(self, atomic_labels, abstract_state):
         assert atomic_labels not in self._abstract_classification_trees.keys()
         ap_tuple = _ap_collection_to_ap_tuple(atomic_labels)
+        classification_tree = AbstractionClassifierTree(self._kripke_structure, None, None, self, abstract_state)
         self._abstract_classification_trees[ap_tuple] = classification_tree
         return classification_tree
 
@@ -38,80 +49,83 @@ class AbstractionClassifier(object):
         self._cache = {key: cache[key] for key in cache.keys() if cache[key] != abstract_state_to_remove}
         return self
 
+    def split(self, query, classification_node_to_split, query_labeling_mapper):
+
+        classification_node_to_split._query = query
+
+        successors = {}
+        for query_result in query_labeling_mapper.keys():
+            new_leaf = AbstractionClassifierTree(self._kripke_structure, None, None,
+                                                 self, query_labeling_mapper[query_result])
+            successors[query_result] = new_leaf
+
+        new_internal = classification_node_to_split.split(query, successors)
+        for successor in new_internal.get_successors():
+            successor.set_parent(new_internal)
+
+        self._update_cache(classification_node_to_split.get_value())
+        return new_internal
+
 
 class AbstractionClassifierTree(object):
     """docstring for AbstractionClassifier."""
 
-    def __init__(self, kripke_structure, abstract_classifier):
+    def __init__(self, kripke_structure, query, successors, parent, classifier, value=None):
         super(AbstractionClassifierTree, self).__init__()
         self._kripke_structure = kripke_structure
-        self.abstract_classifier = abstract_classifier
-
-    def classify(self, concrete_state):
-        raise NotImplementedError()
-
-    def is_leaf(self):
-        raise NotImplementedError()
-
-
-class AbstractionClassifierInternal(AbstractionClassifierTree):
-    """docstring for AbstractionClassifier."""
-
-    def __init__(self, kripke_structure, query, successors, abstract_classifier):
-        super(AbstractionClassifierInternal, self).__init__(kripke_structure, abstract_classifier)
         self._query = query
         self._successors = successors
-
-    def classify(self, concrete_state):
-        return self._successors[self._query(concrete_state)].classify(concrete_state)
-
-    def is_leaf(self):
-        return False
-
-    def replace_successor(self, old_successor, new_successor):
-        self._successors.update({key: new_successor for key in self._successors \
-                                 if self._successors[key] == old_successor})
-        return self
-
-
-class AbstractionClassifierLeaf(AbstractionClassifierTree):
-    """docstring for AbstractionClassifier."""
-
-    def __init__(self, kripke_structure, value, parent, abstract_classifier):
-        super(AbstractionClassifierLeaf, self).__init__(kripke_structure, abstract_classifier)
         self._value = value
         self._parent = parent
         self._classifees = set()  # Elements that are classified
-
-    def add_classifee(self, classifee):
-        self._classifees.add(classifee)
-        return self
+        self._classifier = classifier
 
     def classify(self, concrete_state):
-        return self._value
+        if self.is_leaf():
+            self._value.set_classification_node(self)
+            return self._value
+
+        classification = self._successors[self._query(concrete_state)].classify(concrete_state)
+        return classification
+
+    def is_leaf(self):
+        return not len(self._successors)
 
     def get_value(self):
         return self._value
 
-    def split(self, query, successors):
-        parent = self._parent
-        new_classification_node = AbstractionClassifierInternal(self._kripke_structure, query, successors)
-        parent.replace_successor(self, new_classification_node)
-
-        self.abstract_classifier.update_cache(self)
-
-        for classifee in self._classifees:
-            new_classification_leaf = query(classifee.concrete_label)
-            new_classification_leaf.add_classifee(classifee)
-            classifee.set_abstract_label(new_classification_leaf.get_value())
-
-        return self
-
     def get_parent(self):
         return self._parent
 
-    def is_leaf(self):
-        return True
+    def set_parent(self, parent):
+        self._parent = parent
+        return self
+
+    def get_successors(self):
+        return self._successors
 
     def get_classifees(self):
         return self._classifees
+
+    def add_classifee(self, node):
+        self._classifees.add(node)
+        return self
+
+    def remove_classifee(self, classifee):
+        self._classifees.remove(classifee)
+        return self
+
+    def _split(self, query, successors):
+        if not self.is_leaf():
+            raise Exception('Cannot split non-leaf')
+
+        parent = self._parent
+        new_internal = AbstractionClassifierTree(self._kripke_structure, query, successors, parent, self._classifier)
+        if parent is not None:
+            parent.get_successors().update({k: new_internal
+                                            for k in parent.get_successors().keys()
+                                            if parent.get_successors()[k] == self})
+        return new_internal
+
+    def get_classifier(self):
+        return self._classifier

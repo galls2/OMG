@@ -1,5 +1,14 @@
 import functools
 
+'''
+Due to the fact that we agreed that for all proper subformulas of the original specification, we must keep the 
+invariant that when finished check s|=f, it follows that either [s] |= f or [s] |= ~f, we do not make a STATE class. 
+'''
+
+'''
+Moreover, as of the fact that we have to recognize loops, we remain with a tree form. 
+'''
+
 
 class UnwindingTree(object):
     def __init__(self, kripke_structure, parent, successors, concrete_label, abstract_label=None):
@@ -8,31 +17,34 @@ class UnwindingTree(object):
         self._parent = parent
         self._successors = successors
         self.concrete_label = concrete_label  # concrete state that is represented by this node
-        self.abstract_label = abstract_label  # abstract state that is represented by this node
+        self._abstract_label = abstract_label  # abstract state that is represented by this node
         self.depth = 0 if parent is None else parent.get_depth()
         self.URGENT = False
 
     def unwind_further(self):
         if self._successors is None:
             concrete_successors = self._kripke_structure.get_successors(self.concrete_label)
-            successor_nodes = [UnwindingTree(self._kripke_structure, self, [], concrete_successor) \
+            successor_nodes = [UnwindingTree(self._kripke_structure, self, [], concrete_successor)
                                for concrete_successor in concrete_successors]
             self._successors = successor_nodes
             return successor_nodes
 
-    def is_abstract_lasso(self):
+    def is_abstract_lasso(self):  ## FIXME
         current = self._parent
-        abstract_labels = {self.abstract_label}
+        abstract_label = self.get_abstract_label()
+        abstract_labels = {abstract_label}
         while current is not None:
-            if current._abstract_label == self.abstract_label:
+            current_abstract_label = current.get_abstract_label()
+            if current_abstract_label == abstract_label:
                 return True, current, abstract_labels
-            abstract_labels.add(current._abstract_label)
-            current = current._parent
+            abstract_labels.add(current_abstract_label)
+            current = current.get_parent()
         return False
 
-    def get_abstract_labels_in_tree(self):
-        partial_abstract_labels = [(self.abstract_label, self)] + [successor.get_abstract_labels_in_tree() for successor in
-                                                           self._successors]
+    def get_abstract_labels_in_tree(self):  ## FIXME
+
+        partial_abstract_labels = [{(self.get_abstract_label(), self)}] + [successor.get_abstract_labels_in_tree()
+                                                                     for successor in self._successors]
         abs_labels = functools.reduce(lambda x, y: x | y, partial_abstract_labels)
         return abs_labels
 
@@ -43,19 +55,27 @@ class UnwindingTree(object):
         self.URGENT = True
 
     def is_labeled_positively_with(self, label):
-        return self.abstract_label.is_positive_label(label)
+        return self.get_abstract_label().is_positive_label(label)
 
     def is_labeled_negatively_with(self, label):
-        return self.abstract_label.is_negative_label(label)
+        return self.get_abstract_label().is_negative_label(label)
 
     def add_positive_label(self, label):
-        self.abstract_label.add_positive_label(label)
+        self.get_abstract_label().add_positive_label(label)
+        return self
+
+    def get_abstract_label(self):
+        known_abstract_state = self._abstract_label
+        current_abstract_state = known_abstract_state.update_classification(self.concrete_label)
+        return current_abstract_state
 
     def add_negative_label(self, label):
-        self.abstract_label.add_negative_label(label)
+        self.get_abstract_label().add_negative_label(label)
+        return self
 
     def set_abstract_label(self, abstract_label):
-        self.abstract_label = abstract_label
+        self._abstract_label = abstract_label
+        return self
 
     def get_parent(self):
         return self._parent

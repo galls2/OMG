@@ -1,7 +1,7 @@
 from heapq import *
 
 from abstract_structure import AbstractStructure, AbstractState
-from abstraction_classifier import AbstractionClassifier, AbstractionClassifierLeaf
+from abstraction_classifier import AbstractionClassifier
 from ctl import CtlParser
 from kripke_structure import get_simple_kripke_structure
 from unwinding_tree import UnwindingTree
@@ -84,7 +84,7 @@ class OmgModelChecker(object):
             node.add_positive_label(spec)
         return res
 
-    def _handle_av(self, node, spec, p, q):
+    def _handle_av(self, node, spec, p, q):  ##goover
         to_visit = heapify([node])
         while to_visit:
             node_to_explore = heappop(to_visit)
@@ -140,25 +140,25 @@ class OmgModelChecker(object):
     def _handle_ex(self, node, spec, operand):
         raise NotImplementedError()
 
-    def find_abstract_classification_for_state(self, concrete_state):
-        abstract_classification = self._abstraction.classify(concrete_state)
-        if abstract_classification is None:
+    def find_abstract_classification_for_state(self, concrete_state):  ##goover
+        abstract_state = self._abstraction.classify(concrete_state)
+        if abstract_state is None:
             atomic_propositions = self._kripke_structure.get_labels(concrete_state)
-            abstract_classification = AbstractState(atomic_propositions, self._kripke_structure)
-            classification_leaf = self._abstraction.add_classification_tree(
-                atomic_propositions,
-                AbstractionClassifierLeaf(self._kripke_structure, abstract_classification, None, self._abstraction))
-            abstract_classification.set_classification_leaf(classification_leaf)
-            self._abstract_structure.add_abstract_state(abstract_classification)
+            abstract_state = AbstractState(atomic_propositions, self._kripke_structure)
 
-        return abstract_classification
+            classification_leaf = self._abstraction.add_classification(atomic_propositions, abstract_state)
+            abstract_state.set_classification_node(classification_leaf)
 
-    def find_abstract_classification_for_node(self, node):
+            self._abstract_structure.add_abstract_state(abstract_state)
+
+        return abstract_state
+
+    def find_abstract_classification_for_node(self, node):  ##govoer
+
         concrete_state = node.concrete_label
         abstract_classification = self.find_abstract_classification_for_state(concrete_state)
         node.set_abstract_label(abstract_classification)
-        abstract_classification.get_classification_leaf().add_classifee(node)
-
+        abstract_classification.get_classification_node().add_classifee(node)
         return abstract_classification
 
     def handle_ctl(self, state, specification):
@@ -195,29 +195,23 @@ class OmgModelChecker(object):
 
     def _is_witness_concrete(self, to_close, witness_node):
         pass
-
     #  TODO fill holes
 
     def refine_abstract_label(self, to_close, witness_state):
-        original_classification_leaf = to_close[0].get_classification_leaf()
+        original_classification_leaf = to_close[0].get_classification_node()
         witness_abstract_state = self.find_abstract_classification_for_state(witness_state)
         new_abs_has_sons, new_abs_no_sons = self._abstract_structure.split_abstract_state(to_close,
                                                                                           witness_abstract_state)
-
-        # change all previosuly labeled to the old leaf to the new ones -- classifiess
-
-        leaf_has_son = AbstractionClassifierLeaf(self._kripke_structure, new_abs_has_sons,
-                                                 original_classification_leaf.get_parent(),
-                                                 original_classification_leaf.abstract_classifier)
-
-        leaf_no_son = AbstractionClassifierLeaf(self._kripke_structure, new_abs_has_sons,
-                                                original_classification_leaf.get_parent(),
-                                                original_classification_leaf.abstract_classifier)
-
         query = None  # TODO implement this
-        original_classification_leaf.split(query, [leaf_has_son, leaf_no_son])
+        query_labeling_mapper = {True: new_abs_has_sons, False: new_abs_no_sons}
+        new_internal = original_classification_leaf.split(query, original_classification_leaf, query_labeling_mapper)
 
-    def _strengthen_trace(self, node_to_explore):
+        new_abs_has_sons.set_classification_node(new_internal.get_successors()[True])
+        new_abs_no_sons.set_classification_node(new_internal.get_successors()[False])
+
+        # TODO implement reclassification logic. This is just the splitting.
+
+    def _strengthen_trace(self, node_to_explore):  ##todo
         raise NotImplementedError()
 
 

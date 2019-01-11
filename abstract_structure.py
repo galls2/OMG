@@ -10,7 +10,10 @@ class AbstractState(object):
         self.negative_labels = set(self._kripke_structure.get_atomic_propositions()) - self.positive_labels
 
         self.atomic_labels = atomic_labels
-        self._classification_leaf = None
+        self._classification_node = None
+
+    def get_descriptive_formula(self):
+        raise Exception('AHHAH')
 
     def add_positive_labels(self, labels):
         self.positive_labels |= labels
@@ -26,12 +29,22 @@ class AbstractState(object):
     def is_negative_label(self, label):
         return label in self.negative_labels
 
-    def get_classification_leaf(self):
-        return self._classification_leaf
+    def update_classification(self, concrete_state):
+        if self._classification_node.is_leaf():
+            return self._classification_node.get_value()
 
-    def set_classification_leaf(self, classification_leaf):
-        self._classification_leaf = classification_leaf
+        classification_node = self.get_classification_node()
+        classifier = classification_node.get_classifier()
+        new_classification = classifier.update_classification(classification_node, concrete_state)
+        return new_classification
+
+    def get_classification_node(self):
+        return self._classification_node
+
+    def set_classification_node(self, classification_leaf):
+        self._classification_node = classification_leaf
         return self
+
 
 class AbstractStructure(object):
     """docstring for AbstractStructure."""
@@ -74,12 +87,12 @@ class AbstractStructure(object):
         raise NotImplementedError()  # TODO
 
     def split_abstract_state(self, to_close, witness_abstract_state):
-        new_abs_has_sons = AbstractState(to_close.atomic_labels, self._kripke_structure)\
-            .add_positive_labels(to_close.positive_labels)\
+        new_abs_has_sons = AbstractState(to_close.atomic_labels, self._kripke_structure) \
+            .add_positive_labels(to_close.positive_labels) \
             .add_negative_labels(to_close.negative_labels)
 
-        new_abs_no_sons = AbstractState(to_close.atomic_labels, self._kripke_structure)\
-            .add_positive_labels(to_close.positive_labels)\
+        new_abs_no_sons = AbstractState(to_close.atomic_labels, self._kripke_structure) \
+            .add_positive_labels(to_close.positive_labels) \
             .add_negative_labels(to_close.negative_labels)
 
         self._abstract_states.remove(to_close[0])
