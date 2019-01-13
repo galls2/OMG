@@ -61,7 +61,7 @@ class UnwindingTree(object):
         return self.get_abstract_label().is_negative_label(label)
 
     def add_positive_label(self, label):
-        self.get_abstract_label().add_positive_label(label)
+        self.get_abstract_label().add_positive_labels({label})
         return self
 
     def get_abstract_label(self):
@@ -70,7 +70,7 @@ class UnwindingTree(object):
         return current_abstract_state
 
     def add_negative_label(self, label):
-        self.get_abstract_label().add_negative_label(label)
+        self.get_abstract_label().add_negative_labels({label})
         return self
 
     def set_abstract_label(self, abstract_label):

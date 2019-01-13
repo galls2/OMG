@@ -37,7 +37,7 @@ class AbstractionClassifier(object):
     def add_classification(self, atomic_labels, abstract_state):
         assert atomic_labels not in self._abstract_classification_trees.keys()
         ap_tuple = _ap_collection_to_ap_tuple(atomic_labels)
-        classification_tree = AbstractionClassifierTree(self._kripke_structure, None, None, self, abstract_state)
+        classification_tree = AbstractionClassifierTree(self._kripke_structure, None, [], None, self, abstract_state)
         self._abstract_classification_trees[ap_tuple] = classification_tree
         return classification_tree
 
