@@ -176,10 +176,10 @@ class OmgModelChecker(object):
                           'EV': OmgModelChecker._handle_ev,
                           'EX': OmgModelChecker._handle_ex,
                           }
-        if node.get_abstract_labels_in_tree().is_positive_label(specification):
+        if node.get_abstract_label().is_positive_label(specification):
             return True
 
-        if node.get_abstract_labels_in_tree().is_negative_label(specification):
+        if node.get_abstract_label().is_negative_label(specification):
             return False
 
         if specification in [True, False]:
