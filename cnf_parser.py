@@ -1,3 +1,6 @@
+from z3 import *
+
+
 def clean_raw_line(txt):
     return txt[:-2]
 
@@ -34,7 +37,7 @@ class CnfParser(object):
 
 def get_cnfs():
     formula_types = ['Bad', 'Init', 'Tr']
-    file_names = ['yakir4n_' + f_type + '.dimacs' for f_type in formula_types]
+    file_names = ['DimacsFiles/yakir4n_' + f_type + '.dimacs' for f_type in formula_types]
 
     cnfs = []
     for file_name in file_names:
