@@ -27,7 +27,7 @@ class AbstractionClassifier(object):
         if concrete_state in self._cache.keys():
             return self._cache[concrete_state]
 
-        concrete_labels = _ap_collection_to_ap_tuple(self._kripke_structure.get_labels(concrete_state))
+        concrete_labels = _ap_collection_to_ap_tuple(self._kripke_structure.get_aps(concrete_state))
         if concrete_labels not in self._abstract_classification_trees.keys():
             return None
         abstract_label = self._abstract_classification_trees[concrete_labels].classify(concrete_state)

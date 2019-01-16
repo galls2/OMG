@@ -143,7 +143,7 @@ class OmgModelChecker(object):
     def find_abstract_classification_for_state(self, concrete_state):  ##goover
         abstract_state = self._abstraction.classify(concrete_state)
         if abstract_state is None:
-            atomic_propositions = self._kripke_structure.get_labels(concrete_state)
+            atomic_propositions = self._kripke_structure.get_aps(concrete_state)
             abstract_state = AbstractState(atomic_propositions, self._kripke_structure)
 
             classification_leaf = self._abstraction.add_classification(atomic_propositions, abstract_state)

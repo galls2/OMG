@@ -2,7 +2,7 @@ from kripke_structure import get_simple_kripke_structure
 
 
 class AbstractState(object):
-    def __init__(self, atomic_labels, kripke_structure):
+    def __init__(self, atomic_labels, kripke_structure, formula):
         super(AbstractState, self).__init__()
         self._kripke_structure = kripke_structure
 
@@ -12,8 +12,10 @@ class AbstractState(object):
         self.atomic_labels = atomic_labels
         self._classification_node = None
 
+        self._formula = formula
+
     def get_descriptive_formula(self):
-        raise Exception('AHHAH')
+        return self._formula
 
     def add_positive_labels(self, labels):
         self.positive_labels |= labels

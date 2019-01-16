@@ -1,3 +1,7 @@
+from aig_parser import AvyAigParser
+from cnf_parser import CnfParser
+
+
 class KripkeStructure(object):
     def __init__(self, atomic_propositions):
         super(KripkeStructure, self).__init__()
@@ -15,8 +19,31 @@ class KripkeStructure(object):
     def is_state_labeled_with(self, state, ap):
         raise NotImplementedError()
 
-    def get_labels(self, state):
+    def get_aps(self, state):
         raise NotImplementedError()
+
+
+class AigKripkeStructure(KripkeStructure):
+    def __init__(self, aig_path, atomic_propositions):
+        super(AigKripkeStructure, self).__init__(atomic_propositions)
+        self._aig_parser = AvyAigParser(aig_path)
+        tr_dimcas = self._aig_parser.parse()
+        self._tr = CnfParser.from_dimacs(tr_dimcas)
+
+    def get_successors(self, state):
+        pass
+
+    def get_initial_states(self):
+        return [0] * self._aig_parser.get_number_of_variables()
+
+    def is_state_labeled_with(self, state, ap):
+        pass
+
+    def get_aps(self, state):
+        pass
+
+    def get_formula_for_ap(self, ap):
+        pass
 
 
 class DummyKripkeStructure(KripkeStructure):
@@ -55,7 +82,7 @@ class DummyKripkeStructure(KripkeStructure):
             acc += '\n'
         return acc
 
-    def get_labels(self, state):
+    def get_aps(self, state):
         return self._labeling[state]
 
 
