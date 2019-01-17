@@ -32,7 +32,7 @@ def get_vars(f):
                 collect(c)
 
     collect(f)
-    return r
+    return map(lambda d: d.n, list(r))
 
 
 class Z3Utils(object):
@@ -52,12 +52,24 @@ class Z3Utils(object):
         formula_to_split = to_split.get_descriptive_formula()
         formula_split_by = split_by.get_descriptive_formula()
 
+        to_split_vars = get_vars(formula_to_split)
         split_by_vars = get_vars(formula_split_by)
-        ## TODO finish this..
+
         has_son_formula_vars = cls.duplicate_vars(split_by_vars)
+        split_by_formula_tag = substitute(formula_split_by, zip(split_by_vars, has_son_formula_vars))  # B(v) [v<-v']
 
+        transitions_has_sons = substitute(transitions, zip(get_vars(transitions), to_split_vars + has_son_formula_vars))
+        formula_has_son = And(formula_to_split, Exists(has_son_formula_vars, And(transitions_has_sons,
+                                                                                 split_by_formula_tag)))  # A(v) & Ev'[R(v,v')&B(v')]
 
-        formula_has_son = And(formula_to_split)
+        no_son_formula_vars = cls.duplicate_vars(split_by_vars)
+        split_by_formula_tagtag = substitute(formula_split_by, zip(split_by_vars, no_son_formula_vars))  # B(v) [v<-v'']
+
+        transitions_no_sons = substitute(transitions, zip(get_vars(transitions), to_split_vars + no_son_formula_vars))
+        formula_no_son = And(formula_to_split, Exists(no_son_formula_vars, And(transitions_no_sons,
+                                                                               split_by_formula_tagtag)))  # A(v) & Ev'[R(v,v')&B(v')]
+
+        return formula_has_son, formula_no_son
 
 
 def test():
@@ -69,7 +81,7 @@ def test():
     print vec
     print new_vec
     f = And(*vec)
-    vv = map(lambda d: d.n, list(get_vars(f)))
+    vv = get_vars(f)
     for v in vv:
         print v
         print type(v)
@@ -77,4 +89,8 @@ def test():
 
 
 if __name__ == '__main__':
-    test()
+    #    test()
+    x = [Bool('x' + str(i)) for i in range(5)]
+
+    f = Exists([x[0]], And(x[0], x[1]))
+    print get_vars(f)
