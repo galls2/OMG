@@ -1,3 +1,5 @@
+from z3 import *
+
 def clean_raw_line(txt):
     return txt[:-2]
 
@@ -46,7 +48,8 @@ def get_cnfs():
 
 def test_print_and_swap():
     for cnf in get_cnfs():
-        print cnf
+        t = Then('simplify', 'propagate-values', 'ctx-simplify')
+        print t(cnf)
 
 
 if __name__ == '__main__':
