@@ -27,11 +27,12 @@ class AvyAigParser(AigParser):
         output_file_name = self._aig_path.split('/')[-1][:-4]
         out_path = "{}{}_{}.dimacs".format(OUTPUT_PATH, output_file_name, cmd_arg)
         cmd = "{} {} {} > {}".format(OMG_EXE_PATH, self._aig_path, cmd_arg, out_path)
-        os.system(cmd)
+     #   os.system(cmd)
         with open(out_path, 'r') as input_dimacs:
             txt = input_dimacs.readlines()
-        first_line = next(line for line in txt if line.startswith('p'))
-        dimacs_content = txt[txt.index(first_line):]
+        first_dimacs_line = next(line for line in txt if line.startswith('p'))
+        
+        dimacs_content = txt[txt.index(first_dimacs_line):]
         return dimacs_content
 
     def get_number_of_variables(self):
@@ -43,11 +44,12 @@ class AvyAigParser(AigParser):
 
         ap_part_regex = re.compile("[ilo][0-9]* .*")
         aps = map(lambda ap_line: re.findall(ap_part_regex, ap_line)[0], aps_lines)
-        return aps
+        return {' '.join(line.split(' ')[1:]): line.split(' ')[0] for line in aps}
 
 
 if __name__ == '__main__':
     fname = raw_input()
     print '%' + fname
-    aig_parser = AvyAigParser(IIMC_EXAMPLE_PATH+fname)
-    aig_parser.parse()
+    aig_parser = AvyAigParser(IIMC_EXAMPLE_PATH + fname)
+    print aig_parser.parse()
+    print aig_parser.get_ap_mapping()

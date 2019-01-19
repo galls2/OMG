@@ -21,12 +21,12 @@ def askey(n):
 
 
 def get_vars(f):
-    r = set()
+    r = []
 
     def collect(f):
         if is_const(f):
             if f.decl().kind() == Z3_OP_UNINTERPRETED and not askey(f) in r:
-                r.add(askey(f))
+                r.append(askey(f))
         else:
             for c in f.children():
                 collect(c)
@@ -80,8 +80,7 @@ def test():
     new_vec = Z3Utils.duplicate_vars(vec)
     print vec
     print new_vec
-    f = And(*vec)
-    vv = get_vars(f)
+    vv = get_vars(And(*vec))
     for v in vv:
         print v
         print type(v)
@@ -93,4 +92,6 @@ if __name__ == '__main__':
     x = [Bool('x' + str(i)) for i in range(5)]
 
     f = Exists([x[0]], And(x[0], x[1]))
+    f2 = And(x[0], x[2], x[3], x[4], Or(x[0], x[2]))
     print get_vars(f)
+    print get_vars(f2)

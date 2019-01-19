@@ -141,10 +141,11 @@ class OmgModelChecker(object):
         raise NotImplementedError()
 
     def find_abstract_classification_for_state(self, concrete_state):  ##goover
+        kripke = self._kripke_structure
         abstract_state = self._abstraction.classify(concrete_state)
         if abstract_state is None:
-            atomic_propositions = self._kripke_structure.get_aps(concrete_state)
-            abstract_state = AbstractState(atomic_propositions, self._kripke_structure)
+            atomic_propositions = kripke.get_aps(concrete_state)
+            abstract_state = AbstractState(atomic_propositions, kripke, kripke.get_formula_for_bis0(concrete_state))
 
             classification_leaf = self._abstraction.add_classification(atomic_propositions, abstract_state)
             abstract_state.set_classification_node(classification_leaf)

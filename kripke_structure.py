@@ -22,6 +22,15 @@ class KripkeStructure(object):
     def get_aps(self, state):
         raise NotImplementedError()
 
+    def get_formula_for_ap(self, ap):
+        raise NotImplementedError()
+
+    def get_formula_for_bis0(self, state):
+        raise NotImplementedError()
+
+    def get_tr_formula(self):
+        raise NotImplementedError()
+
 
 class AigKripkeStructure(KripkeStructure):
     def __init__(self, aig_path, atomic_propositions):
@@ -29,6 +38,7 @@ class AigKripkeStructure(KripkeStructure):
         self._aig_parser = AvyAigParser(aig_path)
         tr_dimcas = self._aig_parser.parse()
         self._tr = CnfParser.from_dimacs(tr_dimcas)
+        self._ap_conversion = self._aig_parser.get_ap_mapping()
 
     def get_successors(self, state):
         pass
@@ -45,6 +55,12 @@ class AigKripkeStructure(KripkeStructure):
     def get_formula_for_ap(self, ap):
         pass
 
+    def get_formula_for_bis0(self, state):
+        pass
+
+    def get_tr_formula(self):
+        pass
+
 
 class DummyKripkeStructure(KripkeStructure):
     def __init__(self, atomic_propositions, states, transitions, initial_states, labeling):
@@ -55,7 +71,7 @@ class DummyKripkeStructure(KripkeStructure):
         self._labeling = labeling
 
     def get_successors(self, state):
-        return self._transitions[state]
+        return self._transitions
 
     def get_initial_states(self):
         return self._initial_states
