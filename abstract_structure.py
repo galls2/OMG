@@ -1,6 +1,3 @@
-from kripke_structure import get_simple_kripke_structure
-
-
 class AbstractState(object):
     def __init__(self, atomic_labels, kripke_structure, formula):
         super(AbstractState, self).__init__()
@@ -123,13 +120,3 @@ class AbstractStructure(object):
         return new_abs_has_sons, new_abs_no_sons
 
 
-def test_dummy():
-    kripke = get_simple_kripke_structure()
-
-    abs_state = AbstractState(['p'], kripke)
-    abs_state2 = AbstractState(['q'], kripke)
-    abs_structure = AbstractStructure(kripke)
-
-
-if __name__ == '__main__':
-    test_dummy()

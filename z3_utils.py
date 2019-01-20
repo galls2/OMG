@@ -1,3 +1,6 @@
+from z3 import *
+
+
 class AstRefKey:
     def __init__(self, n):
         self.n = n
@@ -75,8 +78,8 @@ class Z3Utils(object):
         curr_tr = tr.substitute(src_values, 0)
 
         next_states = []
-        while s.check(curr_tr) == sat
-            assignment = s.model()
+        while s.check(curr_tr.get_z3_formula()) == sat:
+            model = s.model()
             cube = Z3Utils.parse_assignment(assignment) #Not(l1 & ... &ln) = Not(l1) | ... | Not(ln)
             next_states.append(cube)
             blocking_cube = Or(*[Not(var) if sign == 1 else var for (var, sign) in zip(tr.get_var_vectors[1], cube)])

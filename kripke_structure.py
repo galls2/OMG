@@ -2,6 +2,7 @@ from aig_parser import AvyAigParser
 from cnf_parser import CnfParser
 from formula_wrapper import FormulaWrapper
 from z3_utils import Z3Utils
+from z3 import *
 
 
 class KripkeStructure(object):
@@ -30,6 +31,12 @@ class KripkeStructure(object):
     def get_tr_formula(self):
         raise NotImplementedError()
 
+    def get_aps(self, state):
+        raise NotImplementedError()
+
+    def get_var_vector(self):
+        raise NotImplementedError()
+
 
 class AigKripkeStructure(KripkeStructure):
     def __init__(self, aig_path, atomic_propositions):
@@ -43,10 +50,11 @@ class AigKripkeStructure(KripkeStructure):
         return Z3Utils.get_all_successors(self._tr, state)
 
     def get_initial_states(self):
-        return [0] * self._aig_parser.get_number_of_variables()
+        initial_states_singleton_vector = [[0] * self._aig_parser.get_number_of_variables()]
+        return initial_states_singleton_vector
 
     def _get_var_num_for_ap(self, ap):
-        ap_symb = self._ap_conversion[ap]
+        ap_symb = self._ap_conversion[ap.get_ap_text()]
         if ap_symb[0] != 'l':
             raise Exception('Not state AP :( Talk to yakir dude...')
         var_num = int(ap_symb[1:])
@@ -59,65 +67,25 @@ class AigKripkeStructure(KripkeStructure):
     def get_formula_for_ap(self, ap, var_vector):
         return FormulaWrapper(var_vector[self._get_var_num_for_ap(ap)], [var_vector])
 
-    def get_formula_for_bis0(self, state, var_vector):
-        return FormulaWrapper(And(*[self.get_formula_for_ap(ap, var_vector) for ap in self.get_atomic_propositions()]),
-                              var_vector)
+    def _get_formula_for_ap_literal(self, ap, var_vector, state):
+        positive_form = var_vector[self._get_var_num_for_ap(ap)]
+        final_form = positive_form if self.is_state_labeled_with(state, ap) else Not(positive_form)
+        return FormulaWrapper(final_form, [var_vector])
+
+    def get_formula_for_bis0(self, state, var_vector=None):
+        if var_vector is None:
+            var_vector = self.get_var_vector()
+        ap_subformulas = [self._get_formula_for_ap_literal(ap, var_vector, state)
+                                    for ap in self.get_atomic_propositions()]
+        bis0_z3_formula = And(*[ap_subformula.get_z3_formula() for ap_subformula in ap_subformulas])
+        return FormulaWrapper(bis0_z3_formula, [var_vector])
 
     def get_tr_formula(self):
         return self._tr
 
-
-class DummyKripkeStructure(KripkeStructure):
-    def __init__(self, atomic_propositions, states, transitions, initial_states, labeling):
-        super(DummyKripkeStructure, self).__init__(atomic_propositions)
-        self._states = states
-        self._transitions = transitions
-        self._initial_states = initial_states
-        self._labeling = labeling
-
-    def get_successors(self, state):
-        return self._transitions
-
-    def get_initial_states(self):
-        return self._initial_states
-
-    def is_state_labeled_with(self, state, ap_str):
-        # ap is assumed to be a string
-        return ap_str in self._labeling[state]
-
-    def __str__(self):
-        acc = '--- States ---\n'
-        for state in self._states:
-            if state in self.get_initial_states():
-                acc += '-> '
-            acc += str(state) + ': '
-            for ap in self._atomic_propositions:
-                acc += (str(ap) if self.is_state_labeled_with(state, ap) else '~' + str(ap)) + ' '
-            acc += '\n'
-
-        acc += '\n--- Transitions ---\n'
-        for state in self._states:
-            acc += str(state) + ' -> '
-            for destination in self._transitions[state]:
-                acc += str(destination) + ' '
-            acc += '\n'
-        return acc
-
     def get_aps(self, state):
-        return self._labeling[state]
+        return [ap for ap in self.get_atomic_propositions() if self.is_state_labeled_with(state, ap)]
 
-
-def get_simple_kripke_structure():
-    return DummyKripkeStructure({'p', 'q'},
-                                [i for i in range(3)],
-                                {i: [(i + 1) % 3] for i in range(3)},
-                                [0, 1, 2],
-                                {0: ['p'], 1: ['p', 'q'], 2: ['q']})
-
-
-def test_kripke_printing():
-    print str(get_simple_kripke_structure())
-
-
-if __name__ == '__main__':
-    test_kripke_printing()
+    def get_var_vector(self):
+        tr_wrapper = self._tr
+        return tr_wrapper.get_var_vectors()[0]

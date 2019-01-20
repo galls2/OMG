@@ -3,7 +3,6 @@ from heapq import *
 from abstract_structure import AbstractStructure, AbstractState
 from abstraction_classifier import AbstractionClassifier
 from ctl import CtlParser
-from kripke_structure import get_simple_kripke_structure
 from unwinding_tree import UnwindingTree
 
 
@@ -28,14 +27,13 @@ class OmgModelChecker(object):
     Create a new one for each structure.
     """
 
-    def __init__(self, kripke_structure, produce_abstraction=False):
+    def __init__(self, kripke_structure):
         super(OmgModelChecker, self).__init__()
         self._kripke_structure = kripke_structure
         self._abstract_structure = None
         self._abstraction = None
         self._initialize_abstraction()
         self._unwinding_trees = []
-        self._produce_abstraction = produce_abstraction
 
     def _initialize_abstraction(self):
         self._abstract_structure = AbstractStructure(self._kripke_structure)
@@ -82,7 +80,7 @@ class OmgModelChecker(object):
             node.add_negative_label(spec)
         else:
             node.add_positive_label(spec)
-        return res
+        return not res
 
     def _handle_av(self, node, spec, p, q):  ##goover
         to_visit = heapify([node])
@@ -93,8 +91,7 @@ class OmgModelChecker(object):
             self._handle_ctl_and_recur(node_to_explore, q)
             if node_to_explore.is_labeled_negatively_with(q):
                 _map_upward_from_node(node_to_explore, lambda current_node: current_node.add_negative_label(spec))
-                if self._produce_abstraction:
-                    self._strengthen_trace(node_to_explore)
+                self._strengthen_trace(node_to_explore)
                 return False
 
             self._handle_ctl_and_recur(node_to_explore, p)
@@ -143,9 +140,11 @@ class OmgModelChecker(object):
             res = self.handle_ctl(child_node, operand)
             if res:
                 self._strengthen_transition_ex(node, child_node)
+                #tag
                 return True
 
         self._strengthen_transition_ex(node, children_nodes)
+        #tag
         return False
 
     def find_abstract_classification_for_state(self, concrete_state):  ##goover
@@ -153,7 +152,8 @@ class OmgModelChecker(object):
         abstract_state = self._abstraction.classify(concrete_state)
         if abstract_state is None:
             atomic_propositions = kripke.get_aps(concrete_state)
-            abstract_state = AbstractState(atomic_propositions, kripke, kripke.get_formula_for_bis0(concrete_state))
+            bis0_formula = kripke.get_formula_for_bis0(concrete_state)
+            abstract_state = AbstractState(atomic_propositions, kripke, bis0_formula)
 
             classification_leaf = self._abstraction.add_classification(atomic_propositions, abstract_state)
             abstract_state.set_classification_node(classification_leaf)
@@ -171,7 +171,7 @@ class OmgModelChecker(object):
         return abstract_classification
 
     def handle_ctl(self, state, specification):
-        unwinding_tree = UnwindingTree(self._kripke_structure, None, [], state)
+        unwinding_tree = UnwindingTree(self._kripke_structure, None, None, state)
         self.find_abstract_classification_for_node(unwinding_tree)
         # TODO check or add to the collection of unwinding trees that are saved in this omg_checker as a member.
         return self._handle_ctl_and_recur(unwinding_tree, specification)
@@ -200,7 +200,8 @@ class OmgModelChecker(object):
         main_connective = specification.get_main_connective()
         operands = specification.get_operands()
 
-        return method_mapping[main_connective](self, node, specification, *operands)
+        final_res = method_mapping[main_connective](self, node, specification, *operands)
+        return final_res
 
     def _is_witness_concrete(self, to_close, witness_node):
         pass
@@ -230,19 +231,3 @@ class OmgModelChecker(object):
         raise NotImplementedError()
 
 
-def test_propositional_logic():
-    kripke_structure = get_simple_kripke_structure()
-    print kripke_structure
-    ctl_parser = CtlParser()
-    raw_specification = '(q & p) | (q -> p)'
-    specification = ctl_parser.parse_omg(raw_specification)
-
-    omg_model_checker = OmgModelChecker(kripke_structure)
-    pos, neg = omg_model_checker.check_all_initial_states(specification)
-    print 'M, s |= ' + specification.str_math() + 'for s in ' + str(pos)
-    print 'M, s |/= ' + specification.str_math() + 'for s in ' + str(neg)
-
-
-if __name__ == '__main__':
-    print 'Welcome to the OMG model checker!'
-    test_propositional_logic()

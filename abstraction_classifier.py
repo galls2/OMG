@@ -27,10 +27,10 @@ class AbstractionClassifier(object):
         if concrete_state in self._cache.keys():
             return self._cache[concrete_state]
 
-        concrete_labels = _ap_collection_to_ap_tuple(self._kripke_structure.get_aps(concrete_state))
-        if concrete_labels not in self._abstract_classification_trees.keys():
+        concrete_atomic_labels = _ap_collection_to_ap_tuple(self._kripke_structure.get_aps(concrete_state))
+        if concrete_atomic_labels not in self._abstract_classification_trees.keys():
             return None
-        abstract_label = self._abstract_classification_trees[concrete_labels].classify(concrete_state)
+        abstract_label = self._abstract_classification_trees[concrete_atomic_labels].classify(concrete_state)
         self._cache[concrete_state] = abstract_label
         return abstract_label
 
@@ -89,7 +89,7 @@ class AbstractionClassifierTree(object):
         return classification
 
     def is_leaf(self):
-        return not len(self._successors)
+        return not self._successors
 
     def get_value(self):
         return self._value

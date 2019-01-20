@@ -6,6 +6,7 @@ def _par(text):
 
 
 def _remove_spaces_from_edges(text):
+    text = text.replace('\n', '')
     text = text[next(i for i in range(len(text)) if text[i] != ' '):]
     last_space = next(i for i in range(len(text)) if text[len(text) - 1 - i] != ' ')
     text = text if text[-1] != ' ' else text[:-1 * last_space]
@@ -112,7 +113,7 @@ class CtlFormula(object):
 
     def get_atomic_propositions(self):
         if self.is_atomic_proposition():
-            return [self._node_data]
+            return [self]
         return list(set([ap for operand in self._operands for ap in operand.get_atomic_propositions()]))
 
     def negate(self):

@@ -19,7 +19,7 @@ class AvyAigParser(AigParser):
         self._aig_lines = []
         with open(aig_path, 'r') as aig_file:
             self._aig_lines = aig_file.readlines()
-            self._M, self._I, self._L, self._O, self._A = self._aig_lines[0].split(' ')[1:6]
+            self._M, self._I, self._L, self._O, self._A = [int(val) for val in self._aig_lines[0].split(' ')[1:6]]
 
     def parse(self):
         cmd_arg = 'Tr'
@@ -28,7 +28,7 @@ class AvyAigParser(AigParser):
         cmd = "{} {} {} > {}".format(OMG_EXE_PATH, self._aig_path, cmd_arg, out_path)
      #   os.system(cmd)
         with open(out_path, 'r') as input_dimacs:
-            txt = input_dimacs.readlines()
+            txt = [line.replace('\n','') for line in input_dimacs.readlines()]
         first_dimacs_line = next(line for line in txt if line.startswith('p'))
         
         dimacs_content = txt[txt.index(first_dimacs_line):]

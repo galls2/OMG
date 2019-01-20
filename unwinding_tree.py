@@ -24,7 +24,7 @@ class UnwindingTree(object):
     def unwind_further(self):
         if self._successors is None:
             concrete_successors = self._kripke_structure.get_successors(self.concrete_label)
-            successor_nodes = [UnwindingTree(self._kripke_structure, self, [], concrete_successor)
+            successor_nodes = [UnwindingTree(self._kripke_structure, self, None, concrete_successor)
                                for concrete_successor in concrete_successors]
             self._successors = successor_nodes
             return successor_nodes
