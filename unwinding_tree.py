@@ -18,7 +18,7 @@ class UnwindingTree(object):
         self._successors = successors
         self.concrete_label = concrete_label  # concrete state that is represented by this node
         self._abstract_label = abstract_label  # abstract state that is represented by this node
-        self.depth = 0 if parent is None else parent.get_depth()
+        self.depth = 0 if parent is None else parent.get_depth() + 1
         self.URGENT = False
 
     def unwind_further(self):

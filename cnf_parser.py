@@ -14,7 +14,7 @@ class CnfParser(object):
 
     @classmethod
     def line_to_clause(cls, line):
-        parts = line.split(' ')
+        parts = filter(lambda raw_lit: raw_lit not in ['', '\n', '\t'], line.split(' '))
         if parts[-1] == '0':
             parts = parts[:-1]
         clause_parts = map(lambda raw_lit: CnfParser.raw_lit_to_lit(raw_lit), parts)
@@ -30,7 +30,7 @@ class CnfParser(object):
         parsed_parts = map(lambda meta_line: filter(lambda p: p != '', meta_line.split(' ')), metadata)
         parsed_with_vectors = filter(
             lambda meta_line: not (meta_line[0].startswith('MAXVAR') or meta_line[0].startswith('STATEVAR')),
-                                     parsed_parts)
+            parsed_parts)
         var_vectors = [[Bool(raw_var) for raw_var in parsed_part[1:]] for parsed_part in parsed_with_vectors]
         return var_vectors
 

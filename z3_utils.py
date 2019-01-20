@@ -1,5 +1,7 @@
 from z3 import *
 
+from formula_wrapper import FormulaWrapper
+
 
 class AstRefKey:
     def __init__(self, n):
@@ -33,6 +35,12 @@ def get_vars(f):
 
     collect(f)
     return map(lambda d: d.n, list(r))
+
+
+def z3_val_to_int(z3_val):
+    if z3_val.sexpr() == 'true':
+        return 1
+    return 0
 
 
 class Z3Utils(object):
@@ -78,12 +86,18 @@ class Z3Utils(object):
         curr_tr = tr.substitute(src_values, 0)
 
         next_states = []
-        while s.check(curr_tr.get_z3_formula()) == sat:
+        curr_z3 = curr_tr.get_z3_formula()
+        next_vector = curr_tr.get_var_vectors()[0]
+        while s.check(curr_z3) == sat:
             model = s.model()
-            cube = Z3Utils.parse_assignment(assignment) #Not(l1 & ... &ln) = Not(l1) | ... | Not(ln)
+            assignment = [(var, model[var]) for var in next_vector]
+            cube = [z3_val_to_int(val) for (var, val) in assignment]
             next_states.append(cube)
-            blocking_cube = Or(*[Not(var) if sign == 1 else var for (var, sign) in zip(tr.get_var_vectors[1], cube)])
-            curr_tr = And(curr_tr, blocking_cube)
+            # Not(l1 & ... &ln) = Not(l1) | ... | Not(ln)
+
+            blocking_cube = Or(*[Not(var) if val == BoolVal('True') else var for (var, val) in assignment])
+            curr_z3 = simplify(And(curr_z3, blocking_cube))
+            print curr_z3
 
         return next_states
 

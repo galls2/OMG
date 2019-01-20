@@ -137,7 +137,7 @@ class OmgModelChecker(object):
     def _handle_ex(self, node, spec, operand):
         children_nodes = node.unwind_further()
         for child_node in children_nodes:
-            res = self.handle_ctl(child_node, operand)
+            res = self._handle_ctl_and_recur(child_node, operand)
             if res:
                 self._strengthen_transition_ex(node, child_node)
                 #tag
@@ -172,7 +172,6 @@ class OmgModelChecker(object):
 
     def handle_ctl(self, state, specification):
         unwinding_tree = UnwindingTree(self._kripke_structure, None, None, state)
-        self.find_abstract_classification_for_node(unwinding_tree)
         # TODO check or add to the collection of unwinding trees that are saved in this omg_checker as a member.
         return self._handle_ctl_and_recur(unwinding_tree, specification)
 
@@ -185,6 +184,8 @@ class OmgModelChecker(object):
                           'EV': OmgModelChecker._handle_ev,
                           'EX': OmgModelChecker._handle_ex,
                           }
+        self.find_abstract_classification_for_node(node)
+
         if node.get_abstract_label().is_positive_label(specification):
             return True
 

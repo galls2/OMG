@@ -6,6 +6,7 @@ from kripke_structure import AigKripkeStructure
 from omg import OmgModelChecker
 
 
+
 def parse_input():
     aig_file_path = sys.argv[1]
     ctl_formula_path = sys.argv[2]

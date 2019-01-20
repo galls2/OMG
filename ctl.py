@@ -1,6 +1,5 @@
 DEBUG = False
 
-
 def _par(text):
     return '(' + text + ')'
 
