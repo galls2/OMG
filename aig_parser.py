@@ -1,4 +1,3 @@
-import os
 import re
 
 OMG_EXE_PATH = '~/Desktop/extavy/cmake-build-debug/avy/src/omg'
@@ -33,7 +32,8 @@ class AvyAigParser(AigParser):
         first_dimacs_line = next(line for line in txt if line.startswith('p'))
         
         dimacs_content = txt[txt.index(first_dimacs_line):]
-        return dimacs_content
+        metadata = txt[:txt.index(first_dimacs_line)]
+        return metadata, dimacs_content
 
     def get_number_of_variables(self):
         return self._L

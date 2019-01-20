@@ -1,28 +1,26 @@
 import sys
 
-from aig_parser import AvyAigParser
+from ctl import CtlParser
+from kripke_structure import AigKripkeStructure
 from omg import OmgModelChecker
 
 
 def parse_input():
     aig_file_path = sys.argv[1]
-    return aig_file_path
+    ctl_formula_path = sys.argv[2]
+    return aig_file_path, ctl_formula_path
 
-
-def aig_to_dimcas(aig_full_path):
-    aig_parser = AvyAigParser()
-    parts = aig_full_path.split('/')
-    aig_dir_path = '/'.join(parts[:-1])
-    aig_file_name = parts[-1]
-    return aig_parser.parse(aig_dir_path, aig_file_name)
-
-
-def get_kripke_structure(aig_full_path):
-    dimacs = aig_to_dimcas(aig_full_path)
-
+def parse_ctl_formula(ctl_formula_path):
+    ctl_parser = CtlParser()   ##FIXME
+    with open(ctl_formula_path, 'r') as ctl_file:
+        lines = ctl_formula_path.readlines()
+        specification_lines = filter(lambda line: line != '' and not line.startswith('#'), lines)
+        return [ctl_parser.parse_omg(specification_line) for specification_line in specification_lines]
 
 if __name__ == '__main__':
-    aig_path = parse_input()
-    kripkeStructure = get_kripke_structure(aig_path)
-
-    omg = OmgModelChecker(kripkeStructure, True)
+    aig_path, ctl_path = parse_input()
+    ctl_formulas = parse_ctl_formula(ctl_path)
+    aps = list([functools.reduce(lambda x, y: x | y, set(ctl_formula.get_atomic_propositions())  for ctl_formula in ctl_formulas]))
+    kripke_structure = AigKripkeStructure(aig_path, ctl_formula.get_atomic_propositions())
+    omg = OmgModelChecker(kripke_structure, True)
+    omg.check_all_initial_states(ctl_formula)

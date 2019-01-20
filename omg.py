@@ -138,7 +138,15 @@ class OmgModelChecker(object):
         raise NotImplementedError()
 
     def _handle_ex(self, node, spec, operand):
-        raise NotImplementedError()
+        children_nodes = node.unwind_further()
+        for child_node in children_nodes:
+            res = self.handle_ctl(child_node, operand)
+            if res:
+                self._strengthen_transition_ex(node, child_node)
+                return True
+
+        self._strengthen_transition_ex(node, children_nodes)
+        return False
 
     def find_abstract_classification_for_state(self, concrete_state):  ##goover
         kripke = self._kripke_structure
@@ -211,6 +219,12 @@ class OmgModelChecker(object):
         new_abs_no_sons.set_classification_node(new_internal.get_successors()[False])
 
         # TODO implement reclassification logic. This is just the splitting.
+
+    def _split_overapprox(self, src_node, dst_nodes):
+        raise NotImplementedError()
+
+    def _strengthen_transition_ex(self, src_node, dst_node):
+        raise NotImplementedError()
 
     def _strengthen_trace(self, node_to_explore):  ##todo
         raise NotImplementedError()

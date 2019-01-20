@@ -28,6 +28,7 @@ class UnwindingTree(object):
                                for concrete_successor in concrete_successors]
             self._successors = successor_nodes
             return successor_nodes
+        return self._successors
 
     def is_abstract_lasso(self):  ## FIXME
         current = self._parent

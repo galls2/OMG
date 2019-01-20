@@ -1,5 +1,4 @@
 from kripke_structure import get_simple_kripke_structure
-from z3_utils import Z3Utils
 
 
 class AbstractState(object):
@@ -90,14 +89,11 @@ class AbstractStructure(object):
         raise NotImplementedError()  # TODO
 
     def split_abstract_state(self, to_close, witness_abstract_state):
-        kripke = self._kripke_structure
-        has_sons_formula, no_sons_formula = Z3Utils.get_split_formulas(to_close, witness_abstract_state, kripke.get_tr_formula())
-
-        new_abs_has_sons = AbstractState(to_close.atomic_labels, kripke, has_sons_formula) \
+        new_abs_has_sons = AbstractState(to_close.atomic_labels, self._kripke_structure) \
             .add_positive_labels(to_close.positive_labels) \
             .add_negative_labels(to_close.negative_labels)
 
-        new_abs_no_sons = AbstractState(to_close.atomic_labels, kripke, no_sons_formula) \
+        new_abs_no_sons = AbstractState(to_close.atomic_labels, self._kripke_structure) \
             .add_positive_labels(to_close.positive_labels) \
             .add_negative_labels(to_close.negative_labels)
 

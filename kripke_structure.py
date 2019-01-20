@@ -1,5 +1,7 @@
 from aig_parser import AvyAigParser
 from cnf_parser import CnfParser
+from formula_wrapper import FormulaWrapper
+from z3_utils import Z3Utils
 
 
 class KripkeStructure(object):
@@ -19,13 +21,10 @@ class KripkeStructure(object):
     def is_state_labeled_with(self, state, ap):
         raise NotImplementedError()
 
-    def get_aps(self, state):
+    def get_formula_for_ap(self, ap, var_vector):
         raise NotImplementedError()
 
-    def get_formula_for_ap(self, ap):
-        raise NotImplementedError()
-
-    def get_formula_for_bis0(self, state):
+    def get_formula_for_bis0(self, state, var_vector):
         raise NotImplementedError()
 
     def get_tr_formula(self):
@@ -36,30 +35,36 @@ class AigKripkeStructure(KripkeStructure):
     def __init__(self, aig_path, atomic_propositions):
         super(AigKripkeStructure, self).__init__(atomic_propositions)
         self._aig_parser = AvyAigParser(aig_path)
-        tr_dimcas = self._aig_parser.parse()
-        self._tr = CnfParser.from_dimacs(tr_dimcas)
+        metadata, tr_dimcas = self._aig_parser.parse()
+        self._tr = CnfParser.z3_formula_from_dimacs(metadata, tr_dimcas)
         self._ap_conversion = self._aig_parser.get_ap_mapping()
 
     def get_successors(self, state):
-        pass
+        return Z3Utils.get_all_successors(self._tr, state)
 
     def get_initial_states(self):
         return [0] * self._aig_parser.get_number_of_variables()
 
+    def _get_var_num_for_ap(self, ap):
+        ap_symb = self._ap_conversion[ap]
+        if ap_symb[0] != 'l':
+            raise Exception('Not state AP :( Talk to yakir dude...')
+        var_num = int(ap_symb[1:])
+        return var_num
+
     def is_state_labeled_with(self, state, ap):
-        pass
+        var_num = self._get_var_num_for_ap(ap)
+        return True if int(state[var_num]) > 0 else False
 
-    def get_aps(self, state):
-        pass
+    def get_formula_for_ap(self, ap, var_vector):
+        return FormulaWrapper(var_vector[self._get_var_num_for_ap(ap)], [var_vector])
 
-    def get_formula_for_ap(self, ap):
-        pass
-
-    def get_formula_for_bis0(self, state):
-        pass
+    def get_formula_for_bis0(self, state, var_vector):
+        return FormulaWrapper(And(*[self.get_formula_for_ap(ap, var_vector) for ap in self.get_atomic_propositions()]),
+                              var_vector)
 
     def get_tr_formula(self):
-        pass
+        return self._tr
 
 
 class DummyKripkeStructure(KripkeStructure):

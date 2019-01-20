@@ -1,5 +1,3 @@
-from z3 import *
-
 def clean_raw_line(txt):
     return txt[:-2]
 
@@ -25,14 +23,21 @@ class CnfParser(object):
     '''
       dimacs is a list of lines, each line is a clause
     '''
+    @classmethod
+    def parse_metadata(cls, metadata):
+        parts = metadata.split('\n')
+        parsed_parts = map(lambda part: part.split(' '), parts)
+        var_vectors = [Bool(raw_var) for parsed_part in parsed_parts for raw_var in parsed_part[1:]]
+        return var_vectors
 
     @classmethod
-    def from_dimacs(cls, dimacs):
-        raw_lines = map(lambda raw_line: clean_raw_line(raw_line), dimacs)
+    def z3_formula_from_dimacs(cls, metadata, extended_dimacs):
+        raw_lines = map(lambda raw_line: clean_raw_line(raw_line), extended_dimacs)
         dimacs_lines = filter(lambda raw_line: len(raw_line) > 0 and raw_line[0] not in [' ', 'p', '\t'], raw_lines)
         clauses = [CnfParser.line_to_clause(line) for line in dimacs_lines]
-        return And(*clauses)
-
+        final_z3_formula = And(*clauses)
+        var_vectors = CnfParser.parse_metadata(metadata)
+        return FormulaWrapper(final_z3_formula, var_vectors)
 
 def get_cnfs():
     formula_types = ['Tr']
@@ -41,7 +46,7 @@ def get_cnfs():
     cnfs = []
     for file_name in file_names:
         f = open(file_name, 'r')
-        cnf = CnfParser.from_dimacs(f.readlines())
+        cnf = CnfParser.z3_formula_from_dimacs(f.readlines())
         cnfs.append(cnf)
     return cnfs
 

@@ -1,6 +1,3 @@
-from z3 import *
-
-
 class AstRefKey:
     def __init__(self, n):
         self.n = n
@@ -70,6 +67,26 @@ class Z3Utils(object):
                                                                                split_by_formula_tagtag)))  # A(v) & Ev'[R(v,v')&B(v')]
 
         return formula_has_son, formula_no_son
+
+    @classmethod
+    def get_all_successors(cls, tr, src):
+        s = Solver()
+        src_values = map(lambda val: int(val), src)
+        curr_tr = tr.substitute(src_values, 0)
+
+        next_states = []
+        while s.check(curr_tr) == sat
+            assignment = s.model()
+            cube = Z3Utils.parse_assignment(assignment) #Not(l1 & ... &ln) = Not(l1) | ... | Not(ln)
+            next_states.append(cube)
+            blocking_cube = Or(*[Not(var) if sign == 1 else var for (var, sign) in zip(tr.get_var_vectors[1], cube)])
+            curr_tr = And(curr_tr, blocking_cube)
+
+        return next_states
+
+    @classmethod
+    def parse_assignment(cls, assignment):
+        pass
 
 
 def test():
