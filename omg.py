@@ -4,6 +4,7 @@ from abstract_structure import AbstractStructure, AbstractState
 from abstraction_classifier import AbstractionClassifier
 from ctl import CtlParser
 from unwinding_tree import UnwindingTree
+from z3_utils import Z3Utils
 
 
 def _label_state(check_result, node_to_label, spec):
@@ -115,11 +116,11 @@ class OmgModelChecker(object):
                     self._abstract_structure.add_must_hyper_transition(to_close, abs_states_with_nodes)
                 else:
                     concretization_result = self._is_witness_concrete(to_close, witness_state)
+                    to_close_node = to_close[1]
                     if concretization_result:
-                        to_close_node = to_close[1]
                         to_close_node.set_urgent()
                     else:
-                        self.refine_abstract_label(to_close, witness_state)
+                        self._refine_ex(to_close_node, witness_state)
                     break
 
             if not abs_states_lead:
@@ -139,12 +140,12 @@ class OmgModelChecker(object):
         for child_node in children_nodes:
             res = self._handle_ctl_and_recur(child_node, operand)
             if res:
-                self._strengthen_transition_ex(node, child_node)
-                #tag
+                self._refine_ex(node, child_node.concrete_label)
+                node.get_abstract_label().add_positive_label(spec)
                 return True
 
         self._strengthen_transition_ex(node, children_nodes)
-        #tag
+        node.get_abstract_label().add_negative_label(spec)
         return False
 
     def find_abstract_classification_for_state(self, concrete_state):  ##goover
@@ -206,29 +207,35 @@ class OmgModelChecker(object):
 
     def _is_witness_concrete(self, to_close, witness_node):
         pass
+
     #  TODO fill holes
 
-    def refine_abstract_label(self, to_close, witness_state):
-        original_classification_leaf = to_close[0].get_classification_node()
-        witness_abstract_state = self.find_abstract_classification_for_state(witness_state)
-        new_abs_has_sons, new_abs_no_sons = self._abstract_structure.split_abstract_state(to_close,
+    def _refine_ex(self, node_src, witness_concrete_state):
+        node_abs = node_src.get_abstract_label()
+        original_classification_leaf = node_abs.get_classification_node()
+        witness_abstract_state = self.find_abstract_classification_for_state(witness_concrete_state)
+        new_abs_has_sons, new_abs_no_sons = self._abstract_structure.split_abstract_state(node_src,
                                                                                           witness_abstract_state)
-        query = None  # TODO implement this
+
+        query_formula_wrapper = Z3Utils.get_exists_successors_in_formula([witness_abstract_state],
+                                                                         self._kripke_structure.get_tr_formula())
+
+        def query_t(concrete_state):
+            return query_formula_wrapper.substitute(Z3Utils.int_vec_to_z3_bool_vec(concrete_state)).is_sat()
+
+        query = query_t
         query_labeling_mapper = {True: new_abs_has_sons, False: new_abs_no_sons}
         new_internal = original_classification_leaf.split(query, original_classification_leaf, query_labeling_mapper)
 
         new_abs_has_sons.set_classification_node(new_internal.get_successors()[True])
         new_abs_no_sons.set_classification_node(new_internal.get_successors()[False])
 
-        # TODO implement reclassification logic. This is just the splitting.
+        # re-assign abs label
+        node_src.get_abstract_label()
+
 
     def _split_overapprox(self, src_node, dst_nodes):
         raise NotImplementedError()
 
-    def _strengthen_transition_ex(self, src_node, dst_node):
-        raise NotImplementedError()
-
     def _strengthen_trace(self, node_to_explore):  ##todo
         raise NotImplementedError()
-
-

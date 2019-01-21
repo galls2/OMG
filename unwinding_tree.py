@@ -68,6 +68,7 @@ class UnwindingTree(object):
     def get_abstract_label(self):
         known_abstract_state = self._abstract_label
         current_abstract_state = known_abstract_state.update_classification(self.concrete_label)
+        self._abstract_label = current_abstract_state
         return current_abstract_state
 
     def add_negative_label(self, label):

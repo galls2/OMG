@@ -24,14 +24,14 @@ class AbstractionClassifier(object):
         return new_abstract_label
 
     def classify(self, concrete_state):
-        if concrete_state in self._cache.keys():
-            return self._cache[concrete_state]
+        if tuple(concrete_state) in self._cache.keys():
+            return self._cache[tuple(concrete_state)]
 
         concrete_atomic_labels = _ap_collection_to_ap_tuple(self._kripke_structure.get_aps(concrete_state))
         if concrete_atomic_labels not in self._abstract_classification_trees.keys():
             return None
         abstract_label = self._abstract_classification_trees[concrete_atomic_labels].classify(concrete_state)
-        self._cache[concrete_state] = abstract_label
+        self._cache[tuple(concrete_state)] = abstract_label
         return abstract_label
 
     def add_classification(self, atomic_labels, abstract_state):

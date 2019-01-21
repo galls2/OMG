@@ -56,34 +56,40 @@ class Z3Utils(object):
         return new_var_vector
 
     @classmethod
+    def get_exists_successors_in_formula(cls, abstract_targets, transitions):
+        abstract_targets_formula = Or(*[abstract_target.get_descriptive_formula().get_z3_formula() for abstract_target in abstract_targets])
+        prev_vars = abstract_targets[0].get_descriptive_formula().get_var_vectors()[0]
+
+        new_vars = cls.duplicate_vars(prev_vars)
+
+        split_by_formula_tag = substitute(abstract_targets_formula, zip(prev_vars, new_vars))  # B(v) [v<-v']
+
+        transitions_has_sons = transitions.substitute(new_vars, 1, new_vars)
+        exists_formula = Exists(new_vars, And(transitions_has_sons, split_by_formula_tag))  #Ev'[R(v,v')&B(v')]
+        return FormulaWrapper(exists_formula, [prev_vars])
+
+    @classmethod
     def get_split_formulas(cls, to_split, split_by, transitions):
-        formula_to_split = to_split.get_descriptive_formula()
-        formula_split_by = split_by.get_descriptive_formula()
+        formula_to_split = to_split.get_descriptive_formula().get_z3_formula()
 
-        to_split_vars = get_vars(formula_to_split)
-        split_by_vars = get_vars(formula_split_by)
+        v_vars = to_split.get_descriptive_formula().get_var_vectors()[0]
+        exists_formula = cls.get_exists_successors_in_formula([split_by], transitions).get_z3_formula()
+        formula_has_son = And(formula_to_split, exists_formula)  # A(v) & Ev'[R(v,v')&B(v')]
 
-        has_son_formula_vars = cls.duplicate_vars(split_by_vars)
-        split_by_formula_tag = substitute(formula_split_by, zip(split_by_vars, has_son_formula_vars))  # B(v) [v<-v']
+        not_exists_formula = cls.get_exists_successors_in_formula([split_by], transitions).get_z3_formula()
+        formula_no_son = And(formula_to_split, not_exists_formula)  # A(v) & Ev'[R(v,v')&B(v')]
 
-        transitions_has_sons = substitute(transitions, zip(get_vars(transitions), to_split_vars + has_son_formula_vars))
-        formula_has_son = And(formula_to_split, Exists(has_son_formula_vars, And(transitions_has_sons,
-                                                                                 split_by_formula_tag)))  # A(v) & Ev'[R(v,v')&B(v')]
+        return FormulaWrapper(formula_has_son, [v_vars]), FormulaWrapper(formula_no_son, [v_vars])
 
-        no_son_formula_vars = cls.duplicate_vars(split_by_vars)
-        split_by_formula_tagtag = substitute(formula_split_by, zip(split_by_vars, no_son_formula_vars))  # B(v) [v<-v'']
-
-        transitions_no_sons = substitute(transitions, zip(get_vars(transitions), to_split_vars + no_son_formula_vars))
-        formula_no_son = And(formula_to_split, Exists(no_son_formula_vars, And(transitions_no_sons,
-                                                                               split_by_formula_tagtag)))  # A(v) & Ev'[R(v,v')&B(v')]
-
-        return formula_has_son, formula_no_son
+    @classmethod
+    def int_vec_to_z3_bool_vec(cls, int_vec):
+        return [BoolVal(True) if val == 1 else BoolVal(False) for val in int_vec]
 
     @classmethod
     def get_all_successors(cls, tr, src):
         s = Solver()
         src_values = map(lambda val: int(val), src)
-        curr_tr = tr.substitute(src_values, 0)
+        curr_tr = tr.substitute(Z3Utils.int_vec_to_z3_bool_vec(src_values))
 
         next_states = []
         curr_z3 = curr_tr.get_z3_formula()

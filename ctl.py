@@ -1,5 +1,6 @@
 DEBUG = False
 
+
 def _par(text):
     return '(' + text + ')'
 
@@ -38,7 +39,9 @@ def _split_components(f):
     values = {"(": 1, ")": -1}
     contribution = [values[c] if c in values else 0 for c in f]
     counts = list(_accumulate(contribution))
-    assert (all(c >= 0 for c in counts) and counts[-1] == 0)  # f is balanced
+    is_balanced = (all(c >= 0 for c in counts) and counts[-1] == 0)  # f is balanced
+    if not is_balanced:
+        assert is_balanced
 
     lsplits = [i + 1 for i in range(len(counts) - 1) if counts[i] == 0 and counts[i + 1] != 0]
     rsplits = [i + 2 for i in range(len(counts) - 1) if counts[i] != 0 and counts[i + 1] == 0]
@@ -93,6 +96,31 @@ class CtlFormula(object):
 
     def is_atomic_proposition(self):
         return self.is_leaf() and self._node_data not in [True, False]
+
+    def __eq__(self, o):
+        if not isinstance(o, CtlFormula):
+            return False
+
+        if self.is_leaf():
+            if not o.is_leaf():
+                return False
+            return self.get_ap_text() == o.get_ap_text()
+
+        if o.is_leaf() or self.get_main_connective() != o.get_main_connective() or len(self.get_operands()) != len(
+                o.get_operands()):
+            return False
+
+        for i in range(len(self.get_operands())):
+            if self.get_operands()[i] != o.get_operands()[i]:
+                return False
+
+        return True
+
+    def __ne__(self, o):
+        return not self == o
+
+    def __hash__(self):
+        return self.str_math().__hash__()
 
     def is_leaf(self):
         return not self._operands
@@ -229,9 +257,12 @@ class CtlParser(object):
             print parts
 
         # First checking if this is a binary temporal operator.
-        if input_formula[0] in ['A', 'E']:
+        if input_formula[0] in ['A', 'E'] and len(parts) > 1:
             path_quantifier = input_formula[0]
-            temporal_operator = parts[2][0].replace('R', 'V')
+            try:
+                temporal_operator = parts[2][0].replace('R', 'V')
+            except Exception:
+                print 'upupu'
             main_connective = path_quantifier + temporal_operator
 
             first_operand = self.parse_math_format(parts[1])
@@ -272,7 +303,7 @@ def test_formula(formula, parse_method, verbose=False):
             print parsed.str_math()
             omg = parsed.convert_to_omg_format()
 
-            print 'OMGing: '+omg.str_math()
+            print 'OMGing: ' + omg.str_math()
 
     else:
         print ' FAILED!!!!!!!!!!!!!!!!!!!'

@@ -1,3 +1,6 @@
+from z3_utils import Z3Utils
+
+
 class AbstractState(object):
     def __init__(self, atomic_labels, kripke_structure, formula):
         super(AbstractState, self).__init__()
@@ -85,31 +88,37 @@ class AbstractStructure(object):
         # Check actually! Return Either True or CEX
         raise NotImplementedError()  # TODO
 
-    def split_abstract_state(self, to_close, witness_abstract_state):
-        new_abs_has_sons = AbstractState(to_close.atomic_labels, self._kripke_structure) \
-            .add_positive_labels(to_close.positive_labels) \
-            .add_negative_labels(to_close.negative_labels)
+    def split_abstract_state(self, node_to_close, witness_abstract_state):
+        abs_to_close = node_to_close.get_abstract_label()
+        has_sons_formula, no_sons_formula = \
+            Z3Utils.get_split_formulas(abs_to_close, witness_abstract_state, self._kripke_structure.get_tr_formula())
+        ####### USE get_split_formulas() from z3utils
+        new_abs_has_sons = AbstractState(abs_to_close.atomic_labels, self._kripke_structure, has_sons_formula) \
+            .add_positive_labels(abs_to_close.positive_labels) \
+            .add_negative_labels(abs_to_close.negative_labels)
 
-        new_abs_no_sons = AbstractState(to_close.atomic_labels, self._kripke_structure) \
-            .add_positive_labels(to_close.positive_labels) \
-            .add_negative_labels(to_close.negative_labels)
+        new_abs_no_sons = AbstractState(abs_to_close.atomic_labels, self._kripke_structure, no_sons_formula) \
+            .add_positive_labels(abs_to_close.positive_labels) \
+            .add_negative_labels(abs_to_close.negative_labels)
 
-        self._abstract_states.remove(to_close[0])
+        self._abstract_states.remove(abs_to_close)
         self._abstract_states.update([new_abs_has_sons, new_abs_no_sons])
 
         # must-from
 
-        old_dst = self._existing_must_transitions.pop(to_close[0])
+        old_dst = self._existing_must_transitions.pop(abs_to_close)
         self._existing_must_transitions.update({new_abs_has_sons: old_dst, new_abs_no_sons: old_dst})
 
-        self._non_existing_must_transitions.pop(to_close[0])
+        self._non_existing_must_transitions.pop(abs_to_close)
 
         # must-to
-        replace_old_value = lambda dct: dct.updare({key: dict[key]
-                                                   .difference(to_close[0])
-                                                   .union([new_abs_has_sons, new_abs_no_sons])
-                                                    for key in dct.keys()
-                                                    if to_close[0] in dct[key]})
+        def replace_old_value(dct):
+            dct.update({key: dict[key]
+                       .difference(abs_to_close)
+                       .union([new_abs_has_sons, new_abs_no_sons])
+                        for key in dct.keys()
+                        if abs_to_close in dct[key]})
+
         replace_old_value(self._existing_must_transitions)
         replace_old_value(self._non_existing_must_transitions)
 
@@ -118,5 +127,3 @@ class AbstractStructure(object):
         self._non_existing_may_transitions[new_abs_no_sons].append(witness_abstract_state)
 
         return new_abs_has_sons, new_abs_no_sons
-
-

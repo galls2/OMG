@@ -13,9 +13,8 @@ class FormulaWrapper(object):
     def get_var_vectors(self):
         return self._var_vectors
 
-    def substitute(self, substitute_with, vec_num_to_substitute, new_vars=None):
-        substitute_with_z3_format = [BoolVal(True) if val == 1 else BoolVal(False) for val in substitute_with]
-        substitutions = zip(self._var_vectors[vec_num_to_substitute], substitute_with_z3_format)
+    def substitute(self, substitute_with, vec_num_to_substitute=0, new_vars=None):
+        substitutions = zip(self._var_vectors[vec_num_to_substitute], substitute_with)
         print self._z3_formula
         new_formula = substitute(self._z3_formula, *substitutions)
         print new_formula
@@ -27,3 +26,7 @@ class FormulaWrapper(object):
         else:
             new_var_vectors = self._var_vectors[:vec_num_to_substitute]+self._var_vectors[vec_num_to_substitute+1:]
         return FormulaWrapper(new_formula, new_var_vectors)
+
+    def is_sat(self):
+        s = Solver()
+        return s.check(self.get_z3_formula()) == sat
