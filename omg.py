@@ -141,11 +141,11 @@ class OmgModelChecker(object):
             res = self._handle_ctl_and_recur(child_node, operand)
             if res:
                 self._refine_ex(node, child_node.concrete_label)
-                node.get_abstract_label().add_positive_label(spec)
+                node.add_positive_label(spec)
                 return True
 
         self._strengthen_transition_ex(node, children_nodes)
-        node.get_abstract_label().add_negative_label(spec)
+        node.add_negative_label(spec)
         return False
 
     def find_abstract_classification_for_state(self, concrete_state):  ##goover
@@ -168,7 +168,7 @@ class OmgModelChecker(object):
         concrete_state = node.concrete_label
         abstract_classification = self.find_abstract_classification_for_state(concrete_state)
         node.set_abstract_label(abstract_classification)
-        abstract_classification.get_classification_node().add_classifee(node)
+        abstract_classification.get_classification_node().add_classifee(concrete_state)
         return abstract_classification
 
     def handle_ctl(self, state, specification):
@@ -225,7 +225,7 @@ class OmgModelChecker(object):
 
         query = query_t
         query_labeling_mapper = {True: new_abs_has_sons, False: new_abs_no_sons}
-        new_internal = original_classification_leaf.split(query, original_classification_leaf, query_labeling_mapper)
+        new_internal = self._abstraction.split(query, original_classification_leaf, query_labeling_mapper)
 
         new_abs_has_sons.set_classification_node(new_internal.get_successors()[True])
         new_abs_no_sons.set_classification_node(new_internal.get_successors()[False])

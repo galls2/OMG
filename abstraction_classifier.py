@@ -51,20 +51,16 @@ class AbstractionClassifier(object):
 
     def split(self, query, classification_node_to_split, query_labeling_mapper):
 
-        classification_node_to_split._query = query
-
         successors = {}
         for query_result in query_labeling_mapper.keys():
-            new_leaf = AbstractionClassifierTree(self._kripke_structure, None, None,
+            new_leaf = AbstractionClassifierTree(self._kripke_structure, None, None, classification_node_to_split,
                                                  self, query_labeling_mapper[query_result])
             successors[query_result] = new_leaf
 
-        new_internal = classification_node_to_split.split(query, successors)
-        for successor in new_internal.get_successors():
-            successor.set_parent(new_internal)
+        classification_node_to_split._split(query, successors)
 
         self._update_cache(classification_node_to_split.get_value())
-        return new_internal
+        return classification_node_to_split
 
 
 class AbstractionClassifierTree(object):
@@ -108,24 +104,21 @@ class AbstractionClassifierTree(object):
         return self._classifees
 
     def add_classifee(self, node):
-        self._classifees.add(node)
+        self._classifees.add(tuple(node))
         return self
 
     def remove_classifee(self, classifee):
-        self._classifees.remove(classifee)
+        self._classifees.remove(tuple(classifee))
         return self
 
     def _split(self, query, successors):
         if not self.is_leaf():
             raise Exception('Cannot split non-leaf')
 
-        parent = self._parent
-        new_internal = AbstractionClassifierTree(self._kripke_structure, query, successors, parent, self._classifier)
-        if parent is not None:
-            parent.get_successors().update({k: new_internal
-                                            for k in parent.get_successors().keys()
-                                            if parent.get_successors()[k] == self})
-        return new_internal
+        self._query = query
+        self._successors = successors
+
+        return self
 
     def get_classifier(self):
         return self._classifier

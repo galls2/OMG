@@ -1,5 +1,8 @@
-#GAL
-EX state<0>
+#PASS
+(EX state<0> & ~state<1>)
 
-#GAL
-(~state<0>) | state<1>
+#PASS
+(EX ~state<0> & ~state<1>)
+
+#PASS REDUNDANT
+(EX state<0> | state<1>)

@@ -1,6 +1,12 @@
 from z3_utils import Z3Utils
 
 
+def init_dict_by_key(dict, key, default_val):
+    if key not in dict.keys():
+        dict[key] = default_val
+    return dict
+
+
 class AbstractState(object):
     def __init__(self, atomic_labels, kripke_structure, formula):
         super(AbstractState, self).__init__()
@@ -106,10 +112,11 @@ class AbstractStructure(object):
 
         # must-from
 
-        old_dst = self._existing_must_transitions.pop(abs_to_close)
-        self._existing_must_transitions.update({new_abs_has_sons: old_dst, new_abs_no_sons: old_dst})
+        if abs_to_close in self._existing_must_transitions.keys():
+            old_dst = self._existing_must_transitions.pop(abs_to_close)
+            self._existing_must_transitions.update({new_abs_has_sons: old_dst, new_abs_no_sons: old_dst})
 
-        self._non_existing_must_transitions.pop(abs_to_close)
+        self._non_existing_must_transitions.pop(abs_to_close, None)
 
         # must-to
         def replace_old_value(dct):
@@ -123,7 +130,11 @@ class AbstractStructure(object):
         replace_old_value(self._non_existing_must_transitions)
 
         # split info
-        self._existing_must_transitions[new_abs_has_sons].add({witness_abstract_state})
-        self._non_existing_may_transitions[new_abs_no_sons].append(witness_abstract_state)
+
+        self._existing_must_transitions = init_dict_by_key(self._existing_must_transitions, new_abs_has_sons,
+                                                           {witness_abstract_state})
+
+        self._non_existing_may_transitions = init_dict_by_key(self._non_existing_may_transitions, new_abs_no_sons,
+                                                              {witness_abstract_state})
 
         return new_abs_has_sons, new_abs_no_sons

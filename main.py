@@ -104,7 +104,5 @@ def regression_tests():
 
 
 if __name__ == '__main__':
-    regression_tests()
-    #model_checking(*parse_input())
-# check_properties()
-# parse_ctl_file('iimc_aigs/af_ag.ctl')
+#    regression_tests()
+    model_checking(*parse_input())

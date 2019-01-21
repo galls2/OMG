@@ -55,17 +55,21 @@ class Z3Utils(object):
         cls.copies_counter += 1
         return new_var_vector
 
+
+    '''
+    Returns Ev'[TR(v,v') & OR(targets(v'))]
+    '''
     @classmethod
     def get_exists_successors_in_formula(cls, abstract_targets, transitions):
-        abstract_targets_formula = Or(*[abstract_target.get_descriptive_formula().get_z3_formula() for abstract_target in abstract_targets])
+        abstract_targets_formula = simplify(Or(*[abstract_target.get_descriptive_formula().get_z3_formula() for abstract_target in abstract_targets]))
         prev_vars = abstract_targets[0].get_descriptive_formula().get_var_vectors()[0]
-
         new_vars = cls.duplicate_vars(prev_vars)
-
         split_by_formula_tag = substitute(abstract_targets_formula, zip(prev_vars, new_vars))  # B(v) [v<-v']
 
         transitions_has_sons = transitions.substitute(new_vars, 1, new_vars)
-        exists_formula = Exists(new_vars, And(transitions_has_sons, split_by_formula_tag))  #Ev'[R(v,v')&B(v')]
+
+        inner_exists = And(transitions_has_sons.get_z3_formula(), split_by_formula_tag)
+        exists_formula = simplify(Exists(new_vars, inner_exists)) #Ev'[R(v,v')&B(v')]
         return FormulaWrapper(exists_formula, [prev_vars])
 
     @classmethod
@@ -74,10 +78,10 @@ class Z3Utils(object):
 
         v_vars = to_split.get_descriptive_formula().get_var_vectors()[0]
         exists_formula = cls.get_exists_successors_in_formula([split_by], transitions).get_z3_formula()
-        formula_has_son = And(formula_to_split, exists_formula)  # A(v) & Ev'[R(v,v')&B(v')]
+        formula_has_son = simplify(And(formula_to_split, exists_formula))  # A(v) & Ev'[R(v,v')&B(v')]
 
-        not_exists_formula = cls.get_exists_successors_in_formula([split_by], transitions).get_z3_formula()
-        formula_no_son = And(formula_to_split, not_exists_formula)  # A(v) & Ev'[R(v,v')&B(v')]
+        not_exists_formula = Not(cls.get_exists_successors_in_formula([split_by], transitions).get_z3_formula())
+        formula_no_son = simplify(And(formula_to_split, not_exists_formula))  # A(v) & Ev'[R(v,v')&B(v')]
 
         return FormulaWrapper(formula_has_son, [v_vars]), FormulaWrapper(formula_no_son, [v_vars])
 
@@ -103,7 +107,7 @@ class Z3Utils(object):
 
             blocking_cube = Or(*[Not(var) if val == BoolVal('True') else var for (var, val) in assignment])
             curr_z3 = simplify(And(curr_z3, blocking_cube))
-            print curr_z3
+        #    print curr_z3
 
         return next_states
 
