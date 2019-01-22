@@ -6,7 +6,7 @@ def _par(text):
 
 
 def _remove_spaces_from_edges(text):
-    text = text.replace('\n', '')
+    text = text.replace('\n', '').replace(';', '')
     text = text[next(i for i in range(len(text)) if text[i] != ' '):]
     last_space = next(i for i in range(len(text)) if text[len(text) - 1 - i] != ' ')
     text = text if text[-1] != ' ' else text[:-1 * last_space]
@@ -34,6 +34,7 @@ def _accumulate(list_num):
         addition += list_num[i]
         res.append(addition)
     return res
+
 
 def _split_components(f):
     """
@@ -68,7 +69,7 @@ class CtlFormula(object):
     unary_logical_operators = ['!', '~']
     unary_temporal_operators = ['EX', 'AX', 'AG', 'EG', 'AF', 'EF']
     unary_operators = unary_logical_operators + unary_temporal_operators
-    binary_logical_operators = ['&', '|', '->']
+    binary_logical_operators = ['&', '|', '^', '==', '->']  ## ORDER OF PRECEDENCE
     binary_temporal_operators = ['AV', 'EV', 'AU', 'EU', 'AR', 'ER']
     binary_operators = binary_logical_operators + binary_temporal_operators
     allowed_operators = unary_operators + binary_operators
@@ -188,6 +189,16 @@ class CtlFormula(object):
                 negated_main_connective = _flip_ae(main_connective[0]) + 'V'
                 return CtlFormula(negated_main_connective, [left_operand.negate(), right_operand.negate()]).negate()
 
+            if main_connective in ['^']:
+                left_or = CtlFormula('&', [left_operand.negate(), right_operand])
+                right_or = CtlFormula('&', [left_operand, right_operand.negate()])
+                return CtlFormula('|', [left_or, right_or])
+
+            if main_connective in ['==']:
+                left_implication = CtlFormula('->', [left_operand, right_operand])
+                right_implication = CtlFormula('->', [right_operand, left_operand])
+                return CtlFormula('&', [left_implication, right_implication])
+
 
 class CtlParser(object):
     """
@@ -246,9 +257,12 @@ class CtlParser(object):
         """
 
         input_formula = _remove_spaces_from_edges(input_formula)
+        if DEBUG:
+            print 'NOW :' + input_formula
+
         while input_formula[0] == '(' and input_formula[-1] == ')' and is_balanced_brackets(input_formula[1:-1]):
             if DEBUG:
-                print 'NOW :' + input_formula
+                print 'R_NOW :' + input_formula
             input_formula = input_formula[1:-1]
             _remove_spaces_from_edges(input_formula)
 
@@ -260,7 +274,7 @@ class CtlParser(object):
             print parts
 
         # First checking if this is a binary temporal operator.
-        if input_formula[0] in ['A', 'E'] and len(parts) > 1:
+        if input_formula[0] in ['A', 'E'] and len(parts[0]) == 1 and len(parts) > 1:
             path_quantifier = input_formula[0]
             try:
                 temporal_operator = parts[2][0].replace('R', 'V')

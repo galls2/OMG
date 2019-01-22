@@ -34,10 +34,12 @@ def parse_ctl_chunk(chunk):
     raw_ctl_formulas = [raw_formulas[start: end] for (start, end) in ctl_formulas_borders if start != end]
 
     single_line_raw_formulas = map(lambda multiline: ' '.join(multiline), raw_ctl_formulas)
+    '''
     print 'CHUNK'
     for r in single_line_raw_formulas:
         print r
         print '----'
+    '''
     ctl_formulas = map(lambda raw_formula: ctl_parser.parse_omg(raw_formula), single_line_raw_formulas)
 
     return [header_result] + ctl_formulas
@@ -91,19 +93,19 @@ def starts_with_l(str, ops):
 
 
 def check_properties():
-    file_names = os.listdir('iimc_aigs/')
+    DIR = 'iimc_aigs/'
+    file_names = os.listdir(DIR)
     instances = [(aig, aig[:-4] + '.ctl') for aig in file_names if
                  aig.endswith('.aig') and aig[:-4] + '.ctl' in file_names]
 
     for instance in instances:
-        ctl_path = instance[1]
-        '''if starts_with_l(ctl_path,
-                         ['priority', 'IFetchControl', 'am2910', 'minMax', 'amba16', 'vsa16a', 'simple16', 'icctl',
-                          'simple8', 'amba8'] +
-                         ['idu32', 'matrix', 'lock', 'anderson', 'reqAck', 'daio', 'bufferAlloc', 'rether', 'FIFO',
-                          'twoFifo', 'spinner']):
+        ctl_path = DIR+instance[1]
+
+        if not ctl_path.startswith(DIR+'amba16'):
             continue
-            '''
+
+        print '--------'+ctl_path
+
         ctl_chunks = parse_ctl_file(ctl_path)
         chunk_aps = map(lambda f: f.get_atomic_propositions(),
                         [formula for chunk in ctl_chunks for formula in chunk[1:]])
@@ -115,7 +117,6 @@ def check_properties():
 
         res = ctl_aps.issubset(latch_aps)
         if not res:
-            print instance[0]
             for x in ctl_aps.difference(latch_aps):
                 print x
 
@@ -128,6 +129,7 @@ def test_propositional():
 
 def regression_tests():
     test_propositional()
+    model_checking(*parse_input())
 
 
 def upupu():
@@ -136,6 +138,7 @@ def upupu():
 
 
 if __name__ == '__main__':
-    upupu()
+   # upupu()
+    check_properties()
     # regression_tests()
 #  model_checking(*parse_input())
