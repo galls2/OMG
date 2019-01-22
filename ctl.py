@@ -70,7 +70,7 @@ class CtlFormula(object):
     unary_temporal_operators = ['EX', 'AX', 'AG', 'EG', 'AF', 'EF']
     unary_operators = unary_logical_operators + unary_temporal_operators
     binary_logical_operators = ['&', '|', '^', '==', '->']  ## ORDER OF PRECEDENCE
-    binary_temporal_operators = ['AV', 'EV', 'AU', 'EU', 'AR', 'ER']
+    binary_temporal_operators = ['AV', 'EV', 'AU', 'EU', 'AR', 'ER', 'AW', 'EW']
     binary_operators = binary_logical_operators + binary_temporal_operators
     allowed_operators = unary_operators + binary_operators
 
@@ -199,6 +199,12 @@ class CtlFormula(object):
                 right_implication = CtlFormula('->', [right_operand, left_operand])
                 return CtlFormula('&', [left_implication, right_implication])
 
+            if main_connective in ['AW', 'EW']:
+                new_main_connective = main_connective[0] + 'V'
+
+                return CtlFormula(new_main_connective, [right_operand, CtlFormula('|', [left_operand, right_operand])])
+
+            raise Exception('Unsupported operator '+main_connective)
 
 class CtlParser(object):
     """
@@ -277,9 +283,11 @@ class CtlParser(object):
         if input_formula[0] in ['A', 'E'] and len(parts[0]) == 1 and len(parts) > 1:
             path_quantifier = input_formula[0]
             try:
-                temporal_operator = parts[2][0].replace('R', 'V')
-            except Exception:
+                temp_op_index = next(i for i in range(len(parts)) if (path_quantifier+parts[i]) in CtlFormula.binary_temporal_operators)
+                temporal_operator = parts[temp_op_index].replace('R', 'V')
+            except Exception as e:
                 print 'upupu'
+                print e
             main_connective = path_quantifier + temporal_operator
 
             first_operand = self.parse_math_format(parts[1])

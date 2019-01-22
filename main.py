@@ -101,7 +101,7 @@ def check_properties():
     for instance in instances:
         ctl_path = DIR+instance[1]
 
-        if not ctl_path.startswith(DIR+'amba16'):
+        if not ctl_path.startswith(DIR+'idu32'):
             continue
 
         print '--------'+ctl_path
