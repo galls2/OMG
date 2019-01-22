@@ -27,10 +27,13 @@ def is_balanced_brackets(text):
     return all(c >= 0 for c in counts) and counts[-1] == 0
 
 
-def _accumulate(list_num, addition=0):
-    return [] if list_num == [] else \
-        [list_num[0] + addition] + _accumulate(list_num[1:], addition + list_num[0])
-
+def _accumulate(list_num):
+    res = []
+    addition = 0
+    for i in range(len(list_num)):
+        addition += list_num[i]
+        res.append(addition)
+    return res
 
 def _split_components(f):
     """
