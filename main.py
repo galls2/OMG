@@ -122,9 +122,10 @@ def check_properties():
     instances = [(aig, aig[:-4] + '.ctl') for aig in file_names if
                  aig.endswith('.aig') and aig[:-4] + '.ctl' in file_names]
 
+    bad, total = 0, 0
     for instance in instances:
         ctl_path = DIR + instance[1]
-
+        total += 1
      #   if not ctl_path.startswith(DIR + 'icctl'):
      #       continue
 
@@ -142,11 +143,14 @@ def check_properties():
 
         res = ctl_aps.issubset(latch_aps)
         if not res:
+            bad += 1
             for x in ctl_aps.difference(latch_aps|{True, False}):
                 if x not in ap_mapping.keys():
                     print '>>>>>>>>>>>>>>>>The AP '+x+ ' is missing in the aig file..'
                 else:
                     print x + ' : ' + str(ap_mapping[x]) + ('<<<<<<<<<<<<<<' if (ap_mapping[x][0] == 'i') else '')
+
+    print 'BAD= '+str(bad)+ ' GOOD= '+str(total-bad) +' TOTAL= '+str(total)
 
 
 
@@ -168,6 +172,6 @@ def upupu():
 
 if __name__ == '__main__':
     # upupu()
-    check_properties()
-# regression_tests()
+  #  check_properties()
+    regression_tests()
 #  model_checking(*parse_input())

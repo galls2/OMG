@@ -94,11 +94,11 @@ class AbstractStructure(object):
         # Check actually! Return Either True or CEX
         raise NotImplementedError()  # TODO
 
-    def split_abstract_state(self, node_to_close, witness_abstract_state):
+    def split_abstract_state_ex(self, node_to_close, witness_abstract_state):
         abs_to_close = node_to_close.get_abstract_label()
         has_sons_formula, no_sons_formula = \
             Z3Utils.get_split_formulas(abs_to_close, witness_abstract_state, self._kripke_structure.get_tr_formula())
-        ####### USE get_split_formulas() from z3utils
+
         new_abs_has_sons = AbstractState(abs_to_close.atomic_labels, self._kripke_structure, has_sons_formula) \
             .add_positive_labels(abs_to_close.positive_labels) \
             .add_negative_labels(abs_to_close.negative_labels)
@@ -138,3 +138,6 @@ class AbstractStructure(object):
                                                               {witness_abstract_state})
 
         return new_abs_has_sons, new_abs_no_sons
+
+    def split_abstract_state_ax(self, node_to_close, witness_abstract_state):
+        raise NotImplementedError()

@@ -72,7 +72,26 @@ class Z3Utils(object):
         exists_formula = simplify(Exists(new_vars, inner_exists)) #Ev'[R(v,v')&B(v')]
         return FormulaWrapper(exists_formula, [prev_vars])
 
+    '''
+       Returns Ev'[TR(v,v') & OR(targets(v'))]
+       '''
+
     @classmethod
+    def get__successors_in_formula(cls, abstract_targets, transitions):
+        abstract_targets_formula = simplify(
+            Or(*[abstract_target.get_descriptive_formula().get_z3_formula() for abstract_target in abstract_targets]))
+        prev_vars = abstract_targets[0].get_descriptive_formula().get_var_vectors()[0]
+        new_vars = cls.duplicate_vars(prev_vars)
+        split_by_formula_tag = substitute(abstract_targets_formula, zip(prev_vars, new_vars))  # B(v) [v<-v']
+
+        transitions_has_sons = transitions.substitute(new_vars, 1, new_vars)
+
+        inner_exists = And(transitions_has_sons.get_z3_formula(), split_by_formula_tag)
+        exists_formula = simplify(Exists(new_vars, inner_exists))  # Ev'[R(v,v')&B(v')]
+        return FormulaWrapper(exists_formula, [prev_vars])
+
+
+@classmethod
     def get_split_formulas(cls, to_split, split_by, transitions):
         formula_to_split = to_split.get_descriptive_formula().get_z3_formula()
 
