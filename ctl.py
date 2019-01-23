@@ -7,9 +7,14 @@ def _par(text):
 
 def _remove_spaces_from_edges(text):
     text = text.replace('\n', '').replace(';', '')
-    text = text[next(i for i in range(len(text)) if text[i] != ' '):]
-    last_space = next(i for i in range(len(text)) if text[len(text) - 1 - i] != ' ')
-    text = text if text[-1] != ' ' else text[:-1 * last_space]
+    try:
+        text = text[next(i for i in range(len(text)) if text[i] != ' '):]
+        last_space = next(i for i in range(len(text)) if text[len(text) - 1 - i] != ' ')
+        text = text if text[-1] != ' ' else text[:-1 * last_space]
+    except Exception as e:
+        print e
+        raise Exception('Problem in '+text)
+
     return text
 
 
@@ -54,10 +59,13 @@ def _split_components(f):
     cuts = [f[splits[i]:splits[i + 1]] for i in range(len(splits) - 1)]
     cuts_no_blanks = [c for c in cuts if c != '' and not all(ch == ' ' for ch in c)]
 
+    cuts_split = []
     for i in range(len(cuts_no_blanks)):
         if cuts_no_blanks[i][0] != '(':
-            cuts_no_blanks[i:i + 1] = [c for c in cuts_no_blanks[i].split(' ') if c != '']
-    return cuts_no_blanks
+            cuts_split += [c for c in cuts_no_blanks[i].split(' ') if c != '']
+        else:
+            cuts_split += [cuts_no_blanks[i]]
+    return cuts_split
 
 
 def _flip_ae(ch):
@@ -69,7 +77,7 @@ class CtlFormula(object):
     unary_logical_operators = ['!', '~']
     unary_temporal_operators = ['EX', 'AX', 'AG', 'EG', 'AF', 'EF']
     unary_operators = unary_logical_operators + unary_temporal_operators
-    binary_logical_operators = ['&', '|', '^', '==', '->']  ## ORDER OF PRECEDENCE
+    binary_logical_operators = ['->', '&', '|', '^', '==']  ## ORDER OF PRECEDENCE
     binary_temporal_operators = ['AV', 'EV', 'AU', 'EU', 'AR', 'ER', 'AW', 'EW']
     binary_operators = binary_logical_operators + binary_temporal_operators
     allowed_operators = unary_operators + binary_operators
@@ -288,12 +296,17 @@ class CtlParser(object):
             except Exception as e:
                 print 'upupu'
                 print e
+                raise Exception('Parsing Failed dur to '+input_formula)
             main_connective = path_quantifier + temporal_operator
 
-            first_operand = self.parse_math_format(parts[1])
-            second_operand = self.parse_math_format(' '.join(parts[3:]))
+            first_operand = self.parse_math_format(' '.join(parts[1:temp_op_index]))
+            second_operand = self.parse_math_format(' '.join(parts[temp_op_index+1:]))
 
             return CtlFormula(main_connective, [first_operand, second_operand])
+
+        # Handle negations
+        if input_formula[:1] in CtlFormula.unary_logical_operators:
+            return CtlFormula(input_formula[:1], [self.parse_math_format(input_formula[1:])])
 
         # Handle &, |, -> (in that order)
         if len(parts) > 2:
@@ -302,9 +315,7 @@ class CtlParser(object):
                 if split_result is not None:
                     return split_result
 
-        # Handle negations
-        if input_formula[:1] in CtlFormula.unary_logical_operators:
-            return CtlFormula(input_formula[:1], [self.parse_math_format(input_formula[1:])])
+
 
         else:  # Otherwise, it is an atomic proposition
             return CtlFormula(input_formula)

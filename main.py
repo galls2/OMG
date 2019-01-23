@@ -3,7 +3,7 @@ import sys
 import os
 
 from aig_parser import AvyAigParser
-from ctl import CtlParser, is_balanced_brackets
+from ctl import CtlParser, is_balanced_brackets, CtlFormula
 from kripke_structure import AigKripkeStructure
 from omg import OmgModelChecker
 
@@ -16,6 +16,27 @@ def parse_input():
     return aig_file_path, ctl_formula_path
 
 
+def legal_line_ending(line):
+    last_letter_index = len(line) - 1
+    while line[last_letter_index] in [' ', '\n', '\t']:
+        last_letter_index -= 1
+    for op in CtlFormula.allowed_operators:
+        if op in CtlFormula.binary_temporal_operators:
+            if line[last_letter_index] == op[-1]:
+                return False
+        else:
+            start_index = last_letter_index - len(op)
+            if start_index < 0:
+                continue
+            if line[start_index:last_letter_index + 1] == op:
+                return False
+    return True
+
+
+def fix_equiv(txt):
+    return txt.replace('==', ' == ')
+
+
 def parse_ctl_chunk(chunk):
     chunk = filter(lambda line: line not in ['\n', '', ' '], chunk)
     first_line_not_header = next(i for i in range(len(chunk)) if not chunk[i].startswith('#'))
@@ -26,20 +47,23 @@ def parse_ctl_chunk(chunk):
 
     ctl_parser = CtlParser()
     raw_formulas = formula_part
+    raw_formulas = filter(lambda raw_formula: raw_formula.replace('\n', '').replace(' ', '').replace('\t', '') != '',
+                          raw_formulas)
     f_indexes = [0] + [i + 1 for i in range(len(raw_formulas)) if
-                       is_balanced_brackets(' '.join(raw_formulas[:(i + 1)]))]
+                       is_balanced_brackets(' '.join(raw_formulas[:(i + 1)])) and legal_line_ending(raw_formulas[i])]
 
     ctl_formulas_borders = [(f_indexes[i], f_indexes[i + 1] if i != len(f_indexes) - 1 else len(raw_formulas))
                             for i in range(len(f_indexes))]
     raw_ctl_formulas = [raw_formulas[start: end] for (start, end) in ctl_formulas_borders if start != end]
 
-    single_line_raw_formulas = map(lambda multiline: ' '.join(multiline), raw_ctl_formulas)
+    single_line_raw_formulas = map(lambda multiline: fix_equiv(' '.join(multiline)), raw_ctl_formulas)
     '''
     print 'CHUNK'
     for r in single_line_raw_formulas:
         print r
         print '----'
     '''
+
     ctl_formulas = map(lambda raw_formula: ctl_parser.parse_omg(raw_formula), single_line_raw_formulas)
 
     return [header_result] + ctl_formulas
@@ -99,17 +123,17 @@ def check_properties():
                  aig.endswith('.aig') and aig[:-4] + '.ctl' in file_names]
 
     for instance in instances:
-        ctl_path = DIR+instance[1]
+        ctl_path = DIR + instance[1]
 
-        if not ctl_path.startswith(DIR+'idu32'):
+        if not ctl_path.startswith(DIR + 'rrobin'):
             continue
 
-        print '--------'+ctl_path
+        print '--------' + ctl_path
 
         ctl_chunks = parse_ctl_file(ctl_path)
         chunk_aps = map(lambda f: f.get_atomic_propositions(),
                         [formula for chunk in ctl_chunks for formula in chunk[1:]])
-        ctl_aps = set(map(lambda ap: ap.get_ap_text(), functools.reduce(lambda x, y: set(x) | set(y), chunk_aps)))
+        ctl_aps = set(map(lambda ap: ap.get_ap_text(), functools.reduce(lambda r, y: set(r) | set(y), chunk_aps)))
 
         aig_parser = AvyAigParser('iimc_aigs/' + instance[0])
         ap_mapping = aig_parser.get_ap_mapping()
@@ -138,7 +162,7 @@ def upupu():
 
 
 if __name__ == '__main__':
-   # upupu()
+    # upupu()
     check_properties()
-    # regression_tests()
+# regression_tests()
 #  model_checking(*parse_input())
