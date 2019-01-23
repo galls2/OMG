@@ -22,7 +22,7 @@ def legal_line_ending(line):
         last_letter_index -= 1
     for op in CtlFormula.allowed_operators:
         if op in CtlFormula.binary_temporal_operators:
-            if line[last_letter_index] == op[-1]:
+            if line[last_letter_index] == op[-1] or line[last_letter_index] == op[-2]:
                 return False
         else:
             start_index = last_letter_index - len(op)
@@ -125,8 +125,8 @@ def check_properties():
     for instance in instances:
         ctl_path = DIR + instance[1]
 
-        if not ctl_path.startswith(DIR + 'rrobin'):
-            continue
+     #   if not ctl_path.startswith(DIR + 'icctl'):
+     #       continue
 
         print '--------' + ctl_path
 
