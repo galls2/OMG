@@ -14,8 +14,7 @@ AG ( master<1> & ~master<0> -> (hbusreq<2> == busreq))
 AG ( master<1> &  master<0> -> (hbusreq<3> == busreq))
 
 #PASS: (9)
-~hmastlock & ~master<1> & ~master<0> & hgrant<0> & ~hgrant<1> & ~hgrant<2> &
-~hgrant<3>;
+~hmastlock & ~master<1> & ~master<0> & hgrant<0> & ~hgrant<1> & ~hgrant<2> & ~hgrant<3>
 
 #PASS: (10-13)
 AG (hready -> ((hgrant<0>  -> AX(~master<1> & ~master<0>)) & (~hgrant<0>  -> AX~(~master<1> & ~master<0>))))

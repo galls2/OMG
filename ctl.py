@@ -317,7 +317,15 @@ class CtlParser(object):
 
 
 
-        else:  # Otherwise, it is an atomic proposition
+        else:  # Otherwise, it is an atomic proposition or true/false
+            return self._parse_ap_bool(input_formula)
+
+    def _parse_ap_bool(self, input_formula):
+        if input_formula.lower() == 'true':
+            return CtlFormula(True)
+        elif input_formula.lower() == 'false':
+            return CtlFormula(False)
+        else:
             return CtlFormula(input_formula)
 
     def parse_omg(self, raw_specification):

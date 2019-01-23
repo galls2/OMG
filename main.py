@@ -142,8 +142,12 @@ def check_properties():
 
         res = ctl_aps.issubset(latch_aps)
         if not res:
-            for x in ctl_aps.difference(latch_aps):
-                print x
+            for x in ctl_aps.difference(latch_aps|{True, False}):
+                if x not in ap_mapping.keys():
+                    print '>>>>>>>>>>>>>>>>The AP '+x+ ' is missing in the aig file..'
+                else:
+                    print x + ' : ' + str(ap_mapping[x]) + ('<<<<<<<<<<<<<<' if (ap_mapping[x][0] == 'i') else '')
+
 
 
 def test_propositional():
