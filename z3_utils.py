@@ -77,7 +77,7 @@ class Z3Utils(object):
        '''
 
     @classmethod
-    def get__successors_in_formula(cls, abstract_targets, transitions):
+    def get_f_successors_in_formula(cls, abstract_targets, transitions):
         abstract_targets_formula = simplify(
             Or(*[abstract_target.get_descriptive_formula().get_z3_formula() for abstract_target in abstract_targets]))
         prev_vars = abstract_targets[0].get_descriptive_formula().get_var_vectors()[0]
@@ -91,7 +91,7 @@ class Z3Utils(object):
         return FormulaWrapper(exists_formula, [prev_vars])
 
 
-@classmethod
+    @classmethod
     def get_split_formulas(cls, to_split, split_by, transitions):
         formula_to_split = to_split.get_descriptive_formula().get_z3_formula()
 
