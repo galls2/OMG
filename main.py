@@ -128,6 +128,7 @@ def check_properties():
      #   if not ctl_path.startswith(DIR + 'icctl'):
      #       continue
 
+
         print '--------' + ctl_path
 
         ctl_chunks = parse_ctl_file(ctl_path)
