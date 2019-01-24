@@ -2,9 +2,10 @@ from heapq import *
 
 from abstract_structure import AbstractStructure, AbstractState
 from abstraction_classifier import AbstractionClassifier
-from ctl import CtlParser
 from unwinding_tree import UnwindingTree
 from z3_utils import Z3Utils
+
+DEBUG = True
 
 
 def _label_state(check_result, node_to_label, spec):
@@ -144,7 +145,7 @@ class OmgModelChecker(object):
                 node.add_positive_label(spec)
                 return True
 
-        self._refine_ax(node, children_nodes)
+        self._refine_split_ax(node, children_nodes)
         node.add_negative_label(spec)
         return False
 
@@ -174,7 +175,11 @@ class OmgModelChecker(object):
     def handle_ctl(self, state, specification):
         unwinding_tree = UnwindingTree(self._kripke_structure, None, None, state)
         # TODO check or add to the collection of unwinding trees that are saved in this omg_checker as a member.
-        return self._handle_ctl_and_recur(unwinding_tree, specification)
+        res = self._handle_ctl_and_recur(unwinding_tree, specification)
+        if DEBUG:
+            print str(unwinding_tree)
+      #      print str(self._abstraction)
+        return res
 
     def _handle_ctl_and_recur(self, node, specification):
         method_mapping = {'&': OmgModelChecker._handle_and,
@@ -210,53 +215,38 @@ class OmgModelChecker(object):
 
     #  TODO fill holes
 
-    def _refine_split_ex(self, node_src, witness_concrete_state):
-        node_abs = node_src.get_abstract_label()
-        original_classification_leaf = node_abs.get_classification_node()
-        witness_abstract_state = self.find_abstract_classification_for_state(witness_concrete_state)
-        new_abs_has_sons, new_abs_no_sons = self._abstract_structure.split_abstract_state_ex(node_src,
-                                                                                             witness_abstract_state)
+    def _refine_split_next(self, src_node, witness_abstract_states, split_state_function, query_getter):
 
-        query_formula_wrapper = Z3Utils.get_exists_successors_in_formula([witness_abstract_state],
-                                                                         self._kripke_structure.get_tr_formula())
+        abs_pos, abs_neg = split_state_function(src_node, witness_abstract_states)
 
-        def query_t(concrete_state):
+        query_formula_wrapper = query_getter(witness_abstract_states, self._kripke_structure.get_tr_formula())
+
+        def query(concrete_state):
             return query_formula_wrapper.substitute(Z3Utils.int_vec_to_z3_bool_vec(concrete_state)).is_sat()
 
-        query = query_t
-        query_labeling_mapper = {True: new_abs_has_sons, False: new_abs_no_sons}
+        query_labeling_mapper = {True: abs_pos, False: abs_neg}
+
+        original_classification_leaf = src_node.get_abstract_label().get_classification_node()
         new_internal = self._abstraction.split(query, original_classification_leaf, query_labeling_mapper)
 
-        new_abs_has_sons.set_classification_node(new_internal.get_successors()[True])
-        new_abs_no_sons.set_classification_node(new_internal.get_successors()[False])
+        abs_pos.set_classification_node(new_internal.get_successors()[True])
+        abs_neg.set_classification_node(new_internal.get_successors()[False])
 
         # re-assign abs label
-        node_src.get_abstract_label()
+        src_node.get_abstract_label()
+
+    def _refine_split_ex(self, node_src, witness_concrete_state):
+        witness_abstract_state = self.find_abstract_classification_for_state(witness_concrete_state)
+
+        self._refine_split_next(node_src, [witness_abstract_state], self._abstract_structure.split_abstract_state_ex,
+                                Z3Utils.get_exists_successors_in_formula)
 
     def _refine_split_ax(self, src_node, dst_nodes):
-        node_abs = src_node.get_abstract_label()
-        original_classification_leaf = node_abs.get_classification_node()
+
         witness_abstract_states = [self.find_abstract_classification_for_node(dst) for dst in dst_nodes]
 
-        new_abs_has_sons, new_abs_no_sons = self._abstract_structure.split_abstract_state_ax(src_node,
-                                                                                             witness_abstract_states)
+        self._refine_split_next(src_node, witness_abstract_states, self._abstract_structure.split_abstract_state_ax,
+                                Z3Utils.get_forall_successors_in_formula)
 
-        query_formula_wrapper = Z3Utils.get_exists_successors_in_formula(witness_abstract_states,
-                                                                         self._kripke_structure.get_tr_formula())
-
-        def query_t(concrete_state):
-            return query_formula_wrapper.substitute(Z3Utils.int_vec_to_z3_bool_vec(concrete_state)).is_sat()
-
-        query = query_t
-        query_labeling_mapper = {True: new_abs_has_sons, False: new_abs_no_sons}
-        new_internal = self._abstraction.split(query, original_classification_leaf, query_labeling_mapper)
-
-        new_abs_has_sons.set_classification_node(new_internal.get_successors()[True])
-        new_abs_no_sons.set_classification_node(new_internal.get_successors()[False])
-
-        # re-assign abs label
-        node_src.get_abstract_label()
-
-'''
     def _strengthen_trace(self, node_to_explore):  ##todo
         raise NotImplementedError()

@@ -1,9 +1,13 @@
+from abstraction_classifier import _collection_to_sorted_tuple
 from z3_utils import Z3Utils
+
 
 
 def init_dict_by_key(dict, key, default_val):
     if key not in dict.keys():
-        dict[key] = default_val
+        dict[key] = {_collection_to_sorted_tuple(default_val)}
+    else:
+        dict[key].add(_collection_to_sorted_tuple(default_val))
     return dict
 
 
@@ -94,27 +98,28 @@ class AbstractStructure(object):
         # Check actually! Return Either True or CEX
         raise NotImplementedError()  # TODO
 
-    def split_abstract_state_ex(self, node_to_close, witness_abstract_state):
+    def split_abstract_state(self, node_to_close, abstract_sons, formula_getter):
+        kripke = self._kripke_structure
         abs_to_close = node_to_close.get_abstract_label()
-        has_sons_formula, no_sons_formula = \
-            Z3Utils.get_split_formulas(abs_to_close, witness_abstract_state, self._kripke_structure.get_tr_formula())
+        pos_formula, neg_formula = \
+            formula_getter(abs_to_close, abstract_sons, kripke.get_tr_formula())
 
-        new_abs_has_sons = AbstractState(abs_to_close.atomic_labels, self._kripke_structure, has_sons_formula) \
+        abs_pos = AbstractState(abs_to_close.atomic_labels, kripke, pos_formula) \
             .add_positive_labels(abs_to_close.positive_labels) \
             .add_negative_labels(abs_to_close.negative_labels)
 
-        new_abs_no_sons = AbstractState(abs_to_close.atomic_labels, self._kripke_structure, no_sons_formula) \
+        abs_neg = AbstractState(abs_to_close.atomic_labels, kripke, neg_formula) \
             .add_positive_labels(abs_to_close.positive_labels) \
             .add_negative_labels(abs_to_close.negative_labels)
 
         self._abstract_states.remove(abs_to_close)
-        self._abstract_states.update([new_abs_has_sons, new_abs_no_sons])
+        self._abstract_states.update([abs_pos, abs_neg])
 
         # must-from
 
         if abs_to_close in self._existing_must_transitions.keys():
             old_dst = self._existing_must_transitions.pop(abs_to_close)
-            self._existing_must_transitions.update({new_abs_has_sons: old_dst, new_abs_no_sons: old_dst})
+            self._existing_must_transitions.update({abs_pos: old_dst, abs_neg: old_dst})
 
         self._non_existing_must_transitions.pop(abs_to_close, None)
 
@@ -122,22 +127,46 @@ class AbstractStructure(object):
         def replace_old_value(dct):
             dct.update({key: dict[key]
                        .difference(abs_to_close)
-                       .union([new_abs_has_sons, new_abs_no_sons])
+                       .union([abs_pos, abs_neg])
                         for key in dct.keys()
                         if abs_to_close in dct[key]})
 
         replace_old_value(self._existing_must_transitions)
         replace_old_value(self._non_existing_must_transitions)
 
+        return abs_pos, abs_neg
+
+    def split_abstract_state_ex(self, node_to_close, abstract_sons):
+        abstract_state_to_split = node_to_close.get_abstract_label()
+
+        new_abs_has_sons, new_abs_no_sons = self.split_abstract_state(node_to_close, abstract_sons,
+                                                                      Z3Utils.get_ex_split_formulas)
         # split info
 
+        updated_abstract_sons = abstract_sons if abstract_state_to_split not in abstract_sons else \
+            ([a for a in abstract_sons if a != abstract_state_to_split] + [new_abs_has_sons,
+                                                                           new_abs_no_sons])
+
         self._existing_must_transitions = init_dict_by_key(self._existing_must_transitions, new_abs_has_sons,
-                                                           {witness_abstract_state})
+                                                           updated_abstract_sons)
 
         self._non_existing_may_transitions = init_dict_by_key(self._non_existing_may_transitions, new_abs_no_sons,
-                                                              {witness_abstract_state})
+                                                              updated_abstract_sons)
 
         return new_abs_has_sons, new_abs_no_sons
 
-    def split_abstract_state_ax(self, node_to_close, witness_abstract_state):
-        raise NotImplementedError()
+    def split_abstract_state_ax(self, node_to_close, abstract_sons):
+        abstract_state_to_split = node_to_close.get_abstract_label()
+        new_abs_sons_closed, new_abs_sons_not_closed = self.split_abstract_state(node_to_close, abstract_sons,
+                                                                                 Z3Utils.get_ax_split_formulas)
+        # split info
+
+        updated_abstract_sons = abstract_sons if abstract_state_to_split not in abstract_sons else \
+            ([a for a in abstract_sons if a != abstract_state_to_split]+[new_abs_sons_closed, new_abs_sons_not_closed])
+        self._may_transitions_over_approximations = init_dict_by_key(
+            self._may_transitions_over_approximations, new_abs_sons_closed, updated_abstract_sons)
+
+        self._non_existing_may_transitions_over_approximations = init_dict_by_key(
+            self._non_existing_may_transitions_over_approximations, new_abs_sons_not_closed, updated_abstract_sons)
+
+        return new_abs_sons_closed, new_abs_sons_not_closed

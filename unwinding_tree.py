@@ -1,5 +1,6 @@
 import functools
 
+
 '''
 Due to the fact that we agreed that for all proper subformulas of the original specification, we must keep the 
 invariant that when finished check s|=f, it follows that either [s] |= f or [s] |= ~f, we do not make a STATE class. 
@@ -9,6 +10,14 @@ invariant that when finished check s|=f, it follows that either [s] |= f or [s] 
 Moreover, as of the fact that we have to recognize loops, we remain with a tree form. 
 '''
 
+def print_tree(node, successors_function, printer_function, depth=0):
+    ret = "\t" * depth + printer_function(node) + "\n"
+    succ = successors_function(node)
+    if succ is None:
+        succ = []
+    for child in succ:
+        ret += print_tree(child, successors_function, printer_function, depth+1)
+    return ret
 
 class UnwindingTree(object):
     def __init__(self, kripke_structure, parent, successors, concrete_label, abstract_label=None):
@@ -89,6 +98,8 @@ class UnwindingTree(object):
             return True
         return self.depth < other.depth
 
+    def __str__(self):
+        return print_tree(self, lambda node: node._successors, lambda node: str(node.concrete_label))
 
 def test_order():
     a = UnwindingTree([], None, [], [], [])

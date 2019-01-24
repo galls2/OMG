@@ -11,8 +11,6 @@ from omg import OmgModelChecker
 def parse_input():
     aig_file_path = sys.argv[1]
     ctl_formula_path = sys.argv[2]
-    aig_file_path = 'iimc_aigs/af_ag.aig'
-    ctl_formula_path = 'iimc_aigs/af_ag2.ctl'
     return aig_file_path, ctl_formula_path
 
 
@@ -126,9 +124,8 @@ def check_properties():
     for instance in instances:
         ctl_path = DIR + instance[1]
         total += 1
-     #   if not ctl_path.startswith(DIR + 'icctl'):
-     #       continue
-
+        #   if not ctl_path.startswith(DIR + 'icctl'):
+        #       continue
 
         print '--------' + ctl_path
 
@@ -144,34 +141,36 @@ def check_properties():
         res = ctl_aps.issubset(latch_aps)
         if not res:
             bad += 1
-            for x in ctl_aps.difference(latch_aps|{True, False}):
+            for x in ctl_aps.difference(latch_aps | {True, False}):
                 if x not in ap_mapping.keys():
-                    print '>>>>>>>>>>>>>>>>The AP '+x+ ' is missing in the aig file..'
+                    print '>>>>>>>>>>>>>>>>The AP ' + x + ' is missing in the aig file..'
                 else:
                     print x + ' : ' + str(ap_mapping[x]) + ('<<<<<<<<<<<<<<' if (ap_mapping[x][0] == 'i') else '')
 
-    print 'BAD= '+str(bad)+ ' GOOD= '+str(total-bad) +' TOTAL= '+str(total)
-
+    print 'BAD= ' + str(bad) + ' GOOD= ' + str(total - bad) + ' TOTAL= ' + str(total)
 
 
 def test_propositional():
+    print 'Checking Propositional:'
     aig_file_path = 'iimc_aigs/af_ag.aig'
     ctl_formula_path = 'iimc_aigs/af_ag_prop.ctl'
     model_checking(aig_file_path, ctl_formula_path)
 
 
+def test_nexts():
+    print 'Checking Nexts:'
+    aig_file_path = 'iimc_aigs/af_ag.aig'
+    ctl_formula_path = 'iimc_aigs/af_ag_modal.ctl'
+    model_checking(aig_file_path, ctl_formula_path)
+
+
 def regression_tests():
     test_propositional()
-    model_checking(*parse_input())
-
-
-def upupu():
-    #    parse_ctl_file('iimc_aigs/priority.ctl')
-    parse_ctl_file('iimc_aigs/priority.ctl')
+    test_nexts()
 
 
 if __name__ == '__main__':
-    # upupu()
-  #  check_properties()
-    regression_tests()
-#  model_checking(*parse_input())
+    #  check_properties()
+
+#    regression_tests()
+    model_checking(*parse_input())
