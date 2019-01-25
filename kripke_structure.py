@@ -6,12 +6,12 @@ from z3 import *
 
 
 class KripkeStructure(object):
-    def __init__(self, atomic_propositions):
+    def __init__(self, aps):
         super(KripkeStructure, self).__init__()
-        self._atomic_propositions = atomic_propositions
+        self._aps = aps
 
-    def get_atomic_propositions(self):
-        return self._atomic_propositions
+    def get_aps(self):
+        return self._aps
 
     def get_successors(self, state):
         raise NotImplementedError()
@@ -22,16 +22,16 @@ class KripkeStructure(object):
     def is_state_labeled_with(self, state, ap):
         raise NotImplementedError()
 
-    def get_formula_for_ap(self, ap, var_vector):
+    def get_ap_formula(self, ap, var_vector):
         raise NotImplementedError()
 
-    def get_formula_for_bis0(self, state, var_vector):
+    def get_bis0_formula(self, state, var_vector):
         raise NotImplementedError()
 
     def get_tr_formula(self):
         raise NotImplementedError()
 
-    def get_aps(self, state):
+    def get_aps_for_state(self, state):
         raise NotImplementedError()
 
     def get_var_vector(self):
@@ -39,8 +39,8 @@ class KripkeStructure(object):
 
 
 class AigKripkeStructure(KripkeStructure):
-    def __init__(self, aig_path, atomic_propositions):
-        super(AigKripkeStructure, self).__init__(atomic_propositions)
+    def __init__(self, aig_path, aps):
+        super(AigKripkeStructure, self).__init__(aps)
         self._aig_parser = AvyAigParser(aig_path)
         metadata, tr_dimcas = self._aig_parser.parse()
         self._tr = CnfParser.z3_formula_from_dimacs(metadata, tr_dimcas)
@@ -64,7 +64,7 @@ class AigKripkeStructure(KripkeStructure):
         var_num = self._get_var_num_for_ap(ap)
         return True if int(state[var_num]) > 0 else False
 
-    def get_formula_for_ap(self, ap, var_vector):
+    def get_ap_formula(self, ap, var_vector):
         return FormulaWrapper(var_vector[self._get_var_num_for_ap(ap)], [var_vector])
 
     def _get_formula_for_ap_literal(self, ap, var_vector, state):
@@ -72,20 +72,18 @@ class AigKripkeStructure(KripkeStructure):
         final_form = positive_form if self.is_state_labeled_with(state, ap) else Not(positive_form)
         return FormulaWrapper(final_form, [var_vector])
 
-    def get_formula_for_bis0(self, state, var_vector=None):
+    def get_bis0_formula(self, state, var_vector=None):
         if var_vector is None:
             var_vector = self.get_var_vector()
-        ap_subformulas = [self._get_formula_for_ap_literal(ap, var_vector, state)
-                                    for ap in self.get_atomic_propositions()]
+        ap_subformulas = [self._get_formula_for_ap_literal(ap, var_vector, state) for ap in self.get_aps()]
         bis0_z3_formula = And(*[ap_subformula.get_z3_formula() for ap_subformula in ap_subformulas])
         return FormulaWrapper(bis0_z3_formula, [var_vector])
 
     def get_tr_formula(self):
         return self._tr
 
-    def get_aps(self, state):
-        return [ap for ap in self.get_atomic_propositions() if self.is_state_labeled_with(state, ap)]
+    def get_aps_for_state(self, state):
+        return [ap for ap in self.get_aps() if self.is_state_labeled_with(state, ap)]
 
     def get_var_vector(self):
-        tr_wrapper = self._tr
-        return tr_wrapper.get_var_vectors()[0]
+        return self._tr.get_var_vectors()[0]

@@ -130,7 +130,7 @@ def check_properties():
         print '--------' + ctl_path
 
         ctl_chunks = parse_ctl_file(ctl_path)
-        chunk_aps = map(lambda f: f.get_atomic_propositions(),
+        chunk_aps = map(lambda f: f.get_aps(),
                         [formula for chunk in ctl_chunks for formula in chunk[1:]])
         ctl_aps = set(map(lambda ap: ap.get_ap_text(), functools.reduce(lambda r, y: set(r) | set(y), chunk_aps)))
 

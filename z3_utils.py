@@ -43,6 +43,10 @@ def z3_val_to_int(z3_val):
     return 0
 
 
+def get_assignment(model, vars):
+    return [z3_val_to_int(model[var]) for var in vars]
+
+
 class Z3Utils(object):
     copies_counter = 0
 
@@ -55,11 +59,11 @@ class Z3Utils(object):
         cls.copies_counter += 1
         return new_var_vector
 
-
     '''
     Given [B1,...,Bn], R
     Returns (B1(v')|....Bn(v'), R(v,v'))
     '''
+
     @classmethod
     def _get_components_in_quantified(cls, abstract_targets, transitions):
         abstract_targets_formula = simplify(
@@ -73,6 +77,7 @@ class Z3Utils(object):
     '''
     Returns Ev'[TR(v,v') & OR(targets(v'))]
     '''
+
     @classmethod
     def get_exists_successors_in_formula(cls, abstract_targets, transitions):
         split_by_formula_tag, transitions_has_sons = cls._get_components_in_quantified(abstract_targets, transitions)
@@ -94,7 +99,6 @@ class Z3Utils(object):
         inner = Implies(transitions_has_sons.get_z3_formula(), split_by_formula_tag)
         forall_formula = simplify(ForAll(new_vars, inner))
         return FormulaWrapper(forall_formula, [prev_vars])
-
 
     @classmethod
     def get_split_formula(cls, to_split, split_by, transitions, quantified_part_getter):
@@ -118,26 +122,25 @@ class Z3Utils(object):
         return cls.get_split_formula(to_split, split_by, transitions, cls.get_forall_successors_in_formula)
 
     @classmethod
-    def int_vec_to_z3_bool_vec(cls, int_vec):
+    def int_vec_to_z3(cls, int_vec):
         return [BoolVal(True) if val == 1 else BoolVal(False) for val in int_vec]
 
     @classmethod
     def get_all_successors(cls, tr, src):
         s = Solver()
         src_values = map(lambda val: int(val), src)
-        curr_tr = tr.substitute(Z3Utils.int_vec_to_z3_bool_vec(src_values))
+        curr_tr = tr.substitute(Z3Utils.int_vec_to_z3(src_values))
 
         next_states = []
         curr_z3 = curr_tr.get_z3_formula()
         next_vector = curr_tr.get_var_vectors()[0]
         while s.check(curr_z3) == sat:
             model = s.model()
-            assignment = [(var, model[var]) for var in next_vector]
-            cube = [z3_val_to_int(val) for (var, val) in assignment]
+            cube = get_assignment(model, next_vector)
             next_states.append(cube)
             # Not(l1 & ... &ln) = Not(l1) | ... | Not(ln)
 
-            blocking_cube = Or(*[Not(var) if val == BoolVal('True') else var for (var, val) in assignment])
+            blocking_cube = Or(*[Not(var) if model[var] == BoolVal('True') else var for var in next_vector])
             curr_z3 = simplify(And(curr_z3, blocking_cube))
         #    print curr_z3
 
@@ -146,6 +149,39 @@ class Z3Utils(object):
     @classmethod
     def parse_assignment(cls, assignment):
         pass
+
+    @classmethod
+    def has_successor_in_abstract(cls, concrete_state, abstract_witness):
+        kripke = abstract_witness.get_kripke()
+        transitions_from_concrete = kripke.get_tr_formula().substitute(Z3Utils.int_vec_to_z3(concrete_state)) \
+            .get_z3_formula()
+
+        variables = transitions_from_concrete.get_var_vectors()[0]
+        abs_formula = abstract_witness.get_descriptive_formula().substitute(variables, 0, variables) \
+            .get_z3_formula()
+        f = And(transitions_from_concrete, abs_formula)
+
+        s = Solver()
+        return s.check(f) == sat
+
+    @classmethod
+    def is_EE_closed(cls, to_close, close_with):
+        kripke = to_close.get_kripke()
+        transitions = kripke.get_tr_formula()
+        src_vars, dst_vars = transitions.get_var_vectors()
+
+        src = to_close.get_descriptive_formula().substitute(src_vars, 0, src_vars)
+        dst = Not(Or(*[closer.get_descriptive_formula().substitute(dst_vars, 0, dst_vars) for closer in close_with]))
+
+        closure_formula = And(src, transitions, dst)
+        s = Solver()
+        res = s.check(closure_formula)
+
+        if res == unsat:
+            return True
+
+        model = s.model()
+        return get_assignment(model, src_vars), get_assignment(model, dst_vars)
 
 
 def test():

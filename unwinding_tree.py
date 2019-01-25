@@ -1,6 +1,5 @@
 import functools
 
-
 '''
 Due to the fact that we agreed that for all proper subformulas of the original specification, we must keep the 
 invariant that when finished check s|=f, it follows that either [s] |= f or [s] |= ~f, we do not make a STATE class. 
@@ -10,19 +9,21 @@ invariant that when finished check s|=f, it follows that either [s] |= f or [s] 
 Moreover, as of the fact that we have to recognize loops, we remain with a tree form. 
 '''
 
+
 def print_tree(node, successors_function, printer_function, depth=0):
     ret = "\t" * depth + printer_function(node) + "\n"
     succ = successors_function(node)
     if succ is None:
         succ = []
     for child in succ:
-        ret += print_tree(child, successors_function, printer_function, depth+1)
+        ret += print_tree(child, successors_function, printer_function, depth + 1)
     return ret
 
+
 class UnwindingTree(object):
-    def __init__(self, kripke_structure, parent, successors, concrete_label, abstract_label=None):
+    def __init__(self, kripke, parent, successors, concrete_label, abstract_label=None):
         super(UnwindingTree, self).__init__()
-        self._kripke_structure = kripke_structure
+        self._kripke = kripke
         self._parent = parent
         self._successors = successors
         self.concrete_label = concrete_label  # concrete state that is represented by this node
@@ -32,11 +33,13 @@ class UnwindingTree(object):
 
     def unwind_further(self):
         if self._successors is None:
-            concrete_successors = self._kripke_structure.get_successors(self.concrete_label)
-            successor_nodes = [UnwindingTree(self._kripke_structure, self, None, concrete_successor)
-                               for concrete_successor in concrete_successors]
-            self._successors = successor_nodes
-            return successor_nodes
+            concrete_successors = self._kripke.get_successors(self.concrete_label)
+            self._successors = [UnwindingTree(self._kripke, self, None, concrete_successor)
+                                for concrete_successor in concrete_successors]
+
+        return self._successors
+
+    def get_successors(self):
         return self._successors
 
     def is_abstract_lasso(self):  ## FIXME
@@ -54,7 +57,7 @@ class UnwindingTree(object):
     def get_abstract_labels_in_tree(self):  ## FIXME
 
         partial_abstract_labels = [{(self.get_abstract_label(), self)}] + [successor.get_abstract_labels_in_tree()
-                                                                     for successor in self._successors]
+                                                                           for successor in self._successors]
         abs_labels = functools.reduce(lambda x, y: x | y, partial_abstract_labels)
         return abs_labels
 
@@ -100,6 +103,7 @@ class UnwindingTree(object):
 
     def __str__(self):
         return print_tree(self, lambda node: node._successors, lambda node: str(node.concrete_label))
+
 
 def test_order():
     a = UnwindingTree([], None, [], [], [])

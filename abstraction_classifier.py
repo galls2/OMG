@@ -1,6 +1,7 @@
 from unwinding_tree import print_tree
 import inspect
 
+
 def _collection_to_sorted_tuple(ap_collection):
     ap_list = list(ap_collection)
     ap_tuple = tuple(sorted(ap_list))
@@ -10,10 +11,10 @@ def _collection_to_sorted_tuple(ap_collection):
 class AbstractionClassifier(object):
     """docstring for AbstractionClassifier."""
 
-    def __init__(self, kripke_structure):
+    def __init__(self, kripke):
         super(AbstractionClassifier, self).__init__()
-        self._kripke_structure = kripke_structure
-        self._abstract_classification_trees = {}
+        self._kripke = kripke
+        self._classification_trees = {}
         self._cache = {}
 
     def update_classification(self, classification_node, concrete_state):
@@ -30,22 +31,22 @@ class AbstractionClassifier(object):
         if tuple(concrete_state) in self._cache.keys():
             return self._cache[tuple(concrete_state)]
 
-        concrete_atomic_labels = _collection_to_sorted_tuple(self._kripke_structure.get_aps(concrete_state))
-        if concrete_atomic_labels not in self._abstract_classification_trees.keys():
+        concrete_atomic_labels = _collection_to_sorted_tuple(self._kripke.get_aps_for_state(concrete_state))
+        if concrete_atomic_labels not in self._classification_trees.keys():
             return None
-        abstract_label = self._abstract_classification_trees[concrete_atomic_labels].classify(concrete_state)
+        abstract_label = self._classification_trees[concrete_atomic_labels].classify(concrete_state)
         self._cache[tuple(concrete_state)] = abstract_label
         return abstract_label
 
     def add_classification(self, atomic_labels, abstract_state):
-        assert atomic_labels not in self._abstract_classification_trees.keys()
+        assert atomic_labels not in self._classification_trees.keys()
         ap_tuple = _collection_to_sorted_tuple(atomic_labels)
-        classification_tree = AbstractionClassifierTree(self._kripke_structure, None, dict(), None, self, abstract_state)
-        self._abstract_classification_trees[ap_tuple] = classification_tree
+        classification_tree = AbstractionClassifierTree(self._kripke, None, dict(), None, self, abstract_state)
+        self._classification_trees[ap_tuple] = classification_tree
         return classification_tree
 
     def is_exists_tree_for_atomic_labels(self, atomic_labels):
-        return _collection_to_sorted_tuple(atomic_labels) in self._abstract_classification_trees.keys()
+        return _collection_to_sorted_tuple(atomic_labels) in self._classification_trees.keys()
 
     def _update_cache(self, abstract_state_to_remove):
         cache = self._cache
@@ -56,7 +57,7 @@ class AbstractionClassifier(object):
 
         successors = dict()
         for query_result in query_labeling_mapper.keys():
-            new_leaf = AbstractionClassifierTree(self._kripke_structure, None, dict(), classification_node_to_split,
+            new_leaf = AbstractionClassifierTree(self._kripke, None, dict(), classification_node_to_split,
                                                  self, query_labeling_mapper[query_result])
             successors[query_result] = new_leaf
 
@@ -67,21 +68,22 @@ class AbstractionClassifier(object):
 
     def __str__(self):
         ret = ''
-        for bis0 in self._abstract_classification_trees.keys():
-            ret += 'Tree for APs: ' + str([ap.str_math() for ap in bis0])+'\n'
+        for bis0 in self._classification_trees.keys():
+            ret += 'Tree for APs: ' + str([ap.str_math() for ap in bis0]) + '\n'
             ret += '-------------\n'
-            ret += print_tree(self._abstract_classification_trees[bis0],
-                             lambda n: [] if n.get_successors() is None else n.get_successors().values(),
-                             lambda l: inspect.getsource(l._query) if not l.is_leaf() else
-                                str(l.get_value().get_descriptive_formula().get_z3_formula()))
+            ret += print_tree(self._classification_trees[bis0],
+                              lambda n: [] if n.get_successors() is None else n.get_successors().values(),
+                              lambda l: inspect.getsource(l.get_query()) if not l.is_leaf() else
+                              str(l.get_value().get_descriptive_formula().get_z3_formula()))
         return ret
+
 
 class AbstractionClassifierTree(object):
     """docstring for AbstractionClassifier."""
 
-    def __init__(self, kripke_structure, query, successors, parent, classifier, value=None):
+    def __init__(self, kripke, query, successors, parent, classifier, value=None):
         super(AbstractionClassifierTree, self).__init__()
-        self._kripke_structure = kripke_structure
+        self._kripke = kripke
         self._query = query
         self._successors = successors
         self._value = value
@@ -135,3 +137,6 @@ class AbstractionClassifierTree(object):
 
     def get_classifier(self):
         return self._classifier
+
+    def get_query(self):
+        return self._query

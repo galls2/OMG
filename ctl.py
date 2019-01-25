@@ -153,7 +153,7 @@ class CtlFormula(object):
     def get_atomic_propositions(self):
         if self.is_atomic_proposition():
             return [self]
-        return list(set([ap for operand in self._operands for ap in operand.get_atomic_propositions()]))
+        return list(set([ap for operand in self._operands for ap in operand.get_aps()]))
 
     def negate(self):
         if self._node_data in CtlFormula.unary_logical_operators:
@@ -356,7 +356,7 @@ def test_formula(formula, parse_method, verbose=False):
             print _remove_characters(parsed.str_math())
             print '*******************************************************************'
     if verbose:
-        print 'AP: ' + str(parsed.get_atomic_propositions())
+        print 'AP: ' + str(parsed.get_aps())
 
 
 def test_ctl_parser():

@@ -2,7 +2,6 @@ from abstraction_classifier import _collection_to_sorted_tuple
 from z3_utils import Z3Utils
 
 
-
 def init_dict_by_key(dict, key, default_val):
     if key not in dict.keys():
         dict[key] = {_collection_to_sorted_tuple(default_val)}
@@ -12,12 +11,12 @@ def init_dict_by_key(dict, key, default_val):
 
 
 class AbstractState(object):
-    def __init__(self, atomic_labels, kripke_structure, formula):
+    def __init__(self, atomic_labels, kripke, formula):
         super(AbstractState, self).__init__()
-        self._kripke_structure = kripke_structure
+        self._kripke = kripke
 
         self.positive_labels = set(atomic_labels)
-        self.negative_labels = set(self._kripke_structure.get_atomic_propositions()) - self.positive_labels
+        self.negative_labels = set(self._kripke.get_aps()) - self.positive_labels
 
         self.atomic_labels = atomic_labels
         self._classification_node = None
@@ -57,20 +56,23 @@ class AbstractState(object):
         self._classification_node = classification_leaf
         return self
 
+    def get_kripke(self):
+        return self._kripke
+
 
 class AbstractStructure(object):
     """docstring for AbstractStructure."""
 
-    def __init__(self, kripke_structure):
+    def __init__(self, kripke):
         super(AbstractStructure, self).__init__()
-        self._kripke_structure = kripke_structure
+        self.kripke = kripke
         self._abstract_states = set()
         #  self._existing_may_transitions = {}
-        self._non_existing_may_transitions = {}
-        self._may_transitions_over_approximations = {}
-        self._non_existing_may_transitions_over_approximations = {}
-        self._existing_must_transitions = {}
-        self._non_existing_must_transitions = {}
+        self._NE_may = {}
+        self._E_may_over_approx = {}
+        self._NE_may_over_approx = {}
+        self._E_must = {}
+        self._NE_must = {}
 
     def add_abstract_state(self, abstract_state):
         self._abstract_states.add(abstract_state)
@@ -84,22 +86,27 @@ class AbstractStructure(object):
     '''
 
     def add_must_hyper_transition(self, src, hyper_dst):
-        if src not in self._existing_must_transitions.keys():
-            self._existing_must_transitions[src] = set()
-        self._existing_must_transitions[src].add(hyper_dst)
+        if src not in self._E_must.keys():
+            self._E_must[src] = set()
+        self._E_must[src].add(hyper_dst)
         return self
 
     def is_EE_closure(self, to_close, close_with):
-        if to_close in self._may_transitions_over_approximations.keys():
-            known_closers = self._may_transitions_over_approximations[to_close]
-            if close_with.issubset(known_closers):
-                return True
 
-        # Check actually! Return Either True or CEX
-        raise NotImplementedError()  # TODO
+        def exists_subset(over_approxs, conclusion):
+            return conclusion if to_close in over_approxs.keys() and \
+                    any([close_with.issubset(op) for op in over_approxs[to_close]]) else None
+
+        if exists_subset(self._E_may_over_approx, True) is True:
+            return True
+        if exists_subset(self._NE_may_over_approx, False) is False:
+            return False
+
+        return Z3Utils.is_EE_closed(to_close, close_with)
+
 
     def split_abstract_state(self, node_to_close, abstract_sons, formula_getter):
-        kripke = self._kripke_structure
+        kripke = self.kripke
         abs_to_close = node_to_close.get_abstract_label()
         pos_formula, neg_formula = \
             formula_getter(abs_to_close, abstract_sons, kripke.get_tr_formula())
@@ -117,11 +124,11 @@ class AbstractStructure(object):
 
         # must-from
 
-        if abs_to_close in self._existing_must_transitions.keys():
-            old_dst = self._existing_must_transitions.pop(abs_to_close)
-            self._existing_must_transitions.update({abs_pos: old_dst, abs_neg: old_dst})
+        if abs_to_close in self._E_must.keys():
+            old_dst = self._E_must.pop(abs_to_close)
+            self._E_must.update({abs_pos: old_dst, abs_neg: old_dst})
 
-        self._non_existing_must_transitions.pop(abs_to_close, None)
+        self._NE_must.pop(abs_to_close, None)
 
         # must-to
         def replace_old_value(dct):
@@ -131,8 +138,8 @@ class AbstractStructure(object):
                         for key in dct.keys()
                         if abs_to_close in dct[key]})
 
-        replace_old_value(self._existing_must_transitions)
-        replace_old_value(self._non_existing_must_transitions)
+        replace_old_value(self._E_must)
+        replace_old_value(self._NE_must)
 
         return abs_pos, abs_neg
 
@@ -147,11 +154,8 @@ class AbstractStructure(object):
             ([a for a in abstract_sons if a != abstract_state_to_split] + [new_abs_has_sons,
                                                                            new_abs_no_sons])
 
-        self._existing_must_transitions = init_dict_by_key(self._existing_must_transitions, new_abs_has_sons,
-                                                           updated_abstract_sons)
-
-        self._non_existing_may_transitions = init_dict_by_key(self._non_existing_may_transitions, new_abs_no_sons,
-                                                              updated_abstract_sons)
+        self._E_must = init_dict_by_key(self._E_must, new_abs_has_sons, updated_abstract_sons)
+        self._NE_may = init_dict_by_key(self._NE_may, new_abs_no_sons, updated_abstract_sons)
 
         return new_abs_has_sons, new_abs_no_sons
 
@@ -162,11 +166,12 @@ class AbstractStructure(object):
         # split info
 
         updated_abstract_sons = abstract_sons if abstract_state_to_split not in abstract_sons else \
-            ([a for a in abstract_sons if a != abstract_state_to_split]+[new_abs_sons_closed, new_abs_sons_not_closed])
-        self._may_transitions_over_approximations = init_dict_by_key(
-            self._may_transitions_over_approximations, new_abs_sons_closed, updated_abstract_sons)
+            ([a for a in abstract_sons if a != abstract_state_to_split] + [new_abs_sons_closed,
+                                                                           new_abs_sons_not_closed])
+        self._E_may_over_approx = init_dict_by_key(
+            self._E_may_over_approx, new_abs_sons_closed, updated_abstract_sons)
 
-        self._non_existing_may_transitions_over_approximations = init_dict_by_key(
-            self._non_existing_may_transitions_over_approximations, new_abs_sons_not_closed, updated_abstract_sons)
+        self._NE_may_over_approx = init_dict_by_key(
+            self._NE_may_over_approx, new_abs_sons_not_closed, updated_abstract_sons)
 
         return new_abs_sons_closed, new_abs_sons_not_closed

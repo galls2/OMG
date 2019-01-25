@@ -23,23 +23,37 @@ def _map_upward_from_node(node, mapper):
         current = current.get_parent()
 
 
+def label_subtree(node, spec, positivity):
+    if positivity:
+        node.add_positive_label(spec)
+    else:
+        node.add_negative_label(spec)
+
+    successors = node.get_successors()
+    if successors is not None:
+        for successor in successors:
+            label_subtree(successor, spec)
+
+    return positivity
+
+
 class OmgModelChecker(object):
     """
     This is the main tool's class.
     Create a new one for each structure.
     """
 
-    def __init__(self, kripke_structure):
+    def __init__(self, kripke):
         super(OmgModelChecker, self).__init__()
-        self._kripke_structure = kripke_structure
+        self._kripke = kripke
         self._abstract_structure = None
         self._abstraction = None
         self._initialize_abstraction()
         self._unwinding_trees = []
 
     def _initialize_abstraction(self):
-        self._abstract_structure = AbstractStructure(self._kripke_structure)
-        self._abstraction = AbstractionClassifier(self._kripke_structure)
+        self._abstract_structure = AbstractStructure(self._kripke)
+        self._abstraction = AbstractionClassifier(self._kripke)
 
     def clean_intermediate_data(self):
         self._initialize_abstraction()
@@ -48,7 +62,7 @@ class OmgModelChecker(object):
     def check_all_initial_states(self, specification):
         positive_answer = []
         negative_answer = []
-        for initial_state in self._kripke_structure.get_initial_states():
+        for initial_state in self._kripke.get_initial_states():
             model_checking_result = self.handle_ctl(initial_state, specification)
             if model_checking_result:
                 positive_answer.append(initial_state)
@@ -58,7 +72,7 @@ class OmgModelChecker(object):
 
     def _handle_atomic_propositions(self, node, spec):
         concrete_state = node.concrete_label
-        res = self._kripke_structure.is_state_labeled_with(concrete_state, spec.get_ap_text())
+        res = self._kripke.is_state_labeled_with(concrete_state, spec.get_ap_text())
         return res
 
     def _handle_and(self, node, spec, left_operand, right_operand):
@@ -84,7 +98,7 @@ class OmgModelChecker(object):
             node.add_positive_label(spec)
         return not res
 
-    def _handle_av(self, node, spec, p, q):  ##goover
+    def _handle_av(self, node, spec, p, q):
         to_visit = heapify([node])
         while to_visit:
             node_to_explore = heappop(to_visit)
@@ -93,7 +107,7 @@ class OmgModelChecker(object):
             self._handle_ctl_and_recur(node_to_explore, q)
             if node_to_explore.is_labeled_negatively_with(q):
                 _map_upward_from_node(node_to_explore, lambda current_node: current_node.add_negative_label(spec))
-                self._strengthen_trace(node_to_explore)
+                self._strengthen_trace(node, node_to_explore)  ##TODO
                 return False
 
             self._handle_ctl_and_recur(node_to_explore, p)
@@ -110,14 +124,15 @@ class OmgModelChecker(object):
             abs_states_with_nodes = node.get_abstract_labels_in_tree()  # tuples of the form (abstract_label, node)
             abs_states_lead = filter(lambda abs_state: abs_state.is_negative_label(p), abs_states_with_nodes)
             while abs_states_lead:
-                to_close = abs_states_lead[0]
-                witness_state = self._abstract_structure.is_EE_closure(to_close, abs_states_with_nodes)
-                if witness_state is True:
+                to_close_abstract = abs_states_lead[0]
+                to_close_node = abs_states_lead[1]
+                res = self._abstract_structure.is_EE_closure(to_close_abstract, abs_states_with_nodes)
+                if res is True:
                     abs_states_lead = abs_states_lead[1:]
-                    self._abstract_structure.add_must_hyper_transition(to_close, abs_states_with_nodes)
+                    self._abstract_structure.add_must_hyper_transition(to_close_abstract, abs_states_with_nodes)
                 else:
-                    concretization_result = self._is_witness_concrete(to_close, witness_state)
-                    to_close_node = to_close[1]
+                    src_to_witness, witness_state = res
+                    concretization_result = self._is_witness_concrete(to_close_abstract, witness_state)
                     if concretization_result:
                         to_close_node.set_urgent()
                     else:
@@ -125,13 +140,9 @@ class OmgModelChecker(object):
                     break
 
             if not abs_states_lead:
-                node.add_positive_label(spec)
-                return True
+                return label_subtree(node, spec, True)
 
-        node.add_positive_label(spec)
-        return True
-
-        # update abstract data structures according to transitions
+        return label_subtree(node, spec, True)
 
     def _handle_ev(self, node, spec, p, q):
         raise NotImplementedError()
@@ -149,12 +160,12 @@ class OmgModelChecker(object):
         node.add_negative_label(spec)
         return False
 
-    def find_abstract_classification_for_state(self, concrete_state):  ##goover
-        kripke = self._kripke_structure
+    def find_abstract_classification_for_state(self, concrete_state):
+        kripke = self._kripke
         abstract_state = self._abstraction.classify(concrete_state)
         if abstract_state is None:
-            atomic_propositions = kripke.get_aps(concrete_state)
-            bis0_formula = kripke.get_formula_for_bis0(concrete_state)
+            atomic_propositions = kripke.get_aps_for_state(concrete_state)
+            bis0_formula = kripke.get_bis0_formula(concrete_state)
             abstract_state = AbstractState(atomic_propositions, kripke, bis0_formula)
 
             classification_leaf = self._abstraction.add_classification(atomic_propositions, abstract_state)
@@ -164,7 +175,7 @@ class OmgModelChecker(object):
 
         return abstract_state
 
-    def find_abstract_classification_for_node(self, node):  ##govoer
+    def find_abstract_classification_for_node(self, node):
 
         concrete_state = node.concrete_label
         abstract_classification = self.find_abstract_classification_for_state(concrete_state)
@@ -173,12 +184,12 @@ class OmgModelChecker(object):
         return abstract_classification
 
     def handle_ctl(self, state, specification):
-        unwinding_tree = UnwindingTree(self._kripke_structure, None, None, state)
+        unwinding_tree = UnwindingTree(self._kripke, None, None, state)
         # TODO check or add to the collection of unwinding trees that are saved in this omg_checker as a member.
         res = self._handle_ctl_and_recur(unwinding_tree, specification)
         if DEBUG:
             print str(unwinding_tree)
-      #      print str(self._abstraction)
+        #      print str(self._abstraction)
         return res
 
     def _handle_ctl_and_recur(self, node, specification):
@@ -210,19 +221,18 @@ class OmgModelChecker(object):
         final_res = method_mapping[main_connective](self, node, specification, *operands)
         return final_res
 
-    def _is_witness_concrete(self, to_close, witness_node):
-        pass
-
-    #  TODO fill holes
+    def _is_witness_concrete(self, to_close, concrete_witness):
+        abstract_witness = self.find_abstract_classification_for_state(concrete_witness)
+        return Z3Utils.has_successor_in_abstract(to_close.concrete_label, abstract_witness)
 
     def _refine_split_next(self, src_node, witness_abstract_states, split_state_function, query_getter):
 
         abs_pos, abs_neg = split_state_function(src_node, witness_abstract_states)
 
-        query_formula_wrapper = query_getter(witness_abstract_states, self._kripke_structure.get_tr_formula())
+        query_formula_wrapper = query_getter(witness_abstract_states, self._kripke.get_tr_formula())
 
         def query(concrete_state):
-            return query_formula_wrapper.substitute(Z3Utils.int_vec_to_z3_bool_vec(concrete_state)).is_sat()
+            return query_formula_wrapper.substitute(Z3Utils.int_vec_to_z3(concrete_state)).is_sat()
 
         query_labeling_mapper = {True: abs_pos, False: abs_neg}
 
@@ -248,5 +258,7 @@ class OmgModelChecker(object):
         self._refine_split_next(src_node, witness_abstract_states, self._abstract_structure.split_abstract_state_ax,
                                 Z3Utils.get_forall_successors_in_formula)
 
-    def _strengthen_trace(self, node_to_explore):  ##todo
+    def _strengthen_trace(self, src, dst):  ##todo
+        while dst is not src:
+            pass #ex dst->dst.pa
         raise NotImplementedError()
