@@ -107,7 +107,7 @@ class OmgModelChecker(object):
             self._handle_ctl_and_recur(node_to_explore, q)
             if node_to_explore.is_labeled_negatively_with(q):
                 _map_upward_from_node(node_to_explore, lambda current_node: current_node.add_negative_label(spec))
-                self._strengthen_trace(node, node_to_explore)  ##TODO
+                self._strengthen_trace(node, node_to_explore)
                 return False
 
             self._handle_ctl_and_recur(node_to_explore, p)
@@ -122,6 +122,7 @@ class OmgModelChecker(object):
             #  self._add_may_edge_to(node_to_explore)
 
             abs_states_with_nodes = node.get_abstract_labels_in_tree()  # tuples of the form (abstract_label, node)
+            #TODO unify brothers
             abs_states_lead = filter(lambda abs_state: abs_state.is_negative_label(p), abs_states_with_nodes)
             while abs_states_lead:
                 to_close_abstract = abs_states_lead[0]
@@ -260,5 +261,5 @@ class OmgModelChecker(object):
 
     def _strengthen_trace(self, src, dst):  ##todo
         while dst is not src:
-            pass #ex dst->dst.pa
-        raise NotImplementedError()
+            self._refine_split_ex(dst.get_parent(), [dst.concrete_label])
+            dst = dst.get_parent()
