@@ -7,12 +7,15 @@ class FormulaWrapper(object):
         self._z3_formula = z3_formula
         self._var_vectors = var_vectors
 
+
     def get_z3_formula(self):
         return self._z3_formula
 
     def get_var_vectors(self):
         return self._var_vectors
 
+
+    ## CHANGE THIS API. WHOLE SYSTEM SHOULD SUPPORT SUBSTITUION OF AUX VARS. ADD AUX VARS AS FIELD OF THIS CLASS
     def substitute(self, substitute_with, vec_num_to_substitute=0, new_vars=None):
         substitutions = zip(self._var_vectors[vec_num_to_substitute], substitute_with)
     #    print self._z3_formula

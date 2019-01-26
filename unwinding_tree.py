@@ -42,6 +42,9 @@ class UnwindingTree(object):
     def get_successors(self):
         return self._successors
 
+    def is_developed(self):
+        return self._abstract_label is not None
+
     def is_abstract_lasso(self):  ## FIXME
         current = self._parent
         abstract_label = self.get_abstract_label()
@@ -55,9 +58,11 @@ class UnwindingTree(object):
         return False
 
     def get_abstract_labels_in_tree(self):  ## FIXME
-
+        if not self.is_developed():
+            return set()
+        successors = [] if self._successors is None else self._successors
         partial_abstract_labels = [{(self.get_abstract_label(), self)}] + [successor.get_abstract_labels_in_tree()
-                                                                           for successor in self._successors]
+                                                                           for successor in successors]
         abs_labels = functools.reduce(lambda x, y: x | y, partial_abstract_labels)
         return abs_labels
 
@@ -67,10 +72,17 @@ class UnwindingTree(object):
     def set_urgent(self):
         self.URGENT = True
 
+    def reset_urgent(self):
+        self.URGENT = False
+
     def is_labeled_positively_with(self, label):
+        if label.is_boolean():
+            return label.get_bool_value()
         return self.get_abstract_label().is_positive_label(label)
 
     def is_labeled_negatively_with(self, label):
+        if label.is_boolean():
+            return not label.get_bool_value()
         return self.get_abstract_label().is_negative_label(label)
 
     def add_positive_label(self, label):
@@ -96,39 +108,18 @@ class UnwindingTree(object):
 
     def __lt__(self, other):
         if self.URGENT and not other.URGENT:
-            return False
-        if not self.URGENT and other.URGENT:
             return True
+        if not self.URGENT and other.URGENT:
+            return False
         return self.depth < other.depth
 
+    def __cmp__(self, other):
+        return self < other
+
     def __str__(self):
-        return print_tree(self, lambda node: node._successors, lambda node: str(node.concrete_label))
+        return print_tree(self, lambda node: [] if node.get_successors() is None else node.get_successors(),
+                          lambda node: str(node.concrete_label) if node.is_developed()
+                          else str(tuple(node.concrete_label)))
 
-
-def test_order():
-    a = UnwindingTree([], None, [], [], [])
-    b = UnwindingTree([], None, [], [], [])
-
-    a.URGENT = False
-    b.URGENT = True
-    assert (a < b)
-
-    a.URGENT = True
-    b.URGENT = False
-    assert (b < a)
-
-    a.URGENT = True
-    b.URGENT = True
-    a.depth = 3
-    b.depth = 4
-    assert (a < b)
-
-    a.URGENT = False
-    b.URGENT = False
-    a.depth = 4
-    b.depth = 3
-    assert (b < a)
-
-
-if __name__ == '__main__':
-    test_order()
+    def priority(self):
+        return 0 if self.URGENT else self.depth+1

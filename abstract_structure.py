@@ -1,12 +1,12 @@
-from abstraction_classifier import _collection_to_sorted_tuple
+from abstraction_classifier import collection_to_sorted_tuple
 from z3_utils import Z3Utils
 
 
 def init_dict_by_key(dict, key, default_val):
     if key not in dict.keys():
-        dict[key] = {_collection_to_sorted_tuple(default_val)}
+        dict[key] = {collection_to_sorted_tuple(default_val)}
     else:
-        dict[key].add(_collection_to_sorted_tuple(default_val))
+        dict[key].add(collection_to_sorted_tuple(default_val))
     return dict
 
 
@@ -71,7 +71,7 @@ class AbstractStructure(object):
         self._NE_may = {}
         self._E_may_over_approx = {}
         self._NE_may_over_approx = {}
-        self._E_must = {}
+        self._E_must = {}                         # if in may over approx than also in must !!!!!!!!!!
         self._NE_must = {}
 
     def add_abstract_state(self, abstract_state):
@@ -85,25 +85,32 @@ class AbstractStructure(object):
         self._existing_may_transitions[src].add(dst)
     '''
 
-    def add_must_hyper_transition(self, src, hyper_dst):
-        if src not in self._E_must.keys():
-            self._E_must[src] = set()
-        self._E_must[src].add(hyper_dst)
+    def add_must_hyper(self, src, hyper_dst):
+        init_dict_by_key(self._E_must, src, hyper_dst)
         return self
 
     def is_EE_closure(self, to_close, close_with):
 
+        def exists_superset(over_approxs, conclusion):
+            return conclusion if to_close in over_approxs.keys() and \
+                                 any([set(close_with).issuperset(set(op)) for op in over_approxs[to_close]]) else None
+
         def exists_subset(over_approxs, conclusion):
             return conclusion if to_close in over_approxs.keys() and \
-                    any([close_with.issubset(op) for op in over_approxs[to_close]]) else None
+                                 any([set(close_with).issubset(set(op)) for op in over_approxs[to_close]]) else None
 
-        if exists_subset(self._E_may_over_approx, True) is True:
+        if exists_superset(self._E_may_over_approx, True) is True:
             return True
+        '''
         if exists_subset(self._NE_may_over_approx, False) is False:
             return False
+        '''
+        closure_result = Z3Utils.is_EE_closed(to_close, close_with)
 
-        return Z3Utils.is_EE_closed(to_close, close_with)
+        conclusion_dict = self._E_may_over_approx if closure_result is True else self._NE_may_over_approx
+        init_dict_by_key(conclusion_dict, to_close, close_with)
 
+        return closure_result
 
     def split_abstract_state(self, node_to_close, abstract_sons, formula_getter):
         kripke = self.kripke

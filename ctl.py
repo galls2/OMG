@@ -109,6 +109,9 @@ class CtlFormula(object):
     def is_atomic_proposition(self):
         return self.is_leaf() and self._node_data not in [True, False]
 
+    def is_boolean(self):
+        return self._node_data in [True, False]
+
     def __eq__(self, o):
         if not isinstance(o, CtlFormula):
             return False
@@ -150,7 +153,11 @@ class CtlFormula(object):
         assert self.is_atomic_proposition()
         return self._node_data
 
-    def get_atomic_propositions(self):
+    def get_bool_value(self):
+        assert self.is_boolean()
+        return self._node_data
+
+    def get_aps(self):
         if self.is_atomic_proposition():
             return [self]
         return list(set([ap for operand in self._operands for ap in operand.get_aps()]))

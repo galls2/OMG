@@ -2,7 +2,7 @@ from unwinding_tree import print_tree
 import inspect
 
 
-def _collection_to_sorted_tuple(ap_collection):
+def collection_to_sorted_tuple(ap_collection):
     ap_list = list(ap_collection)
     ap_tuple = tuple(sorted(ap_list))
     return ap_tuple
@@ -31,7 +31,7 @@ class AbstractionClassifier(object):
         if tuple(concrete_state) in self._cache.keys():
             return self._cache[tuple(concrete_state)]
 
-        concrete_atomic_labels = _collection_to_sorted_tuple(self._kripke.get_aps_for_state(concrete_state))
+        concrete_atomic_labels = collection_to_sorted_tuple(self._kripke.get_aps_for_state(concrete_state))
         if concrete_atomic_labels not in self._classification_trees.keys():
             return None
         abstract_label = self._classification_trees[concrete_atomic_labels].classify(concrete_state)
@@ -40,13 +40,13 @@ class AbstractionClassifier(object):
 
     def add_classification(self, atomic_labels, abstract_state):
         assert atomic_labels not in self._classification_trees.keys()
-        ap_tuple = _collection_to_sorted_tuple(atomic_labels)
+        ap_tuple = collection_to_sorted_tuple(atomic_labels)
         classification_tree = AbstractionClassifierTree(self._kripke, None, dict(), None, self, abstract_state)
         self._classification_trees[ap_tuple] = classification_tree
         return classification_tree
 
     def is_exists_tree_for_atomic_labels(self, atomic_labels):
-        return _collection_to_sorted_tuple(atomic_labels) in self._classification_trees.keys()
+        return collection_to_sorted_tuple(atomic_labels) in self._classification_trees.keys()
 
     def _update_cache(self, abstract_state_to_remove):
         cache = self._cache

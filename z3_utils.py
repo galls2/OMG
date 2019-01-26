@@ -147,22 +147,21 @@ class Z3Utils(object):
         return next_states
 
     @classmethod
-    def parse_assignment(cls, assignment):
-        pass
-
-    @classmethod
     def has_successor_in_abstract(cls, concrete_state, abstract_witness):
         kripke = abstract_witness.get_kripke()
         transitions_from_concrete = kripke.get_tr_formula().substitute(Z3Utils.int_vec_to_z3(concrete_state)) \
-            .get_z3_formula()
+
 
         variables = transitions_from_concrete.get_var_vectors()[0]
         abs_formula = abstract_witness.get_descriptive_formula().substitute(variables, 0, variables) \
             .get_z3_formula()
-        f = And(transitions_from_concrete, abs_formula)
+        f = And(transitions_from_concrete.get_z3_formula(), abs_formula)
 
         s = Solver()
-        return s.check(f) == sat
+        if s.check(f) == unsat:
+            return False
+
+        return get_assignment(s.model(), variables)
 
     @classmethod
     def is_EE_closed(cls, to_close, close_with):
@@ -170,10 +169,12 @@ class Z3Utils(object):
         transitions = kripke.get_tr_formula()
         src_vars, dst_vars = transitions.get_var_vectors()
 
-        src = to_close.get_descriptive_formula().substitute(src_vars, 0, src_vars)
-        dst = Not(Or(*[closer.get_descriptive_formula().substitute(dst_vars, 0, dst_vars) for closer in close_with]))
+        src = to_close.get_descriptive_formula().substitute(src_vars, 0, src_vars).get_z3_formula()
+        dst_formulas = [closer.get_descriptive_formula().substitute(dst_vars, 0, dst_vars).get_z3_formula()
+                        for closer in close_with]
+        dst = Not(Or(*dst_formulas))
 
-        closure_formula = And(src, transitions, dst)
+        closure_formula = And(src, transitions.get_z3_formula(), dst)
         s = Solver()
         res = s.check(closure_formula)
 

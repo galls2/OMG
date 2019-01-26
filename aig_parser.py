@@ -1,4 +1,5 @@
 import re
+import os
 
 OMG_EXE_PATH = '~/Desktop/extavy/cmake-build-debug/avy/src/omg'
 AIG_EXAMPLE_PATH = 'AigFiles/'
@@ -6,7 +7,8 @@ IIMC_EXAMPLE_PATH = 'iimc_aigs/'
 AIG_EXAMPLE_NAME = 'yakir4n.aig'
 OUTPUT_PATH = 'iimc_dimacs/'
 
-
+DIMACS_PREFIX = 'p'
+HEADER_PREFIX = 'MAXVAR'
 class AigParser(object):
     def parse(self):
         raise NotImplementedError()
@@ -26,13 +28,13 @@ class AvyAigParser(AigParser):
         output_file_name = self._aig_path.split('/')[-1][:-4]
         out_path = "{}{}_{}.dimacs".format(OUTPUT_PATH, output_file_name, cmd_arg)
         cmd = "{} {} {} > {}".format(OMG_EXE_PATH, self._aig_path, cmd_arg, out_path)
-     #   os.system(cmd)
+        os.system(cmd)
         with open(out_path, 'r') as input_dimacs:
-            txt = [line.replace('\n','') for line in input_dimacs.readlines()]
-        first_dimacs_line = next(line for line in txt if line.startswith('p'))
-        
+            txt = [line.replace('\n', '') for line in input_dimacs.readlines()]
+        first_dimacs_line = next(line for line in txt if line.startswith(DIMACS_PREFIX))
+        first_header_line = next(line for line in txt if line.startswith(HEADER_PREFIX))
         dimacs_content = txt[txt.index(first_dimacs_line):]
-        metadata = txt[:txt.index(first_dimacs_line)]
+        metadata = txt[txt.index(first_header_line):txt.index(first_dimacs_line)]
         return metadata, dimacs_content
 
     def get_number_of_variables(self):

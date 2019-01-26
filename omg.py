@@ -1,11 +1,15 @@
 from heapq import *
-
+from heapdict import *
 from abstract_structure import AbstractStructure, AbstractState
 from abstraction_classifier import AbstractionClassifier
 from unwinding_tree import UnwindingTree
 from z3_utils import Z3Utils
 
 DEBUG = True
+
+
+def node_to_heapq(node):
+    return (0, node) if node.URGENT else (node.depth + 1, node)
 
 
 def _label_state(check_result, node_to_label, spec):
@@ -24,6 +28,9 @@ def _map_upward_from_node(node, mapper):
 
 
 def label_subtree(node, spec, positivity):
+    if not node.is_developed():
+        return positivity
+
     if positivity:
         node.add_positive_label(spec)
     else:
@@ -32,7 +39,7 @@ def label_subtree(node, spec, positivity):
     successors = node.get_successors()
     if successors is not None:
         for successor in successors:
-            label_subtree(successor, spec)
+            label_subtree(successor, spec, positivity)
 
     return positivity
 
@@ -99,9 +106,18 @@ class OmgModelChecker(object):
         return not res
 
     def _handle_av(self, node, spec, p, q):
-        to_visit = heapify([node])
+
+        if q.is_boolean():
+            print 'upu'
+        to_visit = heapdict()
+        to_visit[node] = node.priority()
         while to_visit:
-            node_to_explore = heappop(to_visit)
+
+            node_to_explore = to_visit.popitem()[0]
+            node_to_explore.reset_urgent()
+            if DEBUG:
+                print 'NOW EXPLORING '+str(node_to_explore)
+
             abstract_state = self.find_abstract_classification_for_node(node_to_explore)
 
             self._handle_ctl_and_recur(node_to_explore, q)
@@ -114,28 +130,36 @@ class OmgModelChecker(object):
             if node_to_explore.is_labeled_negatively_with(p):
                 children_nodes = node_to_explore.unwind_further()
                 for child_node in children_nodes:
-                    heappush(to_visit, child_node)
+                    to_visit[child_node] = child_node.priority()
             else:
-                _map_upward_from_node(node_to_explore, lambda current_node: current_node.add_positive_label(spec))
-                continue
+                node_to_explore.add_positive_label(spec)
+#                continue
 
             #  self._add_may_edge_to(node_to_explore)
 
             abs_states_with_nodes = node.get_abstract_labels_in_tree()  # tuples of the form (abstract_label, node)
-            #TODO unify brothers
-            abs_states_lead = filter(lambda abs_state: abs_state.is_negative_label(p), abs_states_with_nodes)
+            abs_states = list(set([tup[0] for tup in abs_states_with_nodes]))
+            # TODO unify brothers
+            abs_states_lead = [abs_tuple for abs_tuple in abs_states_with_nodes
+                               if abs_tuple[1].is_labeled_negatively_with(p)]
             while abs_states_lead:
-                to_close_abstract = abs_states_lead[0]
-                to_close_node = abs_states_lead[1]
-                res = self._abstract_structure.is_EE_closure(to_close_abstract, abs_states_with_nodes)
+                abs_state_lead = abs_states_lead[0]
+                to_close_abstract = abs_state_lead[0]
+                to_close_node = abs_state_lead[1]
+                res = self._abstract_structure.is_EE_closure(to_close_abstract, abs_states)
                 if res is True:
                     abs_states_lead = abs_states_lead[1:]
-                    self._abstract_structure.add_must_hyper_transition(to_close_abstract, abs_states_with_nodes)
+                    self._abstract_structure.add_must_hyper(to_close_abstract, abs_states)  # GOOD?
                 else:
                     src_to_witness, witness_state = res
-                    concretization_result = self._is_witness_concrete(to_close_abstract, witness_state)
+                    concretization_result = self._is_witness_concrete(to_close_node, witness_state)
                     if concretization_result:
-                        to_close_node.set_urgent()
+                        node_to_set = [successor for successor in to_close_node.get_successors()
+                                       if successor.concrete_label == concretization_result][0]
+                        # print str(node_to_set)
+                        node_to_set.set_urgent()
+                        to_visit[node_to_set] = node_to_set.priority()
+
                     else:
                         self._refine_split_ex(to_close_node, witness_state)
                     break
@@ -177,7 +201,6 @@ class OmgModelChecker(object):
         return abstract_state
 
     def find_abstract_classification_for_node(self, node):
-
         concrete_state = node.concrete_label
         abstract_classification = self.find_abstract_classification_for_state(concrete_state)
         node.set_abstract_label(abstract_classification)
@@ -210,8 +233,8 @@ class OmgModelChecker(object):
         if node.get_abstract_label().is_negative_label(specification):
             return False
 
-        if specification in [True, False]:
-            return specification
+        if specification.is_boolean():
+            return specification.get_bool_value()
 
         if specification.is_atomic_proposition():
             return self._handle_atomic_propositions(node, specification)
@@ -261,5 +284,5 @@ class OmgModelChecker(object):
 
     def _strengthen_trace(self, src, dst):  ##todo
         while dst is not src:
-            self._refine_split_ex(dst.get_parent(), [dst.concrete_label])
+            self._refine_split_ex(dst.get_parent(), dst.concrete_label)
             dst = dst.get_parent()
