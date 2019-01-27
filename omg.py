@@ -1,11 +1,11 @@
-from heapq import *
 from heapdict import *
+
 from abstract_structure import AbstractStructure, AbstractState
 from abstraction_classifier import AbstractionClassifier
 from unwinding_tree import UnwindingTree
 from z3_utils import Z3Utils
 
-DEBUG = True
+DEBUG = False
 
 
 def node_to_heapq(node):
@@ -107,8 +107,6 @@ class OmgModelChecker(object):
 
     def _handle_av(self, node, spec, p, q):
 
-        if q.is_boolean():
-            print 'upu'
         to_visit = heapdict()
         to_visit[node] = node.priority()
         while to_visit:
@@ -146,16 +144,26 @@ class OmgModelChecker(object):
                 abs_state_lead = abs_states_lead[0]
                 to_close_abstract = abs_state_lead[0]
                 to_close_node = abs_state_lead[1]
+
+                if DEBUG:
+                    print 'Trying to close '+to_close_node.description()+' :',
                 res = self._abstract_structure.is_EE_closure(to_close_abstract, abs_states)
                 if res is True:
+                    if DEBUG:
+                        print ' Success!'
                     abs_states_lead = abs_states_lead[1:]
                     self._abstract_structure.add_must_hyper(to_close_abstract, abs_states)  # GOOD?
                 else:
                     src_to_witness, witness_state = res
+                    if DEBUG:
+                        print ' Failed! Due to '+str((src_to_witness, witness_state))
                     concretization_result = self._is_witness_concrete(to_close_node, witness_state)
                     if concretization_result:
-                        node_to_set = [successor for successor in to_close_node.get_successors()
-                                       if successor.concrete_label == concretization_result][0]
+                        if to_close_node.get_successors() is None:
+                            node_to_set = to_close_node
+                        else:
+                            node_to_set = [successor for successor in to_close_node.get_successors()
+                                           if successor.concrete_label == concretization_result][0]
                         # print str(node_to_set)
                         node_to_set.set_urgent()
                         to_visit[node_to_set] = node_to_set.priority()
@@ -225,6 +233,11 @@ class OmgModelChecker(object):
                           'EV': OmgModelChecker._handle_ev,
                           'EX': OmgModelChecker._handle_ex,
                           }
+
+        if DEBUG:
+            print 'handle_ctl_and_recur: node=('+str(node.concrete_label)+','+str(node.get_depth())+'), spec='+\
+                  specification.str_math()
+
         self.find_abstract_classification_for_node(node)
 
         if node.get_abstract_label().is_positive_label(specification):

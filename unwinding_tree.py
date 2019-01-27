@@ -116,6 +116,9 @@ class UnwindingTree(object):
     def __cmp__(self, other):
         return self < other
 
+    def description(self):
+        return str(tuple(self.concrete_label))+','+str(self.depth)
+
     def __str__(self):
         return print_tree(self, lambda node: [] if node.get_successors() is None else node.get_successors(),
                           lambda node: str(node.concrete_label) if node.is_developed()

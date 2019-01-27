@@ -1,6 +1,7 @@
 from z3 import *
 
 from formula_wrapper import FormulaWrapper
+from z3_utils import get_vars, Z3Utils
 
 
 class CnfParser(object):
@@ -41,7 +42,11 @@ class CnfParser(object):
         clauses = [CnfParser.line_to_clause(line) for line in dimacs_lines]
         final_z3_formula = And(*clauses)
         var_vectors = CnfParser.parse_metadata(metadata)
-        return FormulaWrapper(final_z3_formula, var_vectors)
+        aux = set(get_vars(final_z3_formula)).difference(set([var for vec in var_vectors for var in vec]))
+
+        quantifier_over_aux = Exists(list(aux), final_z3_formula)
+        after_qe = Z3Utils.apply_qe(quantifier_over_aux)
+        return FormulaWrapper(after_qe, var_vectors)
 
 
 def get_cnfs():

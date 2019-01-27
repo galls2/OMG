@@ -2,6 +2,8 @@ import functools
 import sys
 import os
 
+from z3 import Exists, Tactic, Solver, Not
+
 from aig_parser import AvyAigParser
 from ctl import CtlParser, is_balanced_brackets, CtlFormula
 from kripke_structure import AigKripkeStructure
@@ -46,10 +48,12 @@ def parse_ctl_chunk(chunk):
 
         ctl_parser = CtlParser()
         raw_formulas = formula_part
-        raw_formulas = filter(lambda raw_formula: raw_formula.replace('\n', '').replace(' ', '').replace('\t', '') != '',
-                              raw_formulas)
+        raw_formulas = filter(
+            lambda raw_formula: raw_formula.replace('\n', '').replace(' ', '').replace('\t', '') != '',
+            raw_formulas)
         f_indexes = [0] + [i + 1 for i in range(len(raw_formulas)) if
-                           is_balanced_brackets(' '.join(raw_formulas[:(i + 1)])) and legal_line_ending(raw_formulas[i])]
+                           is_balanced_brackets(' '.join(raw_formulas[:(i + 1)])) and legal_line_ending(
+                               raw_formulas[i])]
 
         ctl_formulas_borders = [(f_indexes[i], f_indexes[i + 1] if i != len(f_indexes) - 1 else len(raw_formulas))
                                 for i in range(len(f_indexes))]
@@ -99,6 +103,7 @@ def model_checking(aig_path, ctl_path):
                             chunk[1:]])
     kripke_structure = AigKripkeStructure(aig_path, aps)
     omg = OmgModelChecker(kripke_structure)
+
     for chunk in ctl_chunks:
 
         expected_res = chunk[0]
@@ -171,7 +176,7 @@ def check_files(aig_paths, ctl_paths):
         ctl_formula_path = ctl_paths[i]
 
         file_name = ''.join(aig_file_path.split('/')[-1].split('.')[:-1])
-        print 'Checking '+file_name
+        print 'Checking ' + file_name
         model_checking(aig_file_path, ctl_formula_path)
         print '------------------'
 
@@ -204,7 +209,7 @@ def regression_tests():
 
 
 if __name__ == '__main__':
-#    check_properties()
+    #    check_properties()
 
-#  regression_tests()
-  model_checking(*parse_input())
+#    regression_tests()
+    model_checking(*parse_input())

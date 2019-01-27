@@ -1,6 +1,7 @@
 from z3 import *
 
 from formula_wrapper import FormulaWrapper
+from var_manager import VarManager
 
 
 class AstRefKey:
@@ -38,13 +39,15 @@ def get_vars(f):
 
 
 def z3_val_to_int(z3_val):
+    if z3_val is None:
+        return 1
     if z3_val.sexpr() == 'true':
         return 1
     return 0
 
 
-def get_assignment(model, vars):
-    return [z3_val_to_int(model[var]) for var in vars]
+def get_assignment(model, variables):
+    return [z3_val_to_int(model[var]) for var in variables]
 
 
 class Z3Utils(object):
@@ -53,11 +56,6 @@ class Z3Utils(object):
     def __init__(self):
         super(Z3Utils, self).__init__()
 
-    @classmethod
-    def duplicate_vars(cls, var_vector):
-        new_var_vector = [Bool(var.decl().name() + '_' + str(cls.copies_counter)) for var in var_vector]
-        cls.copies_counter += 1
-        return new_var_vector
 
     '''
     Given [B1,...,Bn], R
@@ -66,12 +64,10 @@ class Z3Utils(object):
 
     @classmethod
     def _get_components_in_quantified(cls, abstract_targets, transitions):
-        abstract_targets_formula = simplify(
-            Or(*[target.get_descriptive_formula().get_z3_formula() for target in abstract_targets]))
-        prev_vars = transitions.get_var_vectors()[0]
-        new_vars = cls.duplicate_vars(prev_vars)
-        split_by_formula_tag = substitute(abstract_targets_formula, zip(prev_vars, new_vars))  # B(v) [v<-v']
-        transitions_has_sons = transitions.substitute(new_vars, 1, new_vars)
+        abstract_targets_formula = FormulaWrapper.Or([target.get_descriptive_formula() for target in abstract_targets])
+        new_vars = VarManager.duplicate_vars(transitions.get_var_vectors()[0])
+        split_by_formula_tag = abstract_targets_formula.substitute(new_vars, 0, new_vars)  # B(v) [v<-v']
+        transitions_has_sons = transitions.substitute(new_vars, 1, new_vars)  # R(u,v) [v<-v']
         return split_by_formula_tag, transitions_has_sons
 
     '''
@@ -83,8 +79,9 @@ class Z3Utils(object):
         split_by_formula_tag, transitions_has_sons = cls._get_components_in_quantified(abstract_targets, transitions)
         prev_vars, new_vars = transitions_has_sons.get_var_vectors()
 
-        inner = And(transitions_has_sons.get_z3_formula(), split_by_formula_tag)
+        inner = And(transitions_has_sons.get_z3_formula(), split_by_formula_tag.get_z3_formula())
         exists_formula = simplify(Exists(new_vars, inner))
+
         return FormulaWrapper(exists_formula, [prev_vars])
 
     '''
@@ -96,21 +93,26 @@ class Z3Utils(object):
         split_by_formula_tag, transitions_has_sons = cls._get_components_in_quantified(abstract_targets, transitions)
         prev_vars, new_vars = transitions_has_sons.get_var_vectors()
 
-        inner = Implies(transitions_has_sons.get_z3_formula(), split_by_formula_tag)
+        inner = Implies(transitions_has_sons.get_z3_formula(), split_by_formula_tag.get_z3_formula())
         forall_formula = simplify(ForAll(new_vars, inner))
+
         return FormulaWrapper(forall_formula, [prev_vars])
 
     @classmethod
     def get_split_formula(cls, to_split, split_by, transitions, quantified_part_getter):
-        formula_to_split = to_split.get_descriptive_formula().get_z3_formula()
+        formula_to_split_pos = to_split.get_descriptive_formula()
+        quantifier_wrapper_pos = quantified_part_getter(split_by, transitions)
+        quantified_formula = quantifier_wrapper_pos.get_z3_formula()
+        pos_quantifier = simplify(
+            And(formula_to_split_pos.get_z3_formula(), quantified_formula))  # A(v) & Qv'[phi(v,v')]
+
+        formula_to_split_neg = to_split.get_descriptive_formula()
+        quantifier_wrapper_neg = quantified_part_getter(split_by, transitions)
+        negated_quantified_formula = Not(quantifier_wrapper_neg.get_z3_formula())
+        neg_quantifier = simplify(
+            And(formula_to_split_neg.get_z3_formula(), negated_quantified_formula))  # A(v) & ~Qv'[phi(v,v')]
 
         v_vars = to_split.get_descriptive_formula().get_var_vectors()[0]
-        quantified_formula = quantified_part_getter(split_by, transitions).get_z3_formula()
-        pos_quantifier = simplify(And(formula_to_split, quantified_formula))  # A(v) & Qv'[phi(v,v')]
-
-        negated_quantified_formula = Not(quantified_part_getter(split_by, transitions).get_z3_formula())
-        neg_quantifier = simplify(And(formula_to_split, negated_quantified_formula))  # A(v) & ~Qv'[phi(v,v')]
-
         return FormulaWrapper(pos_quantifier, [v_vars]), FormulaWrapper(neg_quantifier, [v_vars])
 
     @classmethod
@@ -118,12 +120,12 @@ class Z3Utils(object):
         return cls.get_split_formula(to_split, split_by, transitions, cls.get_exists_successors_in_formula)
 
     @classmethod
-    def get_ax_split_formulas(cls, to_split, split_by, transitions):
-        return cls.get_split_formula(to_split, split_by, transitions, cls.get_forall_successors_in_formula)
-
-    @classmethod
     def int_vec_to_z3(cls, int_vec):
         return [BoolVal(True) if val == 1 else BoolVal(False) for val in int_vec]
+
+    @classmethod
+    def get_ax_split_formulas(cls, to_split, split_by, transitions):
+        return cls.get_split_formula(to_split, split_by, transitions, cls.get_forall_successors_in_formula)
 
     @classmethod
     def get_all_successors(cls, tr, src):
@@ -140,7 +142,7 @@ class Z3Utils(object):
             next_states.append(cube)
             # Not(l1 & ... &ln) = Not(l1) | ... | Not(ln)
 
-            blocking_cube = Or(*[Not(var) if model[var] == BoolVal('True') else var for var in next_vector])
+            blocking_cube = Or(*[Not(next_vector[i]) if cube[i] == 1 else next_vector[i] for i in range(len(next_vector))])
             curr_z3 = simplify(And(curr_z3, blocking_cube))
         #    print curr_z3
 
@@ -149,9 +151,7 @@ class Z3Utils(object):
     @classmethod
     def has_successor_in_abstract(cls, concrete_state, abstract_witness):
         kripke = abstract_witness.get_kripke()
-        transitions_from_concrete = kripke.get_tr_formula().substitute(Z3Utils.int_vec_to_z3(concrete_state)) \
-
-
+        transitions_from_concrete = kripke.get_tr_formula().substitute(Z3Utils.int_vec_to_z3(concrete_state))
         variables = transitions_from_concrete.get_var_vectors()[0]
         abs_formula = abstract_witness.get_descriptive_formula().substitute(variables, 0, variables) \
             .get_z3_formula()
@@ -184,27 +184,6 @@ class Z3Utils(object):
         model = s.model()
         return get_assignment(model, src_vars), get_assignment(model, dst_vars)
 
-
-def test():
-    vec = [Bool('x' + str(i)) for i in range(5)]
-    new_vec = Z3Utils.duplicate_vars(vec)
-    print vec
-    print new_vec
-    new_vec = Z3Utils.duplicate_vars(vec)
-    print vec
-    print new_vec
-    vv = get_vars(And(*vec))
-    for v in vv:
-        print v
-        print type(v)
-        print v in vec
-
-
-if __name__ == '__main__':
-    #    test()
-    x = [Bool('x' + str(i)) for i in range(5)]
-
-    f = Exists([x[0]], And(x[0], x[1]))
-    f2 = And(x[0], x[2], x[3], x[4], Or(x[0], x[2]))
-    print get_vars(f)
-    print get_vars(f2)
+    @classmethod
+    def apply_qe(cls, formula):
+        return Tactic('qe')(formula).as_expr()
