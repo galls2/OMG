@@ -2,6 +2,7 @@ import re
 import os
 
 OMG_EXE_PATH = '~/Desktop/extavy/cmake-build-debug/avy/src/omg'
+AIG_SPLIT_EXE_PATH = '/home/galls2/Downloads/aiger-1.9.9/aigsplit'
 AIG_EXAMPLE_PATH = 'AigFiles/'
 IIMC_EXAMPLE_PATH = 'iimc_aigs/'
 AIG_EXAMPLE_NAME = 'yakir4n.aig'
@@ -9,6 +10,8 @@ OUTPUT_PATH = 'iimc_dimacs/'
 
 DIMACS_PREFIX = 'p'
 HEADER_PREFIX = 'MAXVAR'
+
+
 class AigParser(object):
     def parse(self):
         raise NotImplementedError()
@@ -23,11 +26,10 @@ class AvyAigParser(AigParser):
             self._aig_lines = aig_file.readlines()
             self._M, self._I, self._L, self._O, self._A = [int(val) for val in self._aig_lines[0].split(' ')[1:6]]
 
-    def parse(self):
-        cmd_arg = 'Tr'
-        output_file_name = self._aig_path.split('/')[-1][:-4]
+    def get_cnf(self, aig_path, cmd_arg):
+        output_file_name = aig_path.split('/')[-1][:-4]
         out_path = "{}{}_{}.dimacs".format(OUTPUT_PATH, output_file_name, cmd_arg)
-        cmd = "{} {} {} > {}".format(OMG_EXE_PATH, self._aig_path, cmd_arg, out_path)
+        cmd = "{} {} {} > {}".format(OMG_EXE_PATH, aig_path, cmd_arg, out_path)
         os.system(cmd)
         with open(out_path, 'r') as input_dimacs:
             txt = [line.replace('\n', '') for line in input_dimacs.readlines()]
@@ -37,7 +39,29 @@ class AvyAigParser(AigParser):
         metadata = txt[txt.index(first_header_line):txt.index(first_dimacs_line)]
         return metadata, dimacs_content
 
-    def get_number_of_variables(self):
+    def split_aig(self):
+        if not os.path.isfile(AIG_SPLIT_EXE_PATH):
+            raise IOError('No aigsplit file where you promised! Do you try to UPUPU??')
+
+        cmd = AIG_SPLIT_EXE_PATH + ' ' + self._aig_path
+        print cmd
+        os.system(cmd)
+
+    def delete_aux_files(self):
+        pattern_to_remove = '.'.join(self._aig_path.split('.')[:-1]) + 'o*'
+        print pattern_to_remove
+        os.system('rm ' + pattern_to_remove)
+
+    def parse(self):
+        self.split_aig()
+        bad_file_names = ['.'.join(self._aig_path.split('.')[:-1]) + 'o' + str(i) + '.aig' for i in range(self._O)]
+        ltr_aig_path = bad_file_names[0]
+        ltr_metadata, ltr_dimacs = self.get_cnf(ltr_aig_path, 'Tr')
+        bads = [self.get_cnf(aig, 'Bad') for aig in bad_file_names]
+        self.delete_aux_files()
+        return [(ltr_metadata, ltr_dimacs)] + bads
+
+    def get_num_latches(self):
         return self._L
 
     def get_ap_mapping(self):
@@ -48,10 +72,15 @@ class AvyAigParser(AigParser):
         aps = map(lambda ap_line: re.findall(ap_part_regex, ap_line)[0], aps_lines)
         return {' '.join(line.split(' ')[1:]): line.split(' ')[0] for line in aps}
 
+    def get_num_outputs(self):
+        return self._O
+
+    def get_num_vars(self):
+        return self._O +self._L
+
 
 if __name__ == '__main__':
-    fname = raw_input()
+    fname = 'af_ag.aig'
     print '%' + fname
     aig_parser = AvyAigParser(IIMC_EXAMPLE_PATH + fname)
     print aig_parser.parse()
-    print aig_parser.get_ap_mapping()

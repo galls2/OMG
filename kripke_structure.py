@@ -1,3 +1,5 @@
+import itertools
+
 from aig_parser import AvyAigParser
 from cnf_parser import CnfParser
 from formula_wrapper import FormulaWrapper
@@ -42,22 +44,27 @@ class AigKripkeStructure(KripkeStructure):
     def __init__(self, aig_path, aps):
         super(AigKripkeStructure, self).__init__(aps)
         self._aig_parser = AvyAigParser(aig_path)
-        metadata, tr_dimcas = self._aig_parser.parse()
-        self._tr = CnfParser.z3_formula_from_dimacs(metadata, tr_dimcas)
+        parse_results = self._aig_parser.parse()
+
+        self._tr = self._connect_aigs(parse_results)
         self._ap_conversion = self._aig_parser.get_ap_mapping()
 
     def get_successors(self, state):
         return Z3Utils.get_all_successors(self._tr, state)
 
     def get_initial_states(self):
-        initial_states_singleton_vector = [[0] * self._aig_parser.get_number_of_variables()]
-        return initial_states_singleton_vector
+        init_latches = [0] * self._aig_parser.get_num_latches()
+        init_outputs = [map(lambda state_list: state_list[0],
+                            Z3Utils.get_all_successors(out_formula, init_latches)) \
+                        for out_formula in self._output_formulas]
+
+        init_out_values = itertools.product(*init_outputs)
+        res =  [init_latches + list(init_out_value) for init_out_value in init_out_values]
+        return res
 
     def _get_var_num_for_ap(self, ap):
         ap_symb = self._ap_conversion[ap.get_ap_text()]
-        if ap_symb[0] != 'l':
-            raise Exception('Not state AP :( Talk to yakir dude...')
-        var_num = int(ap_symb[1:])
+        var_num = int(ap_symb[1:]) + (self._aig_parser.get_num_latches() if ap_symb[0] == 'o' else 0)
         return var_num
 
     def is_state_labeled_with(self, state, ap):
@@ -87,3 +94,17 @@ class AigKripkeStructure(KripkeStructure):
 
     def get_var_vector(self):
         return self._tr.get_var_vectors()[0]
+
+    def _connect_aigs(self, parse_results):
+        ltr_metadata, ltr_dimacs = parse_results[0]
+
+        num_latches = self._aig_parser.get_num_latches()
+        self._ltr_formula = CnfParser.z3_formula_from_dimacs(ltr_metadata, ltr_dimacs, CnfParser.parse_metadata_tr,
+                                                             num_latches)
+        self._output_formulas = \
+            [CnfParser.z3_formula_from_dimacs(output_metadata, output_dimacs,
+                                              CnfParser.parse_metadata_bad, num_latches)
+             for (output_metadata, output_dimacs) in parse_results[1:]]
+
+        max_var_ltr = int(ltr_dimacs[0].split(' ')[-1])
+        return Z3Utils.combine_ltr_with_bad_formulas(self._ltr_formula, self._output_formulas, max_var_ltr + 1)

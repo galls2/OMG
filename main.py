@@ -1,13 +1,13 @@
 import functools
-import sys
 import os
-
-from z3 import Exists, Tactic, Solver, Not
+import sys
 
 from aig_parser import AvyAigParser
 from ctl import CtlParser, is_balanced_brackets, CtlFormula
 from kripke_structure import AigKripkeStructure
 from omg import OmgModelChecker
+
+BUG_LINE = '<------------------------------------------------------ BUG -------------------------------------'
 
 
 def parse_input():
@@ -114,7 +114,6 @@ def model_checking(aig_path, ctl_path):
 
 
 def print_results_for_spec(omg, expected_res, spec):
-    BUG_LINE = '<------------------------------------------------------ BUG -------------------------------------'
     pos, neg = omg.check_all_initial_states(spec)
     spec_str = spec.str_math()
     for pos_s in pos:

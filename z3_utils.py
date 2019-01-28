@@ -56,7 +56,6 @@ class Z3Utils(object):
     def __init__(self):
         super(Z3Utils, self).__init__()
 
-
     '''
     Given [B1,...,Bn], R
     Returns (B1(v')|....Bn(v'), R(v,v'))
@@ -142,7 +141,8 @@ class Z3Utils(object):
             next_states.append(cube)
             # Not(l1 & ... &ln) = Not(l1) | ... | Not(ln)
 
-            blocking_cube = Or(*[Not(next_vector[i]) if cube[i] == 1 else next_vector[i] for i in range(len(next_vector))])
+            blocking_cube = Or(
+                *[Not(next_vector[i]) if cube[i] == 1 else next_vector[i] for i in range(len(next_vector))])
             curr_z3 = simplify(And(curr_z3, blocking_cube))
         #    print curr_z3
 
@@ -187,3 +187,27 @@ class Z3Utils(object):
     @classmethod
     def apply_qe(cls, formula):
         return Tactic('qe')(formula).as_expr()
+
+    @classmethod
+    def combine_ltr_with_bad_formulas(cls, ltr_formula, output_formulas, max_var_ltr):
+        prev_output_vars = [Bool(str(max_var_ltr + i)) for i in range(len(output_formulas))]
+        next_output_vars = [Bool(str(max_var_ltr + len(output_formulas) + i)) for i in range(len(output_formulas))]
+
+        prev_latch_vars, next_latch_vars = ltr_formula.get_var_vectors()
+
+        # ltr is over(l,l'). We want our final formula over (v,v') where v=l,o and v'=l',o'
+
+        prev_var_vector = prev_latch_vars + prev_output_vars
+        next_var_vector = next_latch_vars + next_output_vars
+
+        var_vectors = [prev_var_vector, next_var_vector]
+
+        substituted_output_z3_formulas = [output_formulas[i]
+                                              .substitute(prev_latch_vars, 0, prev_latch_vars)
+                                              .substitute([next_output_vars[i]], 1, [next_output_vars[i]])
+                                              .get_z3_formula()
+                                          for i in range(len(output_formulas))]
+
+        tr_formula = And(ltr_formula.get_z3_formula(), *substituted_output_z3_formulas)
+
+        return FormulaWrapper(tr_formula, var_vectors)

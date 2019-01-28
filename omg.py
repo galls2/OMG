@@ -5,7 +5,7 @@ from abstraction_classifier import AbstractionClassifier
 from unwinding_tree import UnwindingTree
 from z3_utils import Z3Utils
 
-DEBUG = False
+DEBUG = True
 
 
 def node_to_heapq(node):
@@ -57,6 +57,14 @@ class OmgModelChecker(object):
         self._abstraction = None
         self._initialize_abstraction()
         self._unwinding_trees = []
+        self._method_mapping = {'&': OmgModelChecker._handle_and,
+                                '|': OmgModelChecker._handle_or,
+                                '->': OmgModelChecker._handle_arrow,
+                                '~': OmgModelChecker._handle_not,
+                                'AV': OmgModelChecker._handle_av,
+                                'EV': OmgModelChecker._handle_ev,
+                                'EX': OmgModelChecker._handle_ex,
+                                }
 
     def _initialize_abstraction(self):
         self._abstract_structure = AbstractStructure(self._kripke)
@@ -114,7 +122,7 @@ class OmgModelChecker(object):
             node_to_explore = to_visit.popitem()[0]
             node_to_explore.reset_urgent()
             if DEBUG:
-                print 'NOW EXPLORING '+str(node_to_explore)
+                print 'NOW EXPLORING ' + str(node_to_explore)
 
             abstract_state = self.find_abstract_classification_for_node(node_to_explore)
 
@@ -131,7 +139,7 @@ class OmgModelChecker(object):
                     to_visit[child_node] = child_node.priority()
             else:
                 node_to_explore.add_positive_label(spec)
-#                continue
+            #                continue
 
             #  self._add_may_edge_to(node_to_explore)
 
@@ -146,7 +154,7 @@ class OmgModelChecker(object):
                 to_close_node = abs_state_lead[1]
 
                 if DEBUG:
-                    print 'Trying to close '+to_close_node.description()+' :',
+                    print 'Trying to close ' + to_close_node.description() + ' :',
                 res = self._abstract_structure.is_EE_closure(to_close_abstract, abs_states)
                 if res is True:
                     if DEBUG:
@@ -156,7 +164,7 @@ class OmgModelChecker(object):
                 else:
                     src_to_witness, witness_state = res
                     if DEBUG:
-                        print ' Failed! Due to '+str((src_to_witness, witness_state))
+                        print ' Failed! Due to ' + str((src_to_witness, witness_state))
                     concretization_result = self._is_witness_concrete(to_close_node, witness_state)
                     if concretization_result:
                         if to_close_node.get_successors() is None:
@@ -225,17 +233,9 @@ class OmgModelChecker(object):
         return res
 
     def _handle_ctl_and_recur(self, node, specification):
-        method_mapping = {'&': OmgModelChecker._handle_and,
-                          '|': OmgModelChecker._handle_or,
-                          '->': OmgModelChecker._handle_arrow,
-                          '~': OmgModelChecker._handle_not,
-                          'AV': OmgModelChecker._handle_av,
-                          'EV': OmgModelChecker._handle_ev,
-                          'EX': OmgModelChecker._handle_ex,
-                          }
 
         if DEBUG:
-            print 'handle_ctl_and_recur: node=('+str(node.concrete_label)+','+str(node.get_depth())+'), spec='+\
+            print 'handle_ctl_and_recur: node=(' + str(node.concrete_label) + ',' + str(node.get_depth()) + '), spec=' + \
                   specification.str_math()
 
         self.find_abstract_classification_for_node(node)
@@ -255,7 +255,7 @@ class OmgModelChecker(object):
         main_connective = specification.get_main_connective()
         operands = specification.get_operands()
 
-        final_res = method_mapping[main_connective](self, node, specification, *operands)
+        final_res = self._method_mapping[main_connective](self, node, specification, *operands)
         return final_res
 
     def _is_witness_concrete(self, to_close, concrete_witness):

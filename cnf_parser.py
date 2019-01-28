@@ -3,6 +3,8 @@ from z3 import *
 from formula_wrapper import FormulaWrapper
 from z3_utils import get_vars, Z3Utils
 
+DEBUG = True
+
 
 class CnfParser(object):
     def __init__(self):
@@ -27,45 +29,35 @@ class CnfParser(object):
     '''
 
     @classmethod
-    def parse_metadata(cls, metadata):
-        parsed_parts = map(lambda meta_line: filter(lambda p: p != '', meta_line.split(' ')), metadata)
+    def parse_metadata_tr(cls, tr_metadata, num_regs):
+        parsed_parts = map(lambda meta_line: filter(lambda p: p != '', meta_line.split(' ')), tr_metadata)
         parsed_with_vectors = filter(
-            lambda meta_line: not (meta_line[0].startswith('MAXVAR') or meta_line[0].startswith('STATEVAR')),
+            lambda meta_line: (meta_line[0].startswith('CURRENT') or meta_line[0].startswith('NEXT')),
             parsed_parts)
         var_vectors = [[Bool(raw_var) for raw_var in parsed_part[1:]] for parsed_part in parsed_with_vectors]
+        if DEBUG:
+            assert len(var_vectors) and all([len(vec) == num_regs for vec in var_vectors])
         return var_vectors
 
     @classmethod
-    def z3_formula_from_dimacs(cls, metadata, extended_dimacs):
+    def parse_metadata_bad(cls, bad_metadata, num_regs):
+        parsed_parts = map(lambda meta_line: filter(lambda p: p != '', meta_line.split(' ')), bad_metadata)
+        parsed_with_vectors = filter(
+            lambda meta_line: (meta_line[0].startswith('IN') or meta_line[0].startswith('OUT')),
+            parsed_parts)
+        var_vectors = [[Bool(raw_var) for raw_var in parsed_part[max(1, len(parsed_part) - num_regs):]]
+                       for parsed_part in parsed_with_vectors]
+        return var_vectors
+
+    @classmethod
+    def z3_formula_from_dimacs(cls, metadata, extended_dimacs, metadata_parser, num_regs):
         dimacs_lines = filter(lambda raw_line: len(raw_line) > 0 and raw_line[0] not in [' ', 'p', '\t'],
                               extended_dimacs)
         clauses = [CnfParser.line_to_clause(line) for line in dimacs_lines]
         final_z3_formula = And(*clauses)
-        var_vectors = CnfParser.parse_metadata(metadata)
+        var_vectors = metadata_parser(metadata, num_regs)
         aux = set(get_vars(final_z3_formula)).difference(set([var for vec in var_vectors for var in vec]))
 
         quantifier_over_aux = Exists(list(aux), final_z3_formula)
         after_qe = Z3Utils.apply_qe(quantifier_over_aux)
         return FormulaWrapper(after_qe, var_vectors)
-
-
-def get_cnfs():
-    formula_types = ['Tr']
-    file_names = ['DimacsFiles/yakir4n_' + f_type + '.dimacs' for f_type in formula_types]
-
-    cnfs = []
-    for file_name in file_names:
-        f = open(file_name, 'r')
-        cnf = CnfParser.z3_formula_from_dimacs(f.readlines())
-        cnfs.append(cnf)
-    return cnfs
-
-
-def test_print_and_swap():
-    for cnf in get_cnfs():
-        t = Then('simplify', 'propagate-values', 'ctx-simplify')
-        print t(cnf)
-
-
-if __name__ == '__main__':
-    test_print_and_swap()
