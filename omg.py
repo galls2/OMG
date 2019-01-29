@@ -5,7 +5,7 @@ from abstraction_classifier import AbstractionClassifier
 from unwinding_tree import UnwindingTree
 from z3_utils import Z3Utils
 
-DEBUG = True
+DEBUG = False
 
 
 def node_to_heapq(node):

@@ -203,8 +203,8 @@ class Z3Utils(object):
         var_vectors = [prev_var_vector, next_var_vector]
 
         substituted_output_z3_formulas = [output_formulas[i]
-                                              .substitute(prev_latch_vars, 0, prev_latch_vars)
                                               .substitute([next_output_vars[i]], 1, [next_output_vars[i]])
+                                              .substitute(next_latch_vars, 0, next_latch_vars)
                                               .get_z3_formula()
                                           for i in range(len(output_formulas))]
 
