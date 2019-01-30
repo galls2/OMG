@@ -5,15 +5,21 @@ def _par(text):
     return '(' + text + ')'
 
 
+def _cut_from_end(text, to_cut):
+    if text[-1] not in to_cut:
+        return text
+    cut_until = next(i for i in range(len(text)) if text[len(text) - 1 - i] not in to_cut)
+    return text[:-1 * cut_until]
+
+
 def _remove_spaces_from_edges(text):
     text = text.replace('\n', '').replace(';', '')
     try:
         text = text[next(i for i in range(len(text)) if text[i] != ' '):]
-        last_space = next(i for i in range(len(text)) if text[len(text) - 1 - i] != ' ')
-        text = text if text[-1] != ' ' else text[:-1 * last_space]
+        text = _cut_from_end(text, [' '])
     except Exception as e:
         print e
-        raise Exception('Problem in '+text)
+        raise Exception('Problem in CTL parsing of ' + text)
 
     return text
 
@@ -219,7 +225,8 @@ class CtlFormula(object):
 
                 return CtlFormula(new_main_connective, [right_operand, CtlFormula('|', [left_operand, right_operand])])
 
-            raise Exception('Unsupported operator '+main_connective)
+            raise Exception('Unsupported operator ' + main_connective)
+
 
 class CtlParser(object):
     """
@@ -298,16 +305,17 @@ class CtlParser(object):
         if input_formula[0] in ['A', 'E'] and len(parts[0]) == 1 and len(parts) > 1:
             path_quantifier = input_formula[0]
             try:
-                temp_op_index = next(i for i in range(len(parts)) if (path_quantifier+parts[i]) in CtlFormula.binary_temporal_operators)
+                temp_op_index = next(i for i in range(len(parts)) if
+                                     (path_quantifier + parts[i]) in CtlFormula.binary_temporal_operators)
                 temporal_operator = parts[temp_op_index].replace('R', 'V')
             except Exception as e:
                 print 'upupu'
                 print e
-                raise Exception('Parsing Failed dur to '+input_formula)
+                raise Exception('Parsing Failed dur to ' + input_formula)
             main_connective = path_quantifier + temporal_operator
 
             first_operand = self.parse_math_format(' '.join(parts[1:temp_op_index]))
-            second_operand = self.parse_math_format(' '.join(parts[temp_op_index+1:]))
+            second_operand = self.parse_math_format(' '.join(parts[temp_op_index + 1:]))
 
             return CtlFormula(main_connective, [first_operand, second_operand])
 
@@ -321,8 +329,6 @@ class CtlParser(object):
                 split_result = self.split_by_operator(parts, operator)
                 if split_result is not None:
                     return split_result
-
-
 
         else:  # Otherwise, it is an atomic proposition or true/false
             return self._parse_ap_bool(input_formula)
@@ -339,50 +345,74 @@ class CtlParser(object):
         return self.parse_math_format(raw_specification).convert_to_omg_format()
 
 
-def test_formula(formula, parse_method, verbose=False):
-    print 'Testing: ' + formula,
-    parsed = parse_method(formula)
-    if verbose:
-        print 'RESULT: '
-        print 'SMTLIB FORMAT: ' + str(parsed)
-        print 'REGULAR FORMAT: ' + parsed.str_math()
-        print '\n\n'
+class CtlFileParser(object):
 
-    if _remove_characters(formula) == _remove_characters(parsed.str_math()):
-        print ' PASSED!'
-        if verbose:
-            print parsed.str_math()
-            omg = parsed.convert_to_omg_format()
+    def __init__(self):
+        super(CtlFileParser, self).__init__()
 
-            print 'OMGing: ' + omg.str_math()
+    def _legal_line_ending(self, line):
+        line = _cut_from_end(line, [' ', '\n', '\t'])
 
-    else:
-        print ' FAILED!!!!!!!!!!!!!!!!!!!'
-        if verbose:
-            print _remove_characters(formula)
-            print _remove_characters(parsed.str_math())
-            print '*******************************************************************'
-    if verbose:
-        print 'AP: ' + str(parsed.get_aps())
+        for op in CtlFormula.allowed_operators:
+            if op in CtlFormula.binary_temporal_operators:
+                if line[-1] in [op[-1], op[-2]]:
+                    return False
+            else:
+                start_index = len(line) - 1 - len(op)
+                if start_index < 0:
+                    continue
+                if line[start_index:] == op:
+                    return False
+        return True
 
+    def _parse_ctl_chunk(self, chunk):
+        chunk = filter(lambda line: line not in ['\n', '', ' '], chunk)
+        try:
+            first_line_not_header = next(i for i in range(len(chunk)) if not chunk[i].startswith('#'))
+            header_part = chunk[:first_line_not_header]
+            raw_formulas = chunk[first_line_not_header:]
 
-def test_ctl_parser():
-    ctl_parser = CtlParser()
+            header_result = True if 'PASS' in ' '.join(header_part) else False
 
-    f2 = 'AG((dataOut3<2> & ~dataOut3<1> & dataOut3<0>) -> AX AF(dataOut3<2> & ~dataOut3<1> & dataOut3<0>))'
-    test_formula(f2, lambda x: ctl_parser.parse_math_format(x), True)
+            raw_formulas = [raw_formula for raw_formula in raw_formulas
+                            if raw_formula.replace('\n', '').replace(' ', '').replace('\t', '') != '']
 
-    f3 = 'AG(full<0> -> AF(dataOut1<1> | dataOut1<0>))'
-    test_formula(f3, lambda x: ctl_parser.parse_math_format(x), True)
+            f_indexes = [0] + [i + 1 for i in range(len(raw_formulas)) if
+                               is_balanced_brackets(' '.join(raw_formulas[:(i + 1)])) and self._legal_line_ending(
+                                   raw_formulas[i])]
 
-    f4 = '~E safe U final'
-    test_formula(f4, lambda x: ctl_parser.parse_math_format(x), True)
+            ctl_formulas_borders = [(f_indexes[i], f_indexes[i + 1] if i != len(f_indexes) - 1 else len(raw_formulas))
+                                    for i in range(len(f_indexes))]
+            raw_ctl_formulas = [raw_formulas[start: end] for (start, end) in ctl_formulas_borders if start != end]
 
-    f5 = 'AG(~u_ack<1> -> (A u_req<1> R ~u_ack<1>))'
-    test_formula(f5, lambda x: ctl_parser.parse_math_format(x), True)
+            single_line_raw_formulas = [' '.join(multiline).replace('==', ' == ') for multiline in raw_ctl_formulas]
+            '''
+            print 'CHUNK'
+            for r in single_line_raw_formulas:
+                print r
+                print '----'
+            '''
+            ctl_parser = CtlParser()
+            ctl_formulas = [ctl_parser.parse_omg(raw_formula) for raw_formula in single_line_raw_formulas]
 
+            return [header_result] + ctl_formulas
+        except StopIteration:
+            return [None]
 
-if __name__ == '__main__':
-    test_ctl_parser()
+    def parse_ctl_file(self, ctl_path):
+        with open(ctl_path, 'r') as ctl_file:
+            lines = ctl_file.readlines()
+            lines = filter(lambda line: line not in ['', '\n'], lines)
+            start_indexes = ([0] if lines[0].startswith('#') else []) + \
+                            [i for i in range(1, len(lines)) if
+                             lines[i].startswith('#') and
+                             not lines[i - 1].startswith('#')]
 
-    # current problem: ~ is parsed before &. What is the truth?
+            chunk_borders = [(start_indexes[i], start_indexes[i + 1] if i != len(start_indexes) - 1 else len(lines))
+                             for i in range(len(start_indexes))]
+            chunks = [lines[start: end] for (start, end) in chunk_borders]
+            '''
+            for c in chunks:
+                print c
+            '''
+            return [self._parse_ctl_chunk(chunk) for chunk in chunks]

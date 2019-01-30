@@ -44,12 +44,12 @@ class AvyAigParser(AigParser):
             raise IOError('No aigsplit file where you promised! Do you try to UPUPU??')
 
         cmd = AIG_SPLIT_EXE_PATH + ' ' + self._aig_path
-        print cmd
+    #    print cmd
         os.system(cmd)
 
     def delete_aux_files(self):
         pattern_to_remove = '.'.join(self._aig_path.split('.')[:-1]) + 'o*'
-        print pattern_to_remove
+     #   print pattern_to_remove
         os.system('rm ' + pattern_to_remove)
 
     def parse(self):

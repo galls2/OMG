@@ -164,6 +164,22 @@ class Z3Utils(object):
         return get_assignment(s.model(), variables)
 
     @classmethod
+    def is_AE_closed(cls, to_close, close_with):
+        kripke = to_close.get_kripke()
+        transitions = kripke.get_tr_formula()
+        src_vars, dst_vars = transitions.get_var_vectors()
+
+        src = to_close.get_descriptive_formula().substitute(src_vars, 0, src_vars).get_z3_formula()
+        dst_formulas = [closer.get_descriptive_formula().substitute(dst_vars, 0, dst_vars).get_z3_formula()
+                        for closer in close_with]
+        dst = Not(Or(*dst_formulas))
+
+        closure_formula = And(src, ForAll(dst_vars, Implies(transitions.get_z3_formula(), dst)))
+
+        return Solver().check(closure_formula) == unsat
+
+
+    @classmethod
     def is_EE_closed(cls, to_close, close_with):
         kripke = to_close.get_kripke()
         transitions = kripke.get_tr_formula()
@@ -211,3 +227,4 @@ class Z3Utils(object):
         tr_formula = And(ltr_formula.get_z3_formula(), *substituted_output_z3_formulas)
 
         return FormulaWrapper(tr_formula, var_vectors)
+

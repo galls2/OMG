@@ -8,6 +8,15 @@ from z3_utils import Z3Utils
 DEBUG = False
 
 
+def DEBUG_PRINT(txt):
+    if DEBUG:
+        print txt
+
+
+def unique(collection):
+    return list(set(collection))
+
+
 def node_to_heapq(node):
     return (0, node) if node.URGENT else (node.depth + 1, node)
 
@@ -20,9 +29,9 @@ def _label_state(check_result, node_to_label, spec):
     return check_result
 
 
-def _map_upward_from_node(node, mapper):
+def _map_upward_from_node(node, mapper, stop):
     current = node
-    while current is not None:
+    while current is not stop:
         mapper(current)
         current = current.get_parent()
 
@@ -42,6 +51,12 @@ def label_subtree(node, spec, positivity):
             label_subtree(successor, spec, positivity)
 
     return positivity
+
+
+def _init_heap_with(node):
+    to_visit = heapdict()
+    to_visit[node] = node.priority()
+    return to_visit
 
 
 class OmgModelChecker(object):
@@ -115,20 +130,18 @@ class OmgModelChecker(object):
 
     def _handle_av(self, node, spec, p, q):
 
-        to_visit = heapdict()
-        to_visit[node] = node.priority()
+        to_visit = _init_heap_with(node)
+
         while to_visit:
+            node_to_explore = (to_visit.popitem()[0]).reset_urgent()
+            DEBUG_PRINT('AV:: NOW EXPLORING ' + str(node_to_explore))
 
-            node_to_explore = to_visit.popitem()[0]
-            node_to_explore.reset_urgent()
-            if DEBUG:
-                print 'NOW EXPLORING ' + str(node_to_explore)
-
-            abstract_state = self.find_abstract_classification_for_node(node_to_explore)
+            abstract_state = self._find_abstract_classification_for_node(node_to_explore)
 
             self._handle_ctl_and_recur(node_to_explore, q)
             if node_to_explore.is_labeled_negatively_with(q):
-                _map_upward_from_node(node_to_explore, lambda current_node: current_node.add_negative_label(spec))
+                _map_upward_from_node(node_to_explore, lambda current_node: current_node.add_negative_label(spec),
+                                      node.get_parent())
                 self._strengthen_trace(node, node_to_explore)
                 return False
 
@@ -139,32 +152,25 @@ class OmgModelChecker(object):
                     to_visit[child_node] = child_node.priority()
             else:
                 node_to_explore.add_positive_label(spec)
-            #                continue
-
-            #  self._add_may_edge_to(node_to_explore)
 
             abs_states_with_nodes = node.get_abstract_labels_in_tree()  # tuples of the form (abstract_label, node)
-            abs_states = list(set([tup[0] for tup in abs_states_with_nodes]))
+            abs_states = unique([tup[0] for tup in abs_states_with_nodes])
             # TODO unify brothers
             abs_states_lead = [abs_tuple for abs_tuple in abs_states_with_nodes
                                if abs_tuple[1].is_labeled_negatively_with(p)]
             while abs_states_lead:
                 abs_state_lead = abs_states_lead[0]
-                to_close_abstract = abs_state_lead[0]
-                to_close_node = abs_state_lead[1]
+                to_close_abstract, to_close_node = abs_state_lead
 
-                if DEBUG:
-                    print 'Trying to close ' + to_close_node.description() + ' :',
+                DEBUG_PRINT('AV:: Trying to close ' + to_close_node.description() + ' :')
                 res = self._abstract_structure.is_EE_closure(to_close_abstract, abs_states)
                 if res is True:
-                    if DEBUG:
-                        print ' Success!'
+                    DEBUG_PRINT(' Success!')
                     abs_states_lead = abs_states_lead[1:]
                     self._abstract_structure.add_must_hyper(to_close_abstract, abs_states)  # GOOD?
                 else:
                     src_to_witness, witness_state = res
-                    if DEBUG:
-                        print ' Failed! Due to ' + str((src_to_witness, witness_state))
+                    DEBUG_PRINT(' Failed! Due to ' + str((src_to_witness, witness_state)))
                     concretization_result = self._is_witness_concrete(to_close_node, witness_state)
                     if concretization_result:
                         if to_close_node.get_successors() is None:
@@ -172,7 +178,7 @@ class OmgModelChecker(object):
                         else:
                             node_to_set = [successor for successor in to_close_node.get_successors()
                                            if successor.concrete_label == concretization_result][0]
-                        # print str(node_to_set)
+
                         node_to_set.set_urgent()
                         to_visit[node_to_set] = node_to_set.priority()
 
@@ -186,7 +192,60 @@ class OmgModelChecker(object):
         return label_subtree(node, spec, True)
 
     def _handle_ev(self, node, spec, p, q):
-        raise NotImplementedError()
+        to_visit = _init_heap_with(node)
+
+        while to_visit:
+            node_to_explore = (to_visit.popitem()[0]).reset_urgent()
+            DEBUG_PRINT('EV:: NOW EXPLORING ' + str(node_to_explore))
+
+            self._find_abstract_classification_for_node(node_to_explore)
+
+            self._handle_ctl_and_recur(node_to_explore, q)
+            if node_to_explore.is_labeled_negatively_with(q):
+                continue  # This is not the druid we're looking for
+
+            self._handle_ctl_and_recur(node_to_explore, p)
+            if node_to_explore.is_labeled_negatively_with(p):
+                _map_upward_from_node(node_to_explore, lambda current_node: current_node.add_positive_label(spec),
+                                      node.get_parent())
+                self._strengthen_trace(node, node_to_explore)
+                return True
+            else:
+                children_nodes = node_to_explore.unwind_further()
+                for child_node in children_nodes:
+                    to_visit[child_node] = child_node.priority()
+
+            lasso_res = node_to_explore.is_lasso(node.get_parent())
+            while lasso_res is not False:
+                if lasso_res is True:
+                    _map_upward_from_node(node_to_explore, lambda current_node: current_node.add_positive_label(spec),
+                                          node.get_parent())
+                    self._strengthen_trace(node, node_to_explore)
+                    return True
+
+                base, abstract_states_nodes_loop = lasso_res
+                loop_abstract_states = [pair[0] for pair in abstract_states_nodes_loop]
+                loop_nodes = [pair[1] for pair in abstract_states_nodes_loop]
+
+                while abstract_states_nodes_loop:
+                    (to_close_abs, to_close_node) = abstract_states_nodes_loop[0]
+                    res = self._abstract_structure.is_AE_closure(to_close_abs, loop_abstract_states)
+                    if res is True:
+                        abstract_states_nodes_loop = abstract_states_nodes_loop[1:]
+                    else:
+                        self._refine_split_ax(to_close_node, loop_nodes)
+                        break
+
+                if not abstract_states_nodes_loop:
+                    _map_upward_from_node(node_to_explore, lambda current_node: current_node.add_positive_label(spec),
+                                          node.get_parent())
+                    self._strengthen_trace(node, base)
+                    return True
+
+                lasso_res = node_to_explore.is_lasso(node.get_parent())
+
+        node.add_negative_label(spec)
+        return False
 
     def _handle_ex(self, node, spec, operand):
         children_nodes = node.unwind_further()
@@ -201,7 +260,7 @@ class OmgModelChecker(object):
         node.add_negative_label(spec)
         return False
 
-    def find_abstract_classification_for_state(self, concrete_state):
+    def _find_abstract_classification_for_state(self, concrete_state):
         kripke = self._kripke
         abstract_state = self._abstraction.classify(concrete_state)
         if abstract_state is None:
@@ -216,9 +275,9 @@ class OmgModelChecker(object):
 
         return abstract_state
 
-    def find_abstract_classification_for_node(self, node):
+    def _find_abstract_classification_for_node(self, node):
         concrete_state = node.concrete_label
-        abstract_classification = self.find_abstract_classification_for_state(concrete_state)
+        abstract_classification = self._find_abstract_classification_for_state(concrete_state)
         node.set_abstract_label(abstract_classification)
         abstract_classification.get_classification_node().add_classifee(concrete_state)
         return abstract_classification
@@ -227,18 +286,17 @@ class OmgModelChecker(object):
         unwinding_tree = UnwindingTree(self._kripke, None, None, state)
         # TODO check or add to the collection of unwinding trees that are saved in this omg_checker as a member.
         res = self._handle_ctl_and_recur(unwinding_tree, specification)
-        if DEBUG:
-            print str(unwinding_tree)
+        DEBUG_PRINT(str(unwinding_tree))
         #      print str(self._abstraction)
         return res
 
     def _handle_ctl_and_recur(self, node, specification):
 
-        if DEBUG:
-            print 'handle_ctl_and_recur: node=(' + str(node.concrete_label) + ',' + str(node.get_depth()) + '), spec=' + \
-                  specification.str_math()
+        DEBUG_PRINT(
+            'handle_ctl_and_recur: node=(' + str(node.concrete_label) + ',' + str(node.get_depth()) + '), spec=' + \
+            specification.str_math())
 
-        self.find_abstract_classification_for_node(node)
+        self._find_abstract_classification_for_node(node)
 
         if node.get_abstract_label().is_positive_label(specification):
             return True
@@ -259,7 +317,7 @@ class OmgModelChecker(object):
         return final_res
 
     def _is_witness_concrete(self, to_close, concrete_witness):
-        abstract_witness = self.find_abstract_classification_for_state(concrete_witness)
+        abstract_witness = self._find_abstract_classification_for_state(concrete_witness)
         return Z3Utils.has_successor_in_abstract(to_close.concrete_label, abstract_witness)
 
     def _refine_split_next(self, src_node, witness_abstract_states, split_state_function, query_getter):
@@ -283,19 +341,19 @@ class OmgModelChecker(object):
         src_node.get_abstract_label()
 
     def _refine_split_ex(self, node_src, witness_concrete_state):
-        witness_abstract_state = self.find_abstract_classification_for_state(witness_concrete_state)
+        witness_abstract_state = self._find_abstract_classification_for_state(witness_concrete_state)
 
         self._refine_split_next(node_src, [witness_abstract_state], self._abstract_structure.split_abstract_state_ex,
                                 Z3Utils.get_exists_successors_in_formula)
 
     def _refine_split_ax(self, src_node, dst_nodes):
 
-        witness_abstract_states = [self.find_abstract_classification_for_node(dst) for dst in dst_nodes]
+        witness_abstract_states = [self._find_abstract_classification_for_node(dst) for dst in dst_nodes]
 
         self._refine_split_next(src_node, witness_abstract_states, self._abstract_structure.split_abstract_state_ax,
                                 Z3Utils.get_forall_successors_in_formula)
 
-    def _strengthen_trace(self, src, dst):  ##todo
+    def _strengthen_trace(self, src, dst):
         while dst is not src:
             self._refine_split_ex(dst.get_parent(), dst.concrete_label)
             dst = dst.get_parent()

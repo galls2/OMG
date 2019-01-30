@@ -45,19 +45,24 @@ class UnwindingTree(object):
     def is_developed(self):
         return self._abstract_label is not None
 
-    def is_abstract_lasso(self):  ## FIXME
+    def is_lasso(self, stop_node):
         current = self._parent
-        abstract_label = self.get_abstract_label()
-        abstract_labels = {abstract_label}
-        while current is not None:
+        head_abstract_label = self.get_abstract_label()
+        abstract_states_and_nodes = {head_abstract_label}
+        head_concrete_label = self.concrete_label
+        while current is not stop_node:
+            current_concrete_label = current.concrete_label
+            if current_concrete_label == head_concrete_label:
+                return True
             current_abstract_label = current.get_abstract_label()
-            if current_abstract_label == abstract_label:
-                return True, current, abstract_labels
-            abstract_labels.add(current_abstract_label)
+            if current_abstract_label == head_abstract_label:
+                return current, abstract_states_and_nodes
+
+            abstract_states_and_nodes.add((current_abstract_label, current))
             current = current.get_parent()
         return False
 
-    def get_abstract_labels_in_tree(self):  ## FIXME
+    def get_abstract_labels_in_tree(self):
         if not self.is_developed():
             return set()
         successors = [] if self._successors is None else self._successors
@@ -71,9 +76,11 @@ class UnwindingTree(object):
 
     def set_urgent(self):
         self.URGENT = True
+        return self
 
     def reset_urgent(self):
         self.URGENT = False
+        return self
 
     def is_labeled_positively_with(self, label):
         if label.is_boolean():
