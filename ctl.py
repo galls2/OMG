@@ -146,9 +146,6 @@ class CtlFormula(object):
     def is_leaf(self):
         return not self._operands
 
-    def get_arity(self):
-        return len(self._operands)
-
     def get_operands(self):
         return self._operands
 

@@ -3,6 +3,7 @@ import os
 import sys
 
 from aig_parser import AvyAigParser
+from cnf_parser import CnfParser
 from ctl import CtlFileParser
 from kripke_structure import AigKripkeStructure
 from omg import OmgModelChecker

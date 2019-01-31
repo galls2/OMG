@@ -71,7 +71,7 @@ class AbstractStructure(object):
         self._NE_may = {}
         self._E_may_over_approx = {}
         self._NE_may_over_approx = {}
-        self._E_must = {}                         # if in may over approx than also in must !!!!!!!!!!
+        self._E_must = {}  # if in may over approx than also in must !!!!!!!!!!
         self._NE_must = {}
 
     def add_abstract_state(self, abstract_state):
@@ -92,7 +92,7 @@ class AbstractStructure(object):
 
         def exists_superset(over_approxs):
             return True if to_close in over_approxs.keys() and \
-                                 any([set(close_with).issuperset(set(op)) for op in over_approxs[to_close]]) else None
+                           any([set(close_with).issuperset(set(op)) for op in over_approxs[to_close]]) else None
 
         if exists_superset(self._E_may_over_approx) is True:
             return True
@@ -125,20 +125,19 @@ class AbstractStructure(object):
         pos_formula, neg_formula = \
             formula_getter(abs_to_close, abstract_sons, kripke.get_tr_formula())
 
-        abs_pos = AbstractState(abs_to_close.atomic_labels, kripke, pos_formula) \
-            .add_positive_labels(abs_to_close.positive_labels) \
-            .add_negative_labels(abs_to_close.negative_labels)
+        def create_abstract_state_split(formula):
+            return AbstractState(abs_to_close.atomic_labels, kripke, formula) \
+                .add_positive_labels(abs_to_close.positive_labels) \
+                .add_negative_labels(abs_to_close.negative_labels)
 
-        abs_neg = AbstractState(abs_to_close.atomic_labels, kripke, neg_formula) \
-            .add_positive_labels(abs_to_close.positive_labels) \
-            .add_negative_labels(abs_to_close.negative_labels)
+        abs_pos = create_abstract_state_split(pos_formula)
+        abs_neg = create_abstract_state_split(neg_formula)
 
         self._abstract_states.remove(abs_to_close)
         self._abstract_states.update([abs_pos, abs_neg])
 
-          # may
-    #       self._E_may = {k: self._E_may[k] for k in self._E_may.keys() if abs_to_close not in [k, self._E_may[k]]}
-
+        # may
+        #       self._E_may = {k: self._E_may[k] for k in self._E_may.keys() if abs_to_close not in [k, self._E_may[k]]}
 
         # must-from
 

@@ -45,9 +45,11 @@ class AigKripkeStructure(KripkeStructure):
         super(AigKripkeStructure, self).__init__(aps)
         self._aig_parser = AvyAigParser(aig_path)
         parse_results = self._aig_parser.parse()
-
+        self._num_latches = self._aig_parser.get_num_latches()
+        self._cnf_parser = CnfParser(self._num_latches)
         self._tr = self._connect_aigs(parse_results)
         self._ap_conversion = self._aig_parser.get_ap_mapping()
+
 
     def get_successors(self, state):
         return Z3Utils.get_all_successors(self._tr, state)
@@ -59,7 +61,7 @@ class AigKripkeStructure(KripkeStructure):
                         for out_formula in self._output_formulas]
 
         init_out_values = itertools.product(*init_outputs)
-        res =  [init_latches + list(init_out_value) for init_out_value in init_out_values]
+        res = [init_latches + list(init_out_value) for init_out_value in init_out_values]
         return res
 
     def _get_var_num_for_ap(self, ap):
@@ -98,12 +100,9 @@ class AigKripkeStructure(KripkeStructure):
     def _connect_aigs(self, parse_results):
         ltr_metadata, ltr_dimacs = parse_results[0]
 
-        num_latches = self._aig_parser.get_num_latches()
-        self._ltr_formula = CnfParser.z3_formula_from_dimacs(ltr_metadata, ltr_dimacs, CnfParser.parse_metadata_tr,
-                                                             num_latches)
+        self._ltr_formula = self._cnf_parser.dimacs_to_z3(ltr_metadata, ltr_dimacs, self._cnf_parser.parse_metadata_tr)
         self._output_formulas = \
-            [CnfParser.z3_formula_from_dimacs(output_metadata, output_dimacs,
-                                              CnfParser.parse_metadata_bad, num_latches)
+            [self._cnf_parser.dimacs_to_z3(output_metadata, output_dimacs,  self._cnf_parser.parse_metadata_bad)
              for (output_metadata, output_dimacs) in parse_results[1:]]
 
         max_var_ltr = int(ltr_dimacs[0].split(' ')[-1])

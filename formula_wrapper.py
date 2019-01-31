@@ -4,7 +4,7 @@ from var_manager import VarManager
 
 
 class FormulaWrapper(object):
-    def __init__(self, z3_formula, var_vectors):  # TODO builder pattern
+    def __init__(self, z3_formula, var_vectors):
         super(FormulaWrapper, self).__init__()
         self._z3_formula = z3_formula
         self._var_vectors = var_vectors

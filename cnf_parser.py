@@ -6,56 +6,55 @@ from z3_utils import get_vars, Z3Utils
 DEBUG = True
 
 
+def _raw_lit_to_lit(raw_lit):
+    atom = Bool(raw_lit.replace('-', ''))
+    return atom if not raw_lit.startswith('-') else Not(atom)
+
+
+def _line_to_clause(line):
+    parts = [raw_lit for raw_lit in line.split(' ') if raw_lit not in ['', '\n', '\t']]
+    if parts[-1] == '0':
+        parts = parts[:-1]
+    clause_parts = [_raw_lit_to_lit(raw_lit) for raw_lit in parts]
+    clause = Or(*clause_parts)
+    return clause
+
+
 class CnfParser(object):
-    def __init__(self):
+    def __init__(self, num_regs):
         super(CnfParser, self).__init__()
-
-    @classmethod
-    def raw_lit_to_lit(cls, raw_lit):
-        atom = Bool(raw_lit.replace('-', ''))
-        return atom if not raw_lit.startswith('-') else Not(atom)
-
-    @classmethod
-    def line_to_clause(cls, line):
-        parts = filter(lambda raw_lit: raw_lit not in ['', '\n', '\t'], line.split(' '))
-        if parts[-1] == '0':
-            parts = parts[:-1]
-        clause_parts = map(lambda raw_lit: CnfParser.raw_lit_to_lit(raw_lit), parts)
-        clause = Or(*clause_parts)
-        return clause
+        self._num_regs = num_regs
 
     '''
       dimacs is a list of lines, each line is a clause
     '''
 
-    @classmethod
-    def parse_metadata_tr(cls, tr_metadata, num_regs):
-        parsed_parts = map(lambda meta_line: filter(lambda p: p != '', meta_line.split(' ')), tr_metadata)
-        parsed_with_vectors = filter(
-            lambda meta_line: (meta_line[0].startswith('CURRENT') or meta_line[0].startswith('NEXT')),
-            parsed_parts)
+    def parse_metadata_tr(self, tr_metadata):
+        PREFIXES = ['CURRENT', 'NEXT']
+        parsed_parts = [[p for p in meta_line.split(' ') if p != ''] for meta_line in tr_metadata]
+        parsed_with_vectors = [line for line in parsed_parts if
+                               any([line[0].startswith(prefix) for prefix in PREFIXES])]
         var_vectors = [[Bool(raw_var) for raw_var in parsed_part[1:]] for parsed_part in parsed_with_vectors]
         if DEBUG:
-            assert len(var_vectors) and all([len(vec) == num_regs for vec in var_vectors])
+            assert len(var_vectors) and all([len(vec) == self._num_regs for vec in var_vectors])
         return var_vectors
 
-    @classmethod
-    def parse_metadata_bad(cls, bad_metadata, num_regs):
-        parsed_parts = map(lambda meta_line: filter(lambda p: p != '', meta_line.split(' ')), bad_metadata)
-        parsed_with_vectors = filter(
-            lambda meta_line: (meta_line[0].startswith('IN') or meta_line[0].startswith('OUT')),
-            parsed_parts)
-        var_vectors = [[Bool(raw_var) for raw_var in parsed_part[max(1, len(parsed_part) - num_regs):]]
+    def parse_metadata_bad(self, bad_metadata):
+        PREFIXES = ['IN', 'OUT']
+        parsed_parts = [[p for p in meta_line.split(' ') if p != ''] for meta_line in bad_metadata]
+        parsed_with_vectors = [line for line in parsed_parts if
+                               any([line[0].startswith(prefix) for prefix in PREFIXES])]
+
+        var_vectors = [[Bool(raw_var) for raw_var in parsed_part[max(1, len(parsed_part) - self._num_regs):]]
                        for parsed_part in parsed_with_vectors]
         return var_vectors
 
-    @classmethod
-    def z3_formula_from_dimacs(cls, metadata, extended_dimacs, metadata_parser, num_regs):
+    def dimacs_to_z3(self, metadata, extended_dimacs, metadata_parser):
         dimacs_lines = filter(lambda raw_line: len(raw_line) > 0 and raw_line[0] not in [' ', 'p', '\t'],
                               extended_dimacs)
-        clauses = [CnfParser.line_to_clause(line) for line in dimacs_lines]
+        clauses = [_line_to_clause(line) for line in dimacs_lines]
         final_z3_formula = And(*clauses)
-        var_vectors = metadata_parser(metadata, num_regs)
+        var_vectors = metadata_parser(metadata)
         aux = set(get_vars(final_z3_formula)).difference(set([var for vec in var_vectors for var in vec]))
 
         quantifier_over_aux = Exists(list(aux), final_z3_formula)
