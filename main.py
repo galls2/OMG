@@ -9,6 +9,7 @@ from kripke_structure import AigKripkeStructure
 from omg import OmgModelChecker
 
 BUG_LINE = '<------------------------------------------------------ BUG -------------------------------------'
+SEP = '------------------------------------------------------------------------------------------'
 
 
 def parse_input():
@@ -42,6 +43,7 @@ def print_results_for_spec(omg, expected_res, spec):
         print 'M, ' + str(pos_s) + ' |= ' + spec_str + (BUG_LINE if not expected_res else "")
     for neg_s in neg:
         print 'M, ' + str(neg_s) + ' |=/= ' + spec_str + (BUG_LINE if expected_res else "")
+    print SEP
 
 
 def check_properties():
@@ -111,8 +113,15 @@ def test_nexts():
 
 def test_AV():
     print 'Checking AVs:'
+    aig_file_paths = ['iimc_aigs/af_ag.aig', 'iimc_aigs/gray.aig', 'iimc_aigs/gray.aig']
+    ctl_formula_paths = ['iimc_aigs/af_ag_checkAV.ctl', 'iimc_aigs/gray_regression.ctl', 'iimc_aigs/gray_AV_abs.ctl']
+    check_files(aig_file_paths, ctl_formula_paths)
+
+
+def test_EV():
+    print 'Checking EVs:'
     aig_file_paths = ['iimc_aigs/af_ag.aig']
-    ctl_formula_paths = ['iimc_aigs/af_ag_checkAV.ctl']
+    ctl_formula_paths = ['iimc_aigs/af_ag_checkEV.ctl']
     check_files(aig_file_paths, ctl_formula_paths)
 
 
@@ -120,10 +129,11 @@ def regression_tests():
     test_propositional()
     test_nexts()
     test_AV()
+    test_EV()
 
 
 if __name__ == '__main__':
     #    check_properties()
 
     regression_tests()
-    model_checking(*parse_input())
+  # model_checking(*parse_input())

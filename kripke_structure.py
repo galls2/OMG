@@ -85,7 +85,7 @@ class AigKripkeStructure(KripkeStructure):
         if var_vector is None:
             var_vector = self.get_var_vector()
         ap_subformulas = [self._get_formula_for_ap_literal(ap, var_vector, state) for ap in self.get_aps()]
-        bis0_z3_formula = And(*[ap_subformula.get_z3_formula() for ap_subformula in ap_subformulas])
+        bis0_z3_formula = simplify(And(*[ap_subformula.get_z3_formula() for ap_subformula in ap_subformulas]))
         return FormulaWrapper(bis0_z3_formula, [var_vector])
 
     def get_tr_formula(self):

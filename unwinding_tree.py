@@ -48,7 +48,7 @@ class UnwindingTree(object):
     def is_lasso(self, stop_node):
         current = self._parent
         head_abstract_label = self.get_abstract_label()
-        abstract_states_and_nodes = {head_abstract_label}
+        abstract_states_and_nodes = {(head_abstract_label, self)}
         head_concrete_label = self.concrete_label
         while current is not stop_node:
             current_concrete_label = current.concrete_label
@@ -104,6 +104,13 @@ class UnwindingTree(object):
 
     def add_negative_label(self, label):
         self.get_abstract_label().add_negative_labels({label})
+        return self
+
+    def add_label(self, label, polarity):
+        if polarity:
+            self.add_positive_label(label)
+        else:
+            self.add_negative_label(label)
         return self
 
     def set_abstract_label(self, abstract_label):

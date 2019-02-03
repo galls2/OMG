@@ -153,7 +153,7 @@ class CtlFormula(object):
         return self._node_data
 
     def get_ap_text(self):
-        assert self.is_atomic_proposition()
+        assert self.is_atomic_proposition() or self.is_boolean()
         return self._node_data
 
     def get_bool_value(self):
