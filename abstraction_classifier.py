@@ -36,6 +36,7 @@ class AbstractionClassifier(object):
         concrete_atomic_labels = collection_to_sorted_tuple(self._kripke.get_aps_for_state(concrete_state))
         if concrete_atomic_labels not in self._classification_trees.keys():
             return None
+
         abstract_label = self._classification_trees[concrete_atomic_labels].classify(concrete_state)
         self._cache[tuple(concrete_state)] = abstract_label
         return abstract_label
