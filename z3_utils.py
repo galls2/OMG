@@ -1,3 +1,5 @@
+import itertools
+
 from z3 import *
 
 from formula_wrapper import FormulaWrapper
@@ -39,15 +41,14 @@ def get_vars(f):
 
 
 def z3_val_to_int(z3_val):
-    if z3_val is None:
-        return 1
     if z3_val.sexpr() == 'true':
         return 1
     return 0
 
 
-def get_assignment(model, variables):
-    return [z3_val_to_int(model[var]) for var in variables]
+def get_assignments(model, variables):
+    partial_assignment = [([z3_val_to_int(model[var])] if model[var] is not None else [0, 1]) for var in variables]
+    return [list(comb) for comb in itertools.product(*partial_assignment)]
 
 
 class Z3Utils(object):
@@ -137,12 +138,14 @@ class Z3Utils(object):
         next_vector = curr_tr.get_var_vectors()[0]
         while s.check(curr_z3) == sat:
             model = s.model()
-            cube = get_assignment(model, next_vector)
-            next_states.append(cube)
+            cubes = get_assignments(model, next_vector)
+
+            next_states += cubes
             # Not(l1 & ... &ln) = Not(l1) | ... | Not(ln)
 
             blocking_cube = Or(
-                *[Not(next_vector[i]) if cube[i] == 1 else next_vector[i] for i in range(len(next_vector))])
+                *[Not(var) if z3_val_to_int(model[var]) is 1 else var
+                  for var in next_vector if model[var] is not None])
             curr_z3 = simplify(And(curr_z3, blocking_cube))
         #    print curr_z3
 
@@ -161,7 +164,7 @@ class Z3Utils(object):
         if s.check(f) == unsat:
             return False
 
-        return get_assignment(s.model(), variables)
+        return get_assignments(s.model(), variables)[0]
 
     @classmethod
     def is_AE_closed(cls, to_close, close_with):
@@ -198,7 +201,7 @@ class Z3Utils(object):
             return True
 
         model = s.model()
-        return get_assignment(model, src_vars), get_assignment(model, dst_vars)
+        return get_assignments(model, src_vars)[0], get_assignments(model, dst_vars)[0]
 
     @classmethod
     def apply_qe(cls, formula):
@@ -228,3 +231,8 @@ class Z3Utils(object):
 
         return FormulaWrapper(tr_formula, var_vectors)
 
+'''
+def test_parse_partial_assignment():
+    if __name__ == '__main__':
+        print Z3Utils.get_all_successors(FormulaWrapper(Bool('x'), [[Bool('x')], [Bool('y')]]), [1])
+'''
