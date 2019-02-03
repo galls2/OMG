@@ -293,7 +293,9 @@ class OmgModelChecker(object):
         concrete_state = node.concrete_label
         abstract_classification = self._find_abstract_classification_for_state(concrete_state)
         node.set_abstract_label(abstract_classification)
+        '''
         abstract_classification.get_classification_node().add_classifee(concrete_state)
+        '''
         return abstract_classification
 
     def handle_ctl(self, state, specification):

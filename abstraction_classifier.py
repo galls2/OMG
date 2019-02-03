@@ -19,11 +19,13 @@ class AbstractionClassifier(object):
 
     def update_classification(self, classification_node, concrete_state):
         new_abstract_label = classification_node.classify(concrete_state)
+        '''
         new_classification_node = new_abstract_label.get_classification_node()
-
+    
+        
         classification_node.remove_classifee(concrete_state)
         new_classification_node.add_classifee(concrete_state)
-
+        '''
         self._update_cache(classification_node.get_value())
         return new_abstract_label
 
@@ -88,7 +90,7 @@ class AbstractionClassifierTree(object):
         self._successors = successors
         self._value = value
         self._parent = parent
-        self._classifees = set()  # Elements that are classified
+    #    self._classifees = set()  # Elements that are classified
         self._classifier = classifier
 
     def classify(self, concrete_state):
@@ -115,6 +117,7 @@ class AbstractionClassifierTree(object):
     def get_successors(self):
         return self._successors
 
+    '''
     def get_classifees(self):
         return self._classifees
 
@@ -125,6 +128,7 @@ class AbstractionClassifierTree(object):
     def remove_classifee(self, classifee):
         self._classifees.discard(tuple(classifee))
         return self
+    '''
 
     def _split(self, query, successors):
         if not self.is_leaf():
