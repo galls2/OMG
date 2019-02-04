@@ -103,11 +103,6 @@ class OmgModelChecker(object):
                 negative_answer.append(initial_state)
         return positive_answer, negative_answer
 
-    def _handle_atomic_propositions(self, node, spec):
-        concrete_state = node.concrete_label
-        res = self._kripke.is_state_labeled_with(concrete_state, spec.get_ap_text())
-        return res
-
     def _handle_and(self, node, spec, left_operand, right_operand):
         return _label_state(
             self._handle_ctl_and_recur(node, left_operand) and self._handle_ctl_and_recur(node, right_operand),

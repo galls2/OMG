@@ -1,3 +1,7 @@
+import functools
+
+from ctl import CtlFileParser
+from kripke_structure import AigKripkeStructure
 from unwinding_tree import print_tree
 import inspect
 
@@ -8,14 +12,34 @@ def collection_to_sorted_tuple(ap_collection):
     return ap_tuple
 
 
+class AbstractionCache(object):
+
+    def __init__(self):
+        super(AbstractionCache, self).__init__()
+        self._data = {}
+
+    def exists_key(self, key):
+        return key in self._data.keys()
+
+    def __getitem__(self, item):
+        return self._data[item]
+
+    def __setitem__(self, key, value):
+        self._data[key] = value
+        return self
+
+    def remove_by_value(self, value):
+        self._data = {k: self._data[k] for k in self._data.keys() if self._data[k] != value}
+        return self
+
 class AbstractionClassifier(object):
     """docstring for AbstractionClassifier."""
 
-    def __init__(self, kripke):
+    def __init__(self, kripke, cache=AbstractionCache()):
         super(AbstractionClassifier, self).__init__()
         self._kripke = kripke
         self._classification_trees = {}
-        self._cache = {}
+        self._cache = cache
 
     def update_classification(self, classification_node, concrete_state):
         new_abstract_label = classification_node.classify(concrete_state)
@@ -30,7 +54,7 @@ class AbstractionClassifier(object):
         return new_abstract_label
 
     def classify(self, concrete_state):
-        if tuple(concrete_state) in self._cache.keys():
+        if self._cache.exists_key(tuple(concrete_state)):
             return self._cache[tuple(concrete_state)]
 
         concrete_atomic_labels = collection_to_sorted_tuple(self._kripke.get_aps_for_state(concrete_state))
@@ -52,8 +76,7 @@ class AbstractionClassifier(object):
         return collection_to_sorted_tuple(atomic_labels) in self._classification_trees.keys()
 
     def _update_cache(self, abstract_state_to_remove):
-        cache = self._cache
-        self._cache = {key: cache[key] for key in cache.keys() if cache[key] != abstract_state_to_remove}
+        self._cache.remove_by_value(abstract_state_to_remove)
         return self
 
     def split(self, query, classification_node_to_split, query_labeling_mapper):
@@ -64,7 +87,7 @@ class AbstractionClassifier(object):
                                                  self, query_labeling_mapper[query_result])
             successors[query_result] = new_leaf
 
-        classification_node_to_split._split(query, successors)
+        classification_node_to_split.split(query, successors)
 
         self._update_cache(classification_node_to_split.get_value())
         return classification_node_to_split
@@ -91,7 +114,7 @@ class AbstractionClassifierTree(object):
         self._successors = successors
         self._value = value
         self._parent = parent
-    #    self._classifees = set()  # Elements that are classified
+        #    self._classifees = set()  # Elements that are classified
         self._classifier = classifier
 
     def classify(self, concrete_state):
@@ -131,7 +154,7 @@ class AbstractionClassifierTree(object):
         return self
     '''
 
-    def _split(self, query, successors):
+    def split(self, query, successors):
         if not self.is_leaf():
             raise Exception('Cannot split non-leaf')
 
@@ -145,3 +168,20 @@ class AbstractionClassifierTree(object):
 
     def get_query(self):
         return self._query
+
+
+def test_cache_usage(ctl_path, aig_path):
+    ctl_chunks = CtlFileParser().parse_ctl_file(ctl_path)
+    # print ctl_chunks
+    aps = functools.reduce(lambda x, y: x | y,
+                           [set(ctl_formula.get_aps()) for chunk in ctl_chunks for ctl_formula in
+                            chunk[1:]])
+    kripke_structure = AigKripkeStructure(aig_path, aps)
+    classifier = AbstractionClassifier(kripke_structure)
+
+
+if __name__ == '__main__':
+    aig_file_paths = ['iimc_aigs/af_ag.aig']
+    ctl_formula_paths = ['iimc_aigs/af_ag_checkEV.ctl']
+
+    test_cache_usage(ctl_formula_paths[0], aig_file_paths[0])
