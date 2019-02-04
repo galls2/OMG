@@ -112,6 +112,9 @@ class AbstractStructure(object):
         if exists_superset(self._E_must) is True:
             return True
 
+        if exists_superset(self._E_may_over_approx) is True:
+            return True
+
         closure_result = Z3Utils.is_AE_closed(to_close, close_with)
 
         conclusion_dict = self._E_must if closure_result is True else self._NE_must
