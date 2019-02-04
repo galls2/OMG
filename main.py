@@ -6,7 +6,7 @@ from aig_parser import AvyAigParser
 from cnf_parser import CnfParser
 from ctl import CtlFileParser
 from kripke_structure import AigKripkeStructure
-from omg import OmgModelChecker
+from omg import OmgModelChecker, OmgBuilder
 
 BUG_LINE = '<------------------------------------------------------ BUG -------------------------------------'
 SEP = '------------------------------------------------------------------------------------------'
@@ -25,7 +25,7 @@ def model_checking(aig_path, ctl_path):
                            [set(ctl_formula.get_aps()) for chunk in ctl_chunks for ctl_formula in
                             chunk[1:]])
     kripke_structure = AigKripkeStructure(aig_path, aps)
-    omg = OmgModelChecker(kripke_structure)
+    omg = OmgBuilder().set_kripke(kripke_structure).build()
 
     for chunk in ctl_chunks:
 

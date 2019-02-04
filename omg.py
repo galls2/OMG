@@ -62,6 +62,21 @@ def _init_heap_with(node):
     return to_visit
 
 
+class OmgBuilder(object):
+    def __init__(self):
+        super(OmgBuilder, self).__init__()
+        self._kripke = None
+
+    def set_kripke(self, kripke):
+        self._kripke = kripke
+        return self
+
+    def build(self):
+        if self._kripke is None:
+            raise Exception('Cannot build OMG without Kripke structure!')
+        return OmgModelChecker(self._kripke)
+
+
 class OmgModelChecker(object):
     """
     This is the main tool's class.
@@ -83,13 +98,14 @@ class OmgModelChecker(object):
                                 'EV': OmgModelChecker._handle_ev,
                                 'EX': OmgModelChecker._handle_ex,
                                 }
+
     def get_abstract_trees_sizes(self):
         count = 0
         for tree in self._abstraction._classification_trees.values():
             res = tree.size()
             count += res
             print res
-        print 'final: '+str(count)
+        print 'final: ' + str(count)
 
     def _initialize_abstraction(self):
         self._abstract_structure = AbstractStructure(self._kripke)
