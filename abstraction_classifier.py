@@ -35,11 +35,11 @@ class AbstractionCache(object):
 class AbstractionClassifier(object):
     """docstring for AbstractionClassifier."""
 
-    def __init__(self, kripke, cache=AbstractionCache()):
+    def __init__(self, kripke, cache=True):
         super(AbstractionClassifier, self).__init__()
         self._kripke = kripke
         self._classification_trees = {}
-        self._cache = cache
+        self._cache = AbstractionCache()
 
     def update_classification(self, classification_node, concrete_state):
         new_abstract_label = classification_node.classify(concrete_state)

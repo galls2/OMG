@@ -5,7 +5,7 @@ from abstraction_classifier import AbstractionClassifier
 from unwinding_tree import UnwindingTree
 from z3_utils import Z3Utils
 
-DEBUG = False
+DEBUG = True
 
 
 def DEBUG_PRINT(txt, newline=True):
@@ -307,6 +307,8 @@ class OmgModelChecker(object):
             'handle_ctl_and_recur: node=(' + str(node.concrete_label) + ',' + str(node.get_depth()) + '), spec=' + \
             specification.str_math())
 
+        if specification.get_main_connective() == 'EX':
+            print 'upu'
         self._find_abstract_classification_for_node(node)
 
         if node.get_abstract_label().is_positive_label(specification):
