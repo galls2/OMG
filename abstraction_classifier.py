@@ -1,5 +1,7 @@
 import functools
 
+from mockito import mock, when, args
+
 from ctl import CtlFileParser
 from kripke_structure import AigKripkeStructure
 from unwinding_tree import print_tree
@@ -35,11 +37,11 @@ class AbstractionCache(object):
 class AbstractionClassifier(object):
     """docstring for AbstractionClassifier."""
 
-    def __init__(self, kripke, cache=True):
+    def __init__(self, kripke, cache_factory=AbstractionCache):
         super(AbstractionClassifier, self).__init__()
         self._kripke = kripke
         self._classification_trees = {}
-        self._cache = AbstractionCache()
+        self._cache = cache_factory()
 
     def update_classification(self, classification_node, concrete_state):
         new_abstract_label = classification_node.classify(concrete_state)
@@ -172,19 +174,3 @@ class AbstractionClassifierTree(object):
     def size(self):
         return 1 + sum([s.size() for s in self._successors.values()])
 
-
-def test_cache_usage(ctl_path, aig_path):
-    ctl_chunks = CtlFileParser().parse_ctl_file(ctl_path)
-    # print ctl_chunks
-    aps = functools.reduce(lambda x, y: x | y,
-                           [set(ctl_formula.get_aps()) for chunk in ctl_chunks for ctl_formula in
-                            chunk[1:]])
-    kripke_structure = AigKripkeStructure(aig_path, aps)
-    classifier = AbstractionClassifier(kripke_structure)
-
-
-if __name__ == '__main__':
-    aig_file_paths = ['iimc_aigs/af_ag.aig']
-    ctl_formula_paths = ['iimc_aigs/af_ag_checkEV.ctl']
-
-    test_cache_usage(ctl_formula_paths[0], aig_file_paths[0])
