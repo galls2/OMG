@@ -5,7 +5,7 @@ from abstraction_classifier import AbstractionClassifier
 from unwinding_tree import UnwindingTree
 from z3_utils import Z3Utils
 
-DEBUG = True
+DEBUG = False
 
 
 def DEBUG_PRINT(txt, newline=True):
@@ -83,6 +83,13 @@ class OmgModelChecker(object):
                                 'EV': OmgModelChecker._handle_ev,
                                 'EX': OmgModelChecker._handle_ex,
                                 }
+    def get_abstract_trees_sizes(self):
+        count = 0
+        for tree in self._abstraction._classification_trees.values():
+            res = tree.size()
+            count += res
+            print res
+        print 'final: '+str(count)
 
     def _initialize_abstraction(self):
         self._abstract_structure = AbstractStructure(self._kripke)
@@ -194,8 +201,6 @@ class OmgModelChecker(object):
         while to_visit:
             node_to_explore = (to_visit.popitem()[0]).reset_urgent()
             DEBUG_PRINT('EV:: NOW EXPLORING ' + node_to_explore.description())
-            if node_to_explore.get_depth() >= 5:
-                print 'HERH'
 
             self._find_abstract_classification_for_node(node_to_explore)
 
@@ -307,8 +312,6 @@ class OmgModelChecker(object):
             'handle_ctl_and_recur: node=(' + str(node.concrete_label) + ',' + str(node.get_depth()) + '), spec=' + \
             specification.str_math())
 
-        if specification.get_main_connective() == 'EX':
-            print 'upu'
         self._find_abstract_classification_for_node(node)
 
         if node.get_abstract_label().is_positive_label(specification):

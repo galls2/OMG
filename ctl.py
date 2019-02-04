@@ -316,9 +316,6 @@ class CtlParser(object):
 
             return CtlFormula(main_connective, [first_operand, second_operand])
 
-        # Handle negations
-        if input_formula[:1] in CtlFormula.unary_logical_operators:
-            return CtlFormula(input_formula[:1], [self.parse_math_format(input_formula[1:])])
 
         # Handle &, |, -> (in that order)
         if len(parts) > 2:
@@ -326,6 +323,11 @@ class CtlParser(object):
                 split_result = self.split_by_operator(parts, operator)
                 if split_result is not None:
                     return split_result
+
+        # Handle negations
+        if input_formula[:1] in CtlFormula.unary_logical_operators:
+            return CtlFormula(input_formula[:1], [self.parse_math_format(input_formula[1:])])
+
 
         else:  # Otherwise, it is an atomic proposition or true/false
             return self._parse_ap_bool(input_formula)
@@ -413,3 +415,7 @@ class CtlFileParser(object):
                 print c
             '''
             return [self._parse_ctl_chunk(chunk) for chunk in chunks]
+
+
+if __name__ == '__main__':
+    print CtlParser().parse_math_format('EX ~p & ~q').str_math()

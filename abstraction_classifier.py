@@ -169,6 +169,9 @@ class AbstractionClassifierTree(object):
     def get_query(self):
         return self._query
 
+    def size(self):
+        return 1 + sum([s.size() for s in self._successors.values()])
+
 
 def test_cache_usage(ctl_path, aig_path):
     ctl_chunks = CtlFileParser().parse_ctl_file(ctl_path)

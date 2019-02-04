@@ -34,6 +34,7 @@ def model_checking(aig_path, ctl_path):
             continue
         for spec in chunk[1:]:
             print_results_for_spec(omg, expected_res, spec)
+#            omg.get_abstract_trees_sizes()
 
 
 def print_results_for_spec(omg, expected_res, spec):
@@ -120,8 +121,8 @@ def test_AV():
 
 def test_EV():
     print 'Checking EVs:'
-    aig_file_paths = ['iimc_aigs/af_ag.aig']
-    ctl_formula_paths = ['iimc_aigs/af_ag_checkEV.ctl']
+    aig_file_paths = ['iimc_aigs/af_ag.aig', 'iimc_aigs/debug.aig']
+    ctl_formula_paths = ['iimc_aigs/af_ag_checkEV.ctl', 'iimc_aigs/debug.ctl']
     check_files(aig_file_paths, ctl_formula_paths)
 
 
@@ -135,5 +136,5 @@ def regression_tests():
 if __name__ == '__main__':
     #    check_properties()
 
-    regression_tests()
-  # model_checking(*parse_input())
+#    regression_tests()
+     model_checking(*parse_input())
