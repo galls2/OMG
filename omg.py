@@ -1,6 +1,8 @@
+import functools
+
 from heapdict import *
 
-from abstract_structure import AbstractStructure, AbstractState
+from abstract_structure import AbstractStructure, AbstractState, init_dict_by_key
 from abstraction_classifier import AbstractionClassifier
 from unwinding_tree import UnwindingTree
 from z3_utils import Z3Utils
@@ -15,6 +17,8 @@ def DEBUG_PRINT(txt, newline=True):
         else:
             print txt,
 
+def _big_cup(list_of_sets):
+    return functools.reduce(lambda x, y: x | y, list_of_sets)
 
 def unique(collection):
     return list(set(collection))
@@ -25,10 +29,7 @@ def node_to_heapq(node):
 
 
 def _label_state(check_result, node_to_label, spec):
-    if check_result:
-        node_to_label.add_positive_label(spec)
-    else:
-        node_to_label.add_negative_label(spec)
+    node_to_label.add_label(spec, check_result)
     return check_result
 
 
@@ -43,16 +44,10 @@ def label_subtree(node, spec, positivity):
     if not node.is_developed():
         return positivity
 
-    if positivity:
-        node.add_positive_label(spec)
-    else:
-        node.add_negative_label(spec)
+    node.add_label(spec, positivity)
 
     successors = node.get_successors()
-    if successors is not None:
-        for successor in successors:
-            label_subtree(successor, spec, positivity)
-
+    [label_subtree(successor, spec, positivity) for successor in (successors if successors is not None else [])]
     return positivity
 
 
@@ -173,6 +168,7 @@ class OmgModelChecker(object):
                 node_to_explore.add_positive_label(spec)
 
             abs_states_with_nodes = node.get_abstract_labels_in_tree()  # tuples of the form (abstract_label, node)
+            abs_states_with_nodes = self._unify_brothers(abs_states_with_nodes)
             abs_states = unique([tup[0] for tup in abs_states_with_nodes])
             # TODO unify brothers
             abs_states_lead = [abs_tuple for abs_tuple in abs_states_with_nodes
@@ -389,3 +385,35 @@ class OmgModelChecker(object):
         while dst is not src:
             self._refine_split_ex(dst.get_parent(), dst.concrete_label)
             dst = dst.get_parent()
+
+    def _unify_brothers(self, abs_states_with_nodes):  # of the form (abs, node)
+        abstract_states, concrete_nodes = zip(*abs_states_with_nodes)
+        classification_nodes = {abs_state.get_classification_node() for abs_state in abstract_states}
+        node_to_cl_node = {tup[1]: tup[0].get_classification_node() for tup in abs_states_with_nodes}
+        depths = {classification_node.get_depth() for classification_node in classification_nodes}
+        with_depth = {depth: #d-> {(cl_node, {conc_nodes})}
+                          tuple({(cl_node,
+                            tuple({conc_node
+                             for conc_node in concrete_nodes if node_to_cl_node[conc_node] == cl_node}))
+                           for cl_node in classification_nodes if cl_node.get_depth() == depth})
+                      for depth in depths}
+        to_return = []
+        while with_depth.keys():
+            max_depth = max(with_depth.keys())
+            bottom_layer = with_depth.pop(max_depth)
+            unchanged, next_level = self._unify_same_level_brothers(bottom_layer)
+            to_return += [(tup[0].get_value(), conc_node)
+                          for x in unchanged for tup in x for conc_node in tup[1]]
+            init_dict_by_key(with_depth, max_depth+1, next_level)
+        return to_return
+
+
+    def _unify_same_level_brothers(self, bottom_layer):  # set of (classification_node,
+        # {concrete_nodes that are classified by it})
+        parent_mapping = {cl_node.get_parent():
+                              tuple([(cl_node_t, conc_nodes_t) for (cl_node_t, conc_nodes_t) in bottom_layer if
+                               cl_node_t.get_parent() == cl_node.get_parent()])
+                          for (cl_node, conc_nodes) in bottom_layer}
+        unchanged = [parent_mapping[parent] for parent in parent_mapping.keys() if len(parent_mapping[parent]) == 1]
+        to_unify = [(parent, _big_cup(parent_mapping[parent])) for parent in parent_mapping.keys() if len(parent_mapping[parent]) == 2]
+        return unchanged, to_unify

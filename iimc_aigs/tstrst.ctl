@@ -1,8 +1,8 @@
-#PASS: (0)
-AG EF (o & t & s)
-
 #PASS: (1)
 AG (o | ~t | s)
+
+#PASS: (0)
+AG EF (o & t & s)
 
 #PASS: (2)
 AG(~(o | t | s) -> AX (~o & ~t & s))

@@ -30,12 +30,12 @@ class TestAbstractionClassifier(TestCase):
         classifier = AbstractionClassifier(self._kripke_structure, get_cache)
         state = (0, 0, 0)
 
-        abs = AbstractState({}, self._kripke_structure, self._kripke_structure.get_bis0_formula(state, [Bool('x'+str(i)) for i in range(3)]))
+        abst = AbstractState({}, self._kripke_structure, self._kripke_structure.get_bis0_formula(state, [Bool('x'+str(i)) for i in range(3)]))
 
-        classifier.add_classification((), abs)
+        classifier.add_classification((), abst)
         classifier.classify(state)
         assert self._my_cache.exists_key(state)
-        assert self._my_cache[state] == abs
+        assert self._my_cache[state] == abst
 
         self._my_cache[state] = None
         assert classifier.classify(state) is None

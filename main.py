@@ -1,12 +1,12 @@
 import functools
 import os
 import sys
+import time
 
 from aig_parser import AvyAigParser
-from cnf_parser import CnfParser
 from ctl import CtlFileParser
 from kripke_structure import AigKripkeStructure
-from omg import OmgModelChecker, OmgBuilder
+from omg import OmgBuilder
 
 BUG_LINE = '<------------------------------------------------------ BUG -------------------------------------'
 SEP = '------------------------------------------------------------------------------------------'
@@ -38,12 +38,13 @@ def model_checking(aig_path, ctl_path):
 
 
 def print_results_for_spec(omg, expected_res, spec):
-    pos, neg = omg.check_all_initial_states(spec)
+    timer, (pos, neg) = time_me(omg.check_all_initial_states, [spec])
     spec_str = spec.str_math()
     for pos_s in pos:
         print 'M, ' + str(pos_s) + ' |= ' + spec_str + (BUG_LINE if not expected_res else "")
     for neg_s in neg:
         print 'M, ' + str(neg_s) + ' |=/= ' + spec_str + (BUG_LINE if expected_res else "")
+    print 'Took: '+str(timer)
     print SEP
 
 
@@ -87,6 +88,12 @@ def check_properties():
     print good
 
 
+def time_me(measuree, args):
+    start = time.time()
+    res = measuree(*args)
+    end = time.time()
+    return (end - start, res)
+
 def check_files(aig_paths, ctl_paths):
     for i in range(len(aig_paths)):
         aig_file_path = aig_paths[i]
@@ -94,6 +101,7 @@ def check_files(aig_paths, ctl_paths):
 
         file_name = ''.join(aig_file_path.split('/')[-1].split('.')[:-1])
         print 'Checking ' + file_name
+
         model_checking(aig_file_path, ctl_formula_path)
         print '------------------'
 
@@ -121,8 +129,16 @@ def test_AV():
 
 def test_EV():
     print 'Checking EVs:'
-    aig_file_paths = ['iimc_aigs/af_ag.aig', 'iimc_aigs/debug.aig']
-    ctl_formula_paths = ['iimc_aigs/af_ag_checkEV.ctl', 'iimc_aigs/debug.ctl']
+    aig_file_paths = ['iimc_aigs/af_ag.aig']
+    ctl_formula_paths = ['iimc_aigs/af_ag_checkEV.ctl']
+    check_files(aig_file_paths, ctl_formula_paths)
+
+
+def test_iimc():
+    print 'Checking Actual IIMC examples:'
+    TEST_NAMES = ['af_ag', 'debug', 'gray', 'gatedClock', 'microwave']
+    aig_file_paths = ['iimc_aigs/' + test_name + '.aig' for test_name in TEST_NAMES]
+    ctl_formula_paths = [(''.join(aig_path[:-4])+'.ctl') for aig_path in aig_file_paths]
     check_files(aig_file_paths, ctl_formula_paths)
 
 
@@ -132,9 +148,11 @@ def regression_tests():
     test_AV()
     test_EV()
 
+    test_iimc()
+
 
 if __name__ == '__main__':
     #    check_properties()
 
-    regression_tests()
-#     model_checking(*parse_input())
+   regression_tests()
+#    model_checking(*parse_input())
