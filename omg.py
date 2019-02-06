@@ -17,8 +17,10 @@ def DEBUG_PRINT(txt, newline=True):
         else:
             print txt,
 
+
 def _big_cup(list_of_sets):
     return functools.reduce(lambda x, y: x | y, list_of_sets)
+
 
 def unique(collection):
     return list(set(collection))
@@ -70,6 +72,12 @@ class OmgBuilder(object):
         if self._kripke is None:
             raise Exception('Cannot build OMG without Kripke structure!')
         return OmgModelChecker(self._kripke)
+
+
+class UnificationPart(object):
+    def __init__(self, cl_node, cn_nodes):
+        self.cl_node = cl_node
+        self.cn_nodes = cn_nodes
 
 
 class OmgModelChecker(object):
@@ -388,32 +396,47 @@ class OmgModelChecker(object):
 
     def _unify_brothers(self, abs_states_with_nodes):  # of the form (abs, node)
         abstract_states, concrete_nodes = zip(*abs_states_with_nodes)
-        classification_nodes = {abs_state.get_classification_node() for abs_state in abstract_states}
-        node_to_cl_node = {tup[1]: tup[0].get_classification_node() for tup in abs_states_with_nodes}
-        depths = {classification_node.get_depth() for classification_node in classification_nodes}
-        with_depth = {depth: #d-> {(cl_node, {conc_nodes})}
-                          tuple({(cl_node,
-                            tuple({conc_node
-                             for conc_node in concrete_nodes if node_to_cl_node[conc_node] == cl_node}))
-                           for cl_node in classification_nodes if cl_node.get_depth() == depth})
-                      for depth in depths}
+        cl_nodes = {abs_state.get_classification_node() for abs_state in abstract_states}
+        cn_to_cl = {tup[1]: tup[0].get_classification_node() for tup in abs_states_with_nodes}
+        depths = {cl_node.get_depth() for cl_node in cl_nodes}
+        with_depth = {depth:  # d-> {(cl_node, {conc_nodes})}
+                          tuple([UnificationPart(cl, [cn for cn in cn_to_cl.keys() if cn_to_cl[cn] == cl]) for cl in
+                                 cl_nodes if cl.get_depth() == depth]) for depth in depths}
+
         to_return = []
         while with_depth.keys():
             max_depth = max(with_depth.keys())
-            bottom_layer = with_depth.pop(max_depth)
-            unchanged, next_level = self._unify_same_level_brothers(bottom_layer)
-            to_return += [(tup[0].get_value(), conc_node)
-                          for x in unchanged for tup in x for conc_node in tup[1]]
-            init_dict_by_key(with_depth, max_depth+1, next_level)
-        return to_return
-
+            bottom_layer = list(with_depth.pop(max_depth))
+            if max_depth > 0:
+                unchanged, next_level = self._unify_same_level_brothers(bottom_layer)
+                if len(next_level) > 0:
+                    print 'upupupupupupupu'
+                to_return += unchanged
+                if next_level:
+                    next_depth = max_depth - 1
+                    if next_depth not in with_depth.keys():
+                        with_depth[next_depth] = []
+                    with_depth[next_depth] += tuple(next_level)
+            else:
+                to_return += bottom_layer
+        res = [(unif.cl_node.get_value(), cn_node) for unif in to_return for cn_node in unif.cn_nodes]
+        if len(res) < len(abs_states_with_nodes):
+            print 'upupu'
+        return res
 
     def _unify_same_level_brothers(self, bottom_layer):  # set of (classification_node,
         # {concrete_nodes that are classified by it})
-        parent_mapping = {cl_node.get_parent():
-                              tuple([(cl_node_t, conc_nodes_t) for (cl_node_t, conc_nodes_t) in bottom_layer if
-                               cl_node_t.get_parent() == cl_node.get_parent()])
-                          for (cl_node, conc_nodes) in bottom_layer}
-        unchanged = [parent_mapping[parent] for parent in parent_mapping.keys() if len(parent_mapping[parent]) == 1]
-        to_unify = [(parent, _big_cup(parent_mapping[parent])) for parent in parent_mapping.keys() if len(parent_mapping[parent]) == 2]
+        parent_mapping = {unif_part.cl_node.get_parent():
+                              tuple([unif_brother for unif_brother in bottom_layer if
+                                     unif_brother.cl_node.get_parent() == unif_part.cl_node.get_parent()])
+                          for unif_part in bottom_layer}
+
+        def is_col_of_size(col, _len):
+            return len(col) == _len
+
+        unif_brothers = [list(tup_val) for tup_val in parent_mapping.values()]
+        unchanged = [l[0] for l in filter(lambda col: is_col_of_size(col, 1), unif_brothers)]
+        to_unify = [UnificationPart(u_part[0].cl_node.get_parent(), u_part[0].cn_nodes+u_part[1].cn_nodes)
+                    for u_part in filter(lambda col: is_col_of_size(col, 2), unif_brothers)]
+
         return unchanged, to_unify

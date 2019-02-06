@@ -143,8 +143,8 @@ def test_iimc():
 
 
 def regression_tests():
-    test_propositional()
-    test_nexts()
+#    test_propositional()
+#    test_nexts()
     test_AV()
     test_EV()
 
