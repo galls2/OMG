@@ -101,7 +101,8 @@ class AbstractStructure(object):
 
         conclusion_dict = self._E_may_over_approx if closure_result is True else self._NE_may_over_approx
         init_dict_by_key(conclusion_dict, to_close, close_with)
-
+        if closure_result is True:
+            self.add_must_hyper(to_close, close_with)
         return closure_result
 
     def is_AE_closure(self, to_close, close_with):

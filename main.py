@@ -25,7 +25,10 @@ def model_checking(aig_path, ctl_path):
                            [set(ctl_formula.get_aps()) for chunk in ctl_chunks for ctl_formula in
                             chunk[1:]])
     kripke_structure = AigKripkeStructure(aig_path, aps)
-    omg = OmgBuilder().set_kripke(kripke_structure).build()
+    omg = OmgBuilder()\
+        .set_kripke(kripke_structure)\
+        .set_brother_unification(False)\
+        .build()
 
     for chunk in ctl_chunks:
 
@@ -101,6 +104,8 @@ def check_files(aig_paths, ctl_paths):
 
         file_name = ''.join(aig_file_path.split('/')[-1].split('.')[:-1])
         print 'Checking ' + file_name
+        if ctl_formula_path.endswith('abs.ctl'):
+            print 'NOW'
 
         model_checking(aig_file_path, ctl_formula_path)
         print '------------------'

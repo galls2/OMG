@@ -63,15 +63,22 @@ class OmgBuilder(object):
     def __init__(self):
         super(OmgBuilder, self).__init__()
         self._kripke = None
+        self._brother_unification = None
 
     def set_kripke(self, kripke):
         self._kripke = kripke
         return self
 
+    def set_brother_unification(self, val=True):
+        self._brother_unification = val
+        return self
+
     def build(self):
         if self._kripke is None:
             raise Exception('Cannot build OMG without Kripke structure!')
-        return OmgModelChecker(self._kripke)
+        if self._brother_unification is None:
+            raise Exception('Cannot build OMG without deciding brother unification policy!')
+        return OmgModelChecker(self._kripke, self._brother_unification)
 
 
 class UnificationPart(object):
@@ -86,13 +93,14 @@ class OmgModelChecker(object):
     Create a new one for each structure.
     """
 
-    def __init__(self, kripke):
+    def __init__(self, kripke, brother_unification):
         super(OmgModelChecker, self).__init__()
         self._kripke = kripke
         self._abstract_structure = None
         self._abstraction = None
         self._initialize_abstraction()
         self._unwinding_trees = []
+        self._brother_unification = brother_unification
         self._method_mapping = {'&': OmgModelChecker._handle_and,
                                 '|': OmgModelChecker._handle_or,
                                 '->': OmgModelChecker._handle_arrow,
@@ -176,25 +184,26 @@ class OmgModelChecker(object):
                 node_to_explore.add_positive_label(spec)
 
             abs_states_with_nodes = node.get_abstract_labels_in_tree()  # tuples of the form (abstract_label, node)
-            abs_states_with_nodes = self._unify_brothers(abs_states_with_nodes)
+            if self._brother_unification:
+                abs_states_with_nodes = self._unify_brothers(abs_states_with_nodes)
+            else:
+                abs_states_with_nodes = [ (a,[n]) for (a,n) in abs_states_with_nodes]
             abs_states = unique([tup[0] for tup in abs_states_with_nodes])
-            # TODO unify brothers
             abs_states_lead = [abs_tuple for abs_tuple in abs_states_with_nodes
-                               if abs_tuple[1].is_labeled_negatively_with(p)]
+                               if abs_tuple[1][0].is_labeled_negatively_with(p)]
             while abs_states_lead:
                 abs_state_lead = abs_states_lead[0]
-                to_close_abstract, to_close_node = abs_state_lead
+                to_close_abstract, to_close_nodes = abs_state_lead
 
-                DEBUG_PRINT('AV:: Trying to close ' + to_close_node.description() + ' :', False)
+                DEBUG_PRINT('AV:: Trying to close abstract state of' + to_close_nodes[0].description() + ' :', False)
                 res = self._abstract_structure.is_EE_closure(to_close_abstract, abs_states)
                 if res is True:
                     DEBUG_PRINT(' Success!')
                     abs_states_lead = abs_states_lead[1:]
-                    self._abstract_structure.add_must_hyper(to_close_abstract, abs_states)  # GOOD?
                 else:
                     src_to_witness, witness_state = res
                     DEBUG_PRINT(' Failed! Due to ' + str((src_to_witness, witness_state)))
-                    concretization_result = self._is_witness_concrete(to_close_node, witness_state)
+                    concretization_result, to_close_node = self._is_concrete_violation(to_close_nodes, witness_state)
                     if concretization_result:
                         if to_close_node.get_successors() is None:
                             node_to_set = to_close_node
@@ -206,7 +215,7 @@ class OmgModelChecker(object):
                         to_visit[node_to_set] = node_to_set.priority()
 
                     else:
-                        self._refine_split_ex(to_close_node, witness_state)
+                        self._refine_split_ex(to_close_nodes[0], witness_state)
                     break
 
             if not abs_states_lead:
@@ -214,6 +223,15 @@ class OmgModelChecker(object):
                 return label_subtree(node, spec, True)
 
         return label_subtree(node, spec, True)
+
+    def _is_concrete_violation(self, to_close_nodes, witness_state):
+        to_close_node = None
+        concretization_result = False
+        for to_close_node in to_close_nodes:
+            concretization_result = self._is_witness_concrete(to_close_node, witness_state)
+            if concretization_result:
+                break
+        return concretization_result, to_close_node
 
     def _handle_ev(self, node, spec, p, q):
         to_visit = _init_heap_with(node)
@@ -409,8 +427,7 @@ class OmgModelChecker(object):
             bottom_layer = list(with_depth.pop(max_depth))
             if max_depth > 0:
                 unchanged, next_level = self._unify_same_level_brothers(bottom_layer)
-                if len(next_level) > 0:
-                    print 'upupupupupupupu'
+
                 to_return += unchanged
                 if next_level:
                     next_depth = max_depth - 1
@@ -419,9 +436,9 @@ class OmgModelChecker(object):
                     with_depth[next_depth] += tuple(next_level)
             else:
                 to_return += bottom_layer
-        res = [(unif.cl_node.get_value(), cn_node) for unif in to_return for cn_node in unif.cn_nodes]
+        res = [(unif.cl_node.get_value(), unif.cn_nodes) for unif in to_return]
         if len(res) < len(abs_states_with_nodes):
-            print 'upupu'
+            print 'BROTHER UNIFICATION:: reduced from '+str(len(abs_states_with_nodes))+' to '+str(len(res))
         return res
 
     def _unify_same_level_brothers(self, bottom_layer):  # set of (classification_node,
