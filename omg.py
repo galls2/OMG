@@ -187,7 +187,7 @@ class OmgModelChecker(object):
             if self._brother_unification:
                 abs_states_with_nodes = self._unify_brothers(abs_states_with_nodes)
             else:
-                abs_states_with_nodes = [ (a,[n]) for (a,n) in abs_states_with_nodes]
+                abs_states_with_nodes = [(a, [n]) for (a, n) in abs_states_with_nodes]
             abs_states = unique([tup[0] for tup in abs_states_with_nodes])
             abs_states_lead = [abs_tuple for abs_tuple in abs_states_with_nodes
                                if abs_tuple[1][0].is_labeled_negatively_with(p)]
@@ -215,7 +215,10 @@ class OmgModelChecker(object):
                         to_visit[node_to_set] = node_to_set.priority()
 
                     else:
-                        self._refine_split_ex(to_close_nodes[0], witness_state)
+                        abs_src_witness = self._find_abstract_classification_for_state(src_to_witness)
+                        to_close_node = next(_to for _to in to_close_nodes
+                                             if self._find_abstract_classification_for_node(_to) == abs_src_witness)
+                        self._refine_split_ex(to_close_node, witness_state)
                     break
 
             if not abs_states_lead:
@@ -261,7 +264,7 @@ class OmgModelChecker(object):
 
             lasso_res = node_to_explore.is_lasso(node.get_parent())
             while lasso_res is not False:
-                if lasso_res is True:
+                if lasso_res is True:  # concrete lasso found!
                     DEBUG_PRINT('EV:: Found concrete lasso to: ' + node_to_explore.description())
                     self._strengthen_trace(node, node_to_explore)
                     _map_upward_from_node(node_to_explore, lambda current_node: current_node.add_positive_label(spec),
@@ -272,18 +275,28 @@ class OmgModelChecker(object):
 
                 base, abstract_states_nodes_loop = lasso_res
                 abstract_states_nodes_loop = list(abstract_states_nodes_loop)
-                loop_abstract_states = [pair[0] for pair in abstract_states_nodes_loop]
-                loop_nodes = [pair[1] for pair in abstract_states_nodes_loop]
+                if self._brother_unification:
+                    abstract_states_nodes_loop = self._unify_brothers(abstract_states_nodes_loop)
+                else:
+                    abstract_states_nodes_loop = [(a, [n]) for (a, n) in abstract_states_nodes_loop]
+
+
+                loop_abstract_states = [tup[0] for tup in abstract_states_nodes_loop]
+                loop_nodes = [_node for pair in abstract_states_nodes_loop for _node in pair[1]]
 
                 while abstract_states_nodes_loop:
-                    (to_close_abs, to_close_node) = abstract_states_nodes_loop[0]
-                    DEBUG_PRINT('EV:: Trying to close ' + to_close_node.description() + ' :', False)
+                    (to_close_abs, to_close_nodes) = abstract_states_nodes_loop[0]
+                    DEBUG_PRINT('EV:: Trying to close abstract state of' + to_close_nodes[0].description() + ' :', False)
                     res = self._abstract_structure.is_AE_closure(to_close_abs, loop_abstract_states)
                     if res is True:
                         DEBUG_PRINT(' Success!')
                         abstract_states_nodes_loop = abstract_states_nodes_loop[1:]
                     else:
                         DEBUG_PRINT(' Failed!')
+                        abs_src_witness = self._find_abstract_classification_for_state(res)
+                        to_close_node = next(_to for _to in to_close_nodes
+                                             if self._find_abstract_classification_for_node(_to) == abs_src_witness)
+
                         self._refine_split_ax(to_close_node, loop_nodes)
                         break
 
@@ -438,7 +451,7 @@ class OmgModelChecker(object):
                 to_return += bottom_layer
         res = [(unif.cl_node.get_value(), unif.cn_nodes) for unif in to_return]
         if len(res) < len(abs_states_with_nodes):
-            print 'BROTHER UNIFICATION:: reduced from '+str(len(abs_states_with_nodes))+' to '+str(len(res))
+            print 'BROTHER UNIFICATION:: reduced from ' + str(len(abs_states_with_nodes)) + ' to ' + str(len(res))
         return res
 
     def _unify_same_level_brothers(self, bottom_layer):  # set of (classification_node,
@@ -453,7 +466,7 @@ class OmgModelChecker(object):
 
         unif_brothers = [list(tup_val) for tup_val in parent_mapping.values()]
         unchanged = [l[0] for l in filter(lambda col: is_col_of_size(col, 1), unif_brothers)]
-        to_unify = [UnificationPart(u_part[0].cl_node.get_parent(), u_part[0].cn_nodes+u_part[1].cn_nodes)
+        to_unify = [UnificationPart(u_part[0].cl_node.get_parent(), u_part[0].cn_nodes + u_part[1].cn_nodes)
                     for u_part in filter(lambda col: is_col_of_size(col, 2), unif_brothers)]
 
         return unchanged, to_unify

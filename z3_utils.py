@@ -179,8 +179,15 @@ class Z3Utils(object):
 
         closure_formula = And(src, ForAll(dst_vars, Implies(transitions.get_z3_formula(), dst)))
 
-        return Solver().check(closure_formula) == unsat
+        s = Solver()
+        res = s.check(closure_formula)
 
+        if res == unsat:
+            return True
+
+        model = s.model()
+        ass = get_assignments(model, src_vars)[0]
+        return ass
 
     @classmethod
     def is_EE_closed(cls, to_close, close_with):

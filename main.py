@@ -25,9 +25,9 @@ def model_checking(aig_path, ctl_path):
                            [set(ctl_formula.get_aps()) for chunk in ctl_chunks for ctl_formula in
                             chunk[1:]])
     kripke_structure = AigKripkeStructure(aig_path, aps)
-    omg = OmgBuilder()\
-        .set_kripke(kripke_structure)\
-        .set_brother_unification(False)\
+    omg = OmgBuilder() \
+        .set_kripke(kripke_structure) \
+        .set_brother_unification(False) \
         .build()
 
     for chunk in ctl_chunks:
@@ -37,6 +37,8 @@ def model_checking(aig_path, ctl_path):
             continue
         for spec in chunk[1:]:
             print_results_for_spec(omg, expected_res, spec)
+
+
 #            omg.get_abstract_trees_sizes()
 
 
@@ -47,7 +49,7 @@ def print_results_for_spec(omg, expected_res, spec):
         print 'M, ' + str(pos_s) + ' |= ' + spec_str + (BUG_LINE if not expected_res else "")
     for neg_s in neg:
         print 'M, ' + str(neg_s) + ' |=/= ' + spec_str + (BUG_LINE if expected_res else "")
-    print 'Took: '+str(timer)
+    print 'Took: ' + str(timer)
     print SEP
 
 
@@ -97,6 +99,7 @@ def time_me(measuree, args):
     end = time.time()
     return (end - start, res)
 
+
 def check_files(aig_paths, ctl_paths):
     for i in range(len(aig_paths)):
         aig_file_path = aig_paths[i]
@@ -104,8 +107,6 @@ def check_files(aig_paths, ctl_paths):
 
         file_name = ''.join(aig_file_path.split('/')[-1].split('.')[:-1])
         print 'Checking ' + file_name
-        if ctl_formula_path.endswith('abs.ctl'):
-            print 'NOW'
 
         model_checking(aig_file_path, ctl_formula_path)
         print '------------------'
@@ -143,13 +144,13 @@ def test_iimc():
     print 'Checking Actual IIMC examples:'
     TEST_NAMES = ['af_ag', 'debug', 'gray', 'gatedClock', 'microwave']
     aig_file_paths = ['iimc_aigs/' + test_name + '.aig' for test_name in TEST_NAMES]
-    ctl_formula_paths = [(''.join(aig_path[:-4])+'.ctl') for aig_path in aig_file_paths]
+    ctl_formula_paths = [(''.join(aig_path[:-4]) + '.ctl') for aig_path in aig_file_paths]
     check_files(aig_file_paths, ctl_formula_paths)
 
 
 def regression_tests():
-#    test_propositional()
-#    test_nexts()
+    #    test_propositional()
+    #    test_nexts()
     test_AV()
     test_EV()
 
@@ -159,5 +160,5 @@ def regression_tests():
 if __name__ == '__main__':
     #    check_properties()
 
-   regression_tests()
+    regression_tests()
 #    model_checking(*parse_input())
