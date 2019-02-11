@@ -27,7 +27,8 @@ def model_checking(aig_path, ctl_path):
     kripke_structure = AigKripkeStructure(aig_path, aps)
     omg = OmgBuilder() \
         .set_kripke(kripke_structure) \
-        .set_brother_unification(False) \
+        .set_brother_unification()\
+        .set_trivial_split_elimination(True)\
         .build()
 
     for chunk in ctl_chunks:
@@ -149,8 +150,8 @@ def test_iimc():
 
 
 def regression_tests():
-    #    test_propositional()
-    #    test_nexts()
+    test_propositional()
+    test_nexts()
     test_AV()
     test_EV()
 

@@ -63,7 +63,7 @@ class AbstractState(object):
 class AbstractStructure(object):
     """docstring for AbstractStructure."""
 
-    def __init__(self, kripke):
+    def __init__(self, kripke, trivial_split):
         super(AbstractStructure, self).__init__()
         self.kripke = kripke
         self._abstract_states = set()
@@ -73,6 +73,7 @@ class AbstractStructure(object):
         self._NE_may_over_approx = {}
         self._E_must = {}  # if in may over approx than also in must !!!!!!!!!!
         self._NE_must = {}
+        self._trivial_split = trivial_split
 
     def add_abstract_state(self, abstract_state):
         self._abstract_states.add(abstract_state)
@@ -123,11 +124,17 @@ class AbstractStructure(object):
 
         return closure_result
 
-    def split_abstract_state(self, node_to_close, abstract_sons, formula_getter):
+    def split_abstract_state(self, node_to_close, abstract_sons, formula_getter, check_trivial_split):
         kripke = self.kripke
         abs_to_close = node_to_close.get_abstract_label()
         pos_formula, neg_formula = \
             formula_getter(abs_to_close, abstract_sons, kripke.get_tr_formula())
+
+        if self._trivial_split and check_trivial_split:
+            if not pos_formula.is_sat():
+                return False, abs_to_close
+            if not neg_formula.is_sat():
+                return True, abs_to_close
 
         def create_abstract_state_split(formula):
             return AbstractState(abs_to_close.atomic_labels, kripke, formula) \
@@ -162,37 +169,52 @@ class AbstractStructure(object):
         replace_old_value(self._E_must)
         replace_old_value(self._NE_must)
 
-        return abs_pos, abs_neg
+        return None, (abs_pos, abs_neg)
 
-    def split_abstract_state_ex(self, node_to_close, abstract_sons):
+    def split_abstract_state_ex(self, node_to_close, abstract_sons, check_trivial):
         abstract_state_to_split = node_to_close.get_abstract_label()
 
-        new_abs_has_sons, new_abs_no_sons = self.split_abstract_state(node_to_close, abstract_sons,
-                                                                      Z3Utils.get_ex_split_formulas)
+        res = self.split_abstract_state(node_to_close, abstract_sons, Z3Utils.get_ex_split_formulas, check_trivial)
+
+        if res[0] is not None:
+            if res[0] is True:
+                init_dict_by_key(self._E_must, abstract_state_to_split, abstract_sons)
+            else:
+                init_dict_by_key(self._NE_may, abstract_state_to_split, abstract_sons)
+            return res[0], abstract_state_to_split
+
+        new_abs_has_sons, new_abs_no_sons = res[1]
         # split info
 
         updated_abstract_sons = abstract_sons if abstract_state_to_split not in abstract_sons else \
             ([a for a in abstract_sons if a != abstract_state_to_split] + [new_abs_has_sons,
                                                                            new_abs_no_sons])
 
-        self._E_must = init_dict_by_key(self._E_must, new_abs_has_sons, updated_abstract_sons)
-        self._NE_may = init_dict_by_key(self._NE_may, new_abs_no_sons, updated_abstract_sons)
+        init_dict_by_key(self._E_must, new_abs_has_sons, updated_abstract_sons)
+        init_dict_by_key(self._NE_may, new_abs_no_sons, updated_abstract_sons)
 
-        return new_abs_has_sons, new_abs_no_sons
+        return None, (new_abs_has_sons, new_abs_no_sons)
 
-    def split_abstract_state_ax(self, node_to_close, abstract_sons):
+    def split_abstract_state_ax(self, node_to_close, abstract_sons, check_trivial):
         abstract_state_to_split = node_to_close.get_abstract_label()
-        new_abs_sons_closed, new_abs_sons_not_closed = self.split_abstract_state(node_to_close, abstract_sons,
-                                                                                 Z3Utils.get_ax_split_formulas)
+        res = self.split_abstract_state(node_to_close, abstract_sons, Z3Utils.get_ax_split_formulas, check_trivial)
+
+        if res[0] is not None:
+            if res[0] is True:
+                init_dict_by_key(self._E_may_over_approx, abstract_state_to_split, abstract_sons)
+            else:
+                init_dict_by_key(self._NE_may_over_approx, abstract_state_to_split, abstract_sons)
+            return res[0], abstract_state_to_split
+
+        new_abs_sons_closed, new_abs_sons_not_closed = res[1]
+
         # split info
 
         updated_abstract_sons = abstract_sons if abstract_state_to_split not in abstract_sons else \
             ([a for a in abstract_sons if a != abstract_state_to_split] + [new_abs_sons_closed,
                                                                            new_abs_sons_not_closed])
-        self._E_may_over_approx = init_dict_by_key(
-            self._E_may_over_approx, new_abs_sons_closed, updated_abstract_sons)
 
-        self._NE_may_over_approx = init_dict_by_key(
-            self._NE_may_over_approx, new_abs_sons_not_closed, updated_abstract_sons)
+        init_dict_by_key(self._E_may_over_approx, new_abs_sons_closed, updated_abstract_sons)
+        init_dict_by_key(self._NE_may_over_approx, new_abs_sons_not_closed, updated_abstract_sons)
 
-        return new_abs_sons_closed, new_abs_sons_not_closed
+        return None, (new_abs_sons_closed, new_abs_sons_not_closed)
