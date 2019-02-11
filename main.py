@@ -1,9 +1,7 @@
 import functools
-import os
-import sys
 import time
 
-from aig_parser import AvyAigParser
+from arg_parser import OmgArgumentParser
 from ctl import CtlFileParser
 from kripke_structure import AigKripkeStructure
 from omg import OmgBuilder
@@ -11,24 +9,26 @@ from omg import OmgBuilder
 BUG_LINE = '<------------------------------------------------------ BUG -------------------------------------'
 SEP = '------------------------------------------------------------------------------------------'
 
-
-def parse_input():
-    aig_file_path = sys.argv[1]
-    ctl_formula_path = sys.argv[2]
-    return aig_file_path, ctl_formula_path
+DEFAULT_FLAGS = {'-bu': True, '-tse': True}
 
 
-def model_checking(aig_path, ctl_path):
-    ctl_chunks = CtlFileParser().parse_ctl_file(ctl_path)
+def parse_input(src=None):
+    arg_parser = OmgArgumentParser()
+    return arg_parser.parse(src)
+
+
+def model_checking(parsed_args):
+
+    ctl_chunks = CtlFileParser().parse_ctl_file(parsed_args.ctl_path)
     # print ctl_chunks
     aps = functools.reduce(lambda x, y: x | y,
                            [set(ctl_formula.get_aps()) for chunk in ctl_chunks for ctl_formula in
                             chunk[1:]])
-    kripke_structure = AigKripkeStructure(aig_path, aps)
+    kripke_structure = AigKripkeStructure(parsed_args.aig_path, aps)
     omg = OmgBuilder() \
         .set_kripke(kripke_structure) \
-        .set_brother_unification()\
-        .set_trivial_split_elimination(True)\
+        .set_brother_unification(parsed_args.brother_unification)\
+        .set_trivial_split_elimination(parsed_args.trivial_split_elimination)\
         .build()
 
     for chunk in ctl_chunks:
@@ -37,10 +37,8 @@ def model_checking(aig_path, ctl_path):
         if expected_res is None:
             continue
         for spec in chunk[1:]:
+            #            omg.get_abstract_trees_sizes()
             print_results_for_spec(omg, expected_res, spec)
-
-
-#            omg.get_abstract_trees_sizes()
 
 
 def print_results_for_spec(omg, expected_res, spec):
@@ -52,46 +50,6 @@ def print_results_for_spec(omg, expected_res, spec):
         print 'M, ' + str(neg_s) + ' |=/= ' + spec_str + (BUG_LINE if expected_res else "")
     print 'Took: ' + str(timer)
     print SEP
-
-
-def check_properties():
-    DIR = 'iimc_aigs/'
-    file_names = os.listdir(DIR)
-    instances = [(aig, aig[:-4] + '.ctl') for aig in file_names if
-                 aig.endswith('.aig') and aig[:-4] + '.ctl' in file_names]
-
-    bad, total = 0, 0
-    good = []
-    for instance in instances:
-        ctl_path = DIR + instance[1]
-        total += 1
-        #   if not ctl_path.startswith(DIR + 'icctl'):
-        #       continue
-
-        print '--------' + ctl_path
-
-        ctl_chunks = CtlFileParser().parse_ctl_file(ctl_path)
-        chunk_aps = map(lambda f: f.get_aps(),
-                        [formula for chunk in ctl_chunks for formula in chunk[1:]])
-        ctl_aps = set(map(lambda ap: ap.get_ap_text(), functools.reduce(lambda r, y: set(r) | set(y), chunk_aps)))
-
-        aig_parser = AvyAigParser('iimc_aigs/' + instance[0])
-        ap_mapping = aig_parser.get_ap_mapping()
-        latch_aps = set({k: ap_mapping[k] for k in ap_mapping.keys() if ap_mapping[k].startswith('l')}.keys())
-
-        res = ctl_aps.issubset(latch_aps)
-        if not res:
-            bad += 1
-            for x in ctl_aps.difference(latch_aps | {True, False}):
-                if x not in ap_mapping.keys():
-                    print '>>>>>>>>>>>>>>>>The AP ' + x + ' is missing in the aig file..'
-                else:
-                    print x + ' : ' + str(ap_mapping[x]) + ('<<<<<<<<<<<<<<' if (ap_mapping[x][0] == 'i') else '')
-        else:
-            good.append(instance[0])
-
-    print 'BAD= ' + str(bad) + ' GOOD= ' + str(total - bad) + ' TOTAL= ' + str(total)
-    print good
 
 
 def time_me(measuree, args):
@@ -109,7 +67,10 @@ def check_files(aig_paths, ctl_paths):
         file_name = ''.join(aig_file_path.split('/')[-1].split('.')[:-1])
         print 'Checking ' + file_name
 
-        model_checking(aig_file_path, ctl_formula_path)
+        input_line = '--aig-path {aig} --ctl-path {ctl} '.format(aig=aig_file_path, ctl=ctl_formula_path)
+        input_line += ' '.join([flag for flag in DEFAULT_FLAGS.keys() if DEFAULT_FLAGS[flag]])
+        parsed_args = parse_input(input_line.split())
+        model_checking(parsed_args)
         print '------------------'
 
 
@@ -162,4 +123,4 @@ if __name__ == '__main__':
     #    check_properties()
 
     regression_tests()
-#    model_checking(*parse_input())
+ #   model_checking(parse_input())
