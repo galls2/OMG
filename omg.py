@@ -7,7 +7,7 @@ from abstraction_classifier import AbstractionClassifier
 from unwinding_tree import UnwindingTree
 from z3_utils import Z3Utils
 
-DEBUG = False
+DEBUG = True
 
 
 def DEBUG_PRINT(txt, newline=True):

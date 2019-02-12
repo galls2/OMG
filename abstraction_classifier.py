@@ -1,11 +1,6 @@
-import functools
-
-from mockito import mock, when, args
-
-from ctl import CtlFileParser
-from kripke_structure import AigKripkeStructure
-from unwinding_tree import print_tree
 import inspect
+
+from unwinding_tree import print_tree
 
 
 def collection_to_sorted_tuple(ap_collection):

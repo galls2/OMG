@@ -1,6 +1,7 @@
 from z3 import *
 
 from formula_wrapper import FormulaWrapper
+from omg import _big_cup
 from z3_utils import get_vars, Z3Utils
 
 DEBUG = True
@@ -53,10 +54,15 @@ class CnfParser(object):
         dimacs_lines = filter(lambda raw_line: len(raw_line) > 0 and raw_line[0] not in [' ', 'p', '\t'],
                               extended_dimacs)
         clauses = [_line_to_clause(line) for line in dimacs_lines]
+        all_vars_list = [set(get_vars(clause)) for clause in clauses]
+        all_vars = _big_cup(all_vars_list)
         final_z3_formula = And(*clauses)
         var_vectors = metadata_parser(metadata)
-        aux = set(get_vars(final_z3_formula)).difference(set([var for vec in var_vectors for var in vec]))
+        aux = set(all_vars).difference(set([var for vec in var_vectors for var in vec]))
 
         quantifier_over_aux = Exists(list(aux), final_z3_formula)
-        after_qe = Z3Utils.apply_qe(quantifier_over_aux)
+        print 'beforelalalaa'
+        s = simplify(quantifier_over_aux)
+        after_qe = Z3Utils.apply_qe(quantifier_over_aux)  ## try for
+        print 'lalalala'
         return FormulaWrapper(after_qe, var_vectors)
