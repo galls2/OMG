@@ -7,7 +7,7 @@ from abstraction_classifier import AbstractionClassifier
 from unwinding_tree import UnwindingTree
 from z3_utils import Z3Utils
 
-DEBUG = True
+DEBUG = False
 
 
 def DEBUG_PRINT(txt, newline=True):
@@ -124,7 +124,7 @@ class OmgModelChecker(object):
             res = tree.size()
             count += res
           #  print res
-        print 'final: ' + str(count)
+        DEBUG_PRINT('final: ' + str(count))
 
     def _initialize_abstraction(self, trivial_split):
         self._abstract_structure = AbstractStructure(self._kripke, trivial_split)
@@ -209,7 +209,7 @@ class OmgModelChecker(object):
                     DEBUG_PRINT(' Success!')
                     abs_states_lead = abs_states_lead[1:]
                 else:
-                    src_to_witness, witness_state = res
+                    src_to_witness, witness_state = res.conc_src, res.conc_dst
                     DEBUG_PRINT(' Failed! Due to ' + str((src_to_witness, witness_state)))
                     concretization_result, to_close_node = self._is_concrete_violation(to_close_nodes, witness_state)
                     if concretization_result:
@@ -462,8 +462,9 @@ class OmgModelChecker(object):
             else:
                 to_return += bottom_layer
         res = [(unif.cl_node.get_value(), unif.cn_nodes) for unif in to_return]
-        if len(res) < len(abs_states_with_nodes):
-            print 'BROTHER UNIFICATION:: reduced from ' + str(len(abs_states_with_nodes)) + ' to ' + str(len(res))
+
+        DEBUG_PRINT('BROTHER UNIFICATION:: reduced from ' + str(len(abs_states_with_nodes)) + ' to ' + str(len(res))
+                    if len(res) < len(abs_states_with_nodes) else '')
         return res
 
     def _unify_same_level_brothers(self, bottom_layer):  # set of (classification_node,

@@ -67,60 +67,88 @@ class AbstractStructure(object):
         super(AbstractStructure, self).__init__()
         self.kripke = kripke
         self._abstract_states = set()
-        self._E_may = {}
         self._NE_may = {}
-        self._E_may_over_approx = {}
-        self._NE_may_over_approx = {}
+        self._E_may_over = {}
+        self._NE_may_over = {}
         self._E_must = {}  # if in may over approx than also in must !!!!!!!!!!
-        self._NE_must = {}
         self._trivial_split = trivial_split
 
     def add_abstract_state(self, abstract_state):
         self._abstract_states.add(abstract_state)
         return self
 
-    '''
-    def add_may(self, src, dst):
-        init_dict_by_key(self._E_may, src, dst)
-        return self
-    '''
 
     def add_must_hyper(self, src, hyper_dst):
         init_dict_by_key(self._E_must, src, hyper_dst)
         return self
 
+    def add_NE_may(self, src, dst):
+        init_dict_by_key(self._NE_may, src, [dst])
+        return self
+
+    def add_E_may_over(self, src, dst):
+        init_dict_by_key(self._E_may_over, src, dst)
+        return self
+
+    def add_NE_may_over(self, src, dst):
+        if src in self._NE_may_over.keys(): #tuple of (violation, non-closers)
+            self._NE_may_over[src] = {ent for ent in self._NE_may_over[src] if not set(ent[1]).issubset(set(dst[1]))}
+        init_dict_by_key(self._NE_may_over, src, dst)  ###MINIMZE
+        return self
+
     def is_EE_closure(self, to_close, close_with):
+        close_with = [cl for cl in close_with if
+                      to_close not in self._NE_may.keys() or cl not in self._NE_may[to_close]]
+
+        # this is not empty
 
         def exists_superset(over_approxs):
             return True if to_close in over_approxs.keys() and \
                            any([set(close_with).issuperset(set(op)) for op in over_approxs[to_close]]) else None
 
-        if exists_superset(self._E_may_over_approx) is True:
+        def exists_subset(n_over_approxs):
+            if to_close not in n_over_approxs.keys():
+                return False
+            candidates = [op[0]
+                          for op in n_over_approxs[to_close] if
+                          set(close_with).issubset(set(op[1])) and op[0] is not None]
+            return candidates[0] if candidates else False
+
+        if exists_superset(self._E_may_over) is True:
             return True
+
+        subset_res = exists_subset(self._NE_may_over)
+        if subset_res:
+            return subset_res
 
         closure_result = Z3Utils.is_EE_closed(to_close, close_with)
 
-        conclusion_dict = self._E_may_over_approx if closure_result is True else self._NE_may_over_approx
-        init_dict_by_key(conclusion_dict, to_close, close_with)
         if closure_result is True:
-            self.add_must_hyper(to_close, close_with)
+            self.add_E_may_over(to_close, close_with)
+        else:
+            self.add_NE_may_over(to_close, (closure_result, tuple(close_with)))
+
         return closure_result
 
     def is_AE_closure(self, to_close, close_with):
+        close_with = [cl for cl in close_with if
+                      to_close not in self._NE_may.keys() or cl not in self._NE_may[to_close]]
+
+        # this is not empty
+
         def exists_superset(over_approxs):
             return True if to_close in over_approxs.keys() and \
                            any([set(close_with).issuperset(set(op)) for op in over_approxs[to_close]]) else None
 
-        if exists_superset(self._E_must) is True:
-            return True
-
-        if exists_superset(self._E_may_over_approx) is True:
+        if exists_superset(self._E_must) or exists_superset(self._E_may_over) is True:
             return True
 
         closure_result = Z3Utils.is_AE_closed(to_close, close_with)
 
-        conclusion_dict = self._E_must if closure_result is True else self._NE_must
-        init_dict_by_key(conclusion_dict, to_close, close_with)
+        if closure_result is True:
+            self.add_must_hyper(to_close, close_with)
+        else:
+            [self.add_NE_may(to_close, closer) for closer in close_with]
 
         return closure_result
 
@@ -147,27 +175,30 @@ class AbstractStructure(object):
         self._abstract_states.remove(abs_to_close)
         self._abstract_states.update([abs_pos, abs_neg])
 
-        # may
-        #       self._E_may = {k: self._E_may[k] for k in self._E_may.keys() if abs_to_close not in [k, self._E_may[k]]}
-
-        # must-from
-
-        if abs_to_close in self._E_must.keys():
-            old_dst = self._E_must.pop(abs_to_close)
-            self._E_must.update({abs_pos: old_dst, abs_neg: old_dst})
-
-        self._NE_must.pop(abs_to_close, None)
-
-        # must-to
-        def replace_old_value(dct):
-            dct.update({key: dict[key]
-                       .difference(abs_to_close)
+        def replace_old_values_dst(dct):
+            dct.update({key: dct[key]
                        .union([abs_pos, abs_neg])
                         for key in dct.keys()
                         if abs_to_close in dct[key]})
 
+        def replace_old_value(dct):
+            # from
+            if abs_to_close in dct.keys():
+                old_dst = dct[abs_to_close]
+                dct.update({abs_pos: old_dst, abs_neg: old_dst})
+            # to
+            replace_old_values_dst(dct)
+
         replace_old_value(self._E_must)
-        replace_old_value(self._NE_must)
+        replace_old_value(self._E_may_over)
+
+        replace_old_values_dst(self._NE_may)
+        ne_may_over = self._NE_may_over
+        ne_may_over.update({key:
+                                tuple({(n_cl_opt[0], n_cl_opt[1] if abs_to_close not in n_cl_opt[1] else
+                                tuple(set(n_cl_opt[1]) | {abs_pos, abs_neg})) for n_cl_opt in
+                                        ne_may_over[key]})
+                            for key in ne_may_over.keys()})
 
         return None, (abs_pos, abs_neg)
 
@@ -178,9 +209,9 @@ class AbstractStructure(object):
 
         if res[0] is not None:
             if res[0] is True:
-                init_dict_by_key(self._E_must, abstract_state_to_split, abstract_sons)
+                self.add_must_hyper(abstract_state_to_split, abstract_sons)
             else:
-                init_dict_by_key(self._NE_may, abstract_state_to_split, abstract_sons)
+                self.add_NE_may(abstract_state_to_split, abstract_sons)
             return res[0], abstract_state_to_split
 
         new_abs_has_sons, new_abs_no_sons = res[1]
@@ -190,8 +221,16 @@ class AbstractStructure(object):
             ([a for a in abstract_sons if a != abstract_state_to_split] + [new_abs_has_sons,
                                                                            new_abs_no_sons])
 
-        init_dict_by_key(self._E_must, new_abs_has_sons, updated_abstract_sons)
-        init_dict_by_key(self._NE_may, new_abs_no_sons, updated_abstract_sons)
+        self.add_must_hyper(new_abs_has_sons, updated_abstract_sons)
+
+        for abs_son in updated_abstract_sons:
+            self.add_NE_may(new_abs_no_sons, abs_son)
+            self._E_may_over[new_abs_no_sons] = set([tuple(set(closers).difference({abs_son}))
+                                                     for closers in self._E_may_over[
+                                                         new_abs_no_sons]]) if new_abs_no_sons in self._E_may_over.keys() else set()
+            self._E_must[new_abs_no_sons] = set([tuple(set(closers).difference({abs_son}))
+                                                 for closers in self._E_must[
+                                                     new_abs_no_sons]]) if new_abs_no_sons in self._E_must.keys() else set()
 
         return None, (new_abs_has_sons, new_abs_no_sons)
 
@@ -201,20 +240,20 @@ class AbstractStructure(object):
 
         if res[0] is not None:
             if res[0] is True:
-                init_dict_by_key(self._E_may_over_approx, abstract_state_to_split, abstract_sons)
+                self.add_E_may_over(abstract_state_to_split, abstract_sons)
             else:
-                init_dict_by_key(self._NE_may_over_approx, abstract_state_to_split, abstract_sons)
+                self.add_NE_may_over(abstract_state_to_split, (None, abstract_sons))
             return res[0], abstract_state_to_split
 
         new_abs_sons_closed, new_abs_sons_not_closed = res[1]
 
         # split info
 
-        updated_abstract_sons = abstract_sons if abstract_state_to_split not in abstract_sons else \
+        updated_abstract_sons = tuple(abstract_sons if abstract_state_to_split not in abstract_sons else \
             ([a for a in abstract_sons if a != abstract_state_to_split] + [new_abs_sons_closed,
-                                                                           new_abs_sons_not_closed])
+                                                                           new_abs_sons_not_closed]))
 
-        init_dict_by_key(self._E_may_over_approx, new_abs_sons_closed, updated_abstract_sons)
-        init_dict_by_key(self._NE_may_over_approx, new_abs_sons_not_closed, updated_abstract_sons)
+        self.add_E_may_over(new_abs_sons_closed, updated_abstract_sons)
+        self.add_NE_may_over(new_abs_sons_not_closed, (None, updated_abstract_sons))
 
         return None, (new_abs_sons_closed, new_abs_sons_not_closed)

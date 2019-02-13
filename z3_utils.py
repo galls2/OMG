@@ -6,6 +6,13 @@ from formula_wrapper import FormulaWrapper
 from var_manager import VarManager
 
 
+
+class EEClosureViolation(object):
+    def __init__(self, conc_src, conc_dst):
+        self.conc_src = conc_src
+        self.conc_dst = conc_dst
+
+
 class AstRefKey:
     def __init__(self, n):
         self.n = n
@@ -208,7 +215,7 @@ class Z3Utils(object):
             return True
 
         model = s.model()
-        return get_assignments(model, src_vars)[0], get_assignments(model, dst_vars)[0]
+        return EEClosureViolation(get_assignments(model, src_vars)[0], get_assignments(model, dst_vars)[0])
 
     @classmethod
     def apply_qe(cls, formula):

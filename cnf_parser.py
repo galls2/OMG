@@ -61,8 +61,10 @@ class CnfParser(object):
         aux = set(all_vars).difference(set([var for vec in var_vectors for var in vec]))
 
         quantifier_over_aux = Exists(list(aux), final_z3_formula)
-        print 'beforelalalaa'
-        s = simplify(quantifier_over_aux)
+    #    print 'beforelalalaa'
+    #    s = simplify(quantifier_over_aux)
+    #    print s
+    #    print quantifier_over_aux
         after_qe = Z3Utils.apply_qe(quantifier_over_aux)  ## try for
-        print 'lalalala'
+    #    print 'lalalala'
         return FormulaWrapper(after_qe, var_vectors)

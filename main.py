@@ -105,10 +105,29 @@ def test_EV():
 def test_iimc():
     print 'Checking Actual IIMC examples:'
     TEST_NAMES = ['af_ag', 'debug', 'gray', 'gatedClock', 'microwave']
+
     aig_file_paths = ['iimc_aigs/' + test_name + '.aig' for test_name in TEST_NAMES]
     ctl_formula_paths = [(''.join(aig_path[:-4]) + '.ctl') for aig_path in aig_file_paths]
     check_files(aig_file_paths, ctl_formula_paths)
 
+def test_specific_test(test_name):
+    print 'Checking {}:'.format(test_name)
+    TEST_NAMES = [test_name]
+
+    aig_file_paths = ['iimc_aigs/' + test_name + '.aig' for test_name in TEST_NAMES]
+    ctl_formula_paths = [(''.join(aig_path[:-4]) + '.ctl') for aig_path in aig_file_paths]
+    check_files(aig_file_paths, ctl_formula_paths)
+
+def test_all_iimc():
+    print 'Checking All IIMC examples:'
+    with open('ordered_aigs.txt', 'r') as f:
+        lines = f.readlines()
+        TEST_NAMES = [line.split('.')[0] for line in lines][
+                     (next(i for i in range(len(lines)) if lines[i].startswith("rgraph"))) + 1:]
+
+    aig_file_paths = ['iimc_aigs/' + test_name + '.aig' for test_name in TEST_NAMES]
+    ctl_formula_paths = [(''.join(aig_path[:-4]) + '.ctl') for aig_path in aig_file_paths]
+    check_files(aig_file_paths, ctl_formula_paths)
 
 def regression_tests():
     test_propositional()
@@ -121,6 +140,8 @@ def regression_tests():
 
 if __name__ == '__main__':
     #    check_properties()
+  #  test_specific_test('gray')
+    regression_tests()
+  #  model_checking(parse_input())
+ #   test_all_iimc()
 
- #   regression_tests()
-    model_checking(parse_input())
