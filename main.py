@@ -15,7 +15,7 @@ DEFAULT_FLAGS = {'-bu': True, '-tse': True}
 import multiprocessing
 
 OUTNAME = 'OUTPUTS.txt'
-TIMEOUT = 300
+TIMEOUT = 900
 
 def parse_input(src=None):
     arg_parser = OmgArgumentParser()
@@ -169,7 +169,7 @@ def regression_tests():
 
 if __name__ == '__main__':
     #    check_properties()
-      test_specific_test('lock')
+ #     test_specific_test('lock')
 #    regression_tests()
 #  model_checking(parse_input())
-#  test_all_iimc()
+  test_all_iimc()
