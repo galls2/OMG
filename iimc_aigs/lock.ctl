@@ -15,10 +15,10 @@ AG((~state<1> & state<0>) |
 
 #PASS: (3)
 #To get from State 2 to State 0 either downReg=1 or State 3 must occur.
-AG((state<1> & ~state<0>) -> ~E ~downReg & ~(state<1> & state<0>) U (~state<1> & ~state<0>))
+AG((state<1> & ~state<0>) -> ~(E ~downReg & ~(state<1> & state<0>) U (~state<1> & ~state<0>)))
 
 #PASS: (4)
 #To get from State 1 to State 0 either upReg=1 or State 2 must occur.
-AG((~state<1> & state<0>) -> ~E ~upReg & ~(state<1> & ~state<0>) U (~state<1> & ~state<0>))
+AG((~state<1> & state<0>) -> ~(E ~upReg & ~(state<1> & ~state<0>) U (~state<1> & ~state<0>)))
 
 
