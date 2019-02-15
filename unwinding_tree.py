@@ -30,6 +30,7 @@ class UnwindingTree(object):
         self._abstract_label = abstract_label  # abstract state that is represented by this node
         self.depth = 0 if parent is None else parent.get_depth() + 1
         self.URGENT = False
+        self._developed = False
 
     def unwind_further(self):
         if self._successors is None:
@@ -43,7 +44,17 @@ class UnwindingTree(object):
         return self._successors
 
     def is_developed(self):
-        return self._abstract_label is not None
+        return self._developed
+
+    def set_developed(self, val=True):
+        self._developed = val
+        return self
+
+    def reset_developed_in_tree(self):
+        self.set_developed(False)
+        successors = [] if self._successors is None else self._successors
+        [succ.reset_developed_in_tree() for succ in successors]
+        return self
 
     def is_lasso(self, stop_node):
         current = self._parent

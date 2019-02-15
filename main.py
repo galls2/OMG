@@ -17,7 +17,7 @@ SEP = '-------------------------------------------------------------------------
 
 DEFAULT_FLAGS = {'-bu': True, '-tse': True}
 
-DEBUG = False
+DEBUG = True
 
 
 def create_logger():

@@ -99,7 +99,7 @@ class OmgModelChecker(object):
         self._abstract_structure = None
         self._abstraction = None
         self._initialize_abstraction(trivial_split)
-        self._unwinding_trees = []
+        self._unwinding_trees = {}
         self._brother_unification = brother_unification
         self._trivial_split = trivial_split
         self._method_mapping = {'&': OmgModelChecker._handle_and,
@@ -343,17 +343,24 @@ class OmgModelChecker(object):
         concrete_state = node.concrete_label
         abstract_classification = self._find_abstract_classification_for_state(concrete_state)
         node.set_abstract_label(abstract_classification)
+        node.set_developed()
         '''
         abstract_classification.get_classification_node().add_classifee(concrete_state)
         '''
         return abstract_classification
 
     def handle_ctl(self, state, specification):
-        unwinding_tree = UnwindingTree(self._kripke, None, None, state)
-        # TODO check or add to the collection of unwinding trees that are saved in this omg_checker as a member.
+        if tuple(state) in self._unwinding_trees.keys():
+            unwinding_tree = self._unwinding_trees[tuple(state)]
+        else:
+            unwinding_tree = UnwindingTree(self._kripke, None, None, state)
+        unwinding_tree.reset_developed_in_tree()
+
         res = self._handle_ctl_and_recur(unwinding_tree, specification)
         logger.debug(str(unwinding_tree))
         self.get_abstract_trees_sizes()
+        self._unwinding_trees[tuple(state)] = unwinding_tree
+
         return res
 
     def _handle_ctl_and_recur(self, node, specification):
