@@ -70,10 +70,8 @@ class AvyAigParser(AigParser):
         self.delete_aux_files()
         return [(ltr_metadata, ltr_dimacs)] + bads
 
-
     def get_num_latches(self):
         return self._L
-
 
     def get_ap_mapping(self):
         ap_line_regex = re.compile(".*[ilo][0-9]* .*")
@@ -83,17 +81,8 @@ class AvyAigParser(AigParser):
         aps = map(lambda ap_line: re.findall(ap_part_regex, ap_line)[0], aps_lines)
         return {' '.join(line.split(' ')[1:]): line.split(' ')[0] for line in aps}
 
-
     def get_num_outputs(self):
         return self._O
 
-
     def get_num_vars(self):
         return self._O + self._L
-
-
-if __name__ == '__main__':
-    fname = 'af_ag.aig'
-    print '%' + fname
-    aig_parser = AvyAigParser(IIMC_EXAMPLE_PATH + fname)
-    print aig_parser.parse()

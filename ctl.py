@@ -1,4 +1,6 @@
-DEBUG = False
+import logging
+
+logger = logging.getLogger('OMG')
 
 
 def _par(text):
@@ -18,7 +20,7 @@ def _remove_spaces_from_edges(text):
         text = text[next(i for i in range(len(text)) if text[i] != ' '):]
         text = _cut_from_end(text, [' '])
     except Exception as e:
-        print e
+        logger.critical('Problem in CTL parsing of ' + text)
         raise Exception('Problem in CTL parsing of ' + text)
 
     return text
@@ -248,7 +250,6 @@ class CtlParser(object):
         input_operands = parts[1:]
         if not input_operands:
             return CtlFormula(parts[0], [])
-        #    print main_operator +str(len(main_operator))
         if main_operator not in CtlFormula.allowed_operators:
             raise Exception('Error in parsing CTL formula ' + input_formula + ': unrecognized operator')
         if (main_operator in CtlFormula.unary_operators) and (len(input_operands) != 1):
@@ -269,7 +270,6 @@ class CtlParser(object):
         return None
 
     def parse_math_format(self, input_formula):
-        # print 'ENTERING WITH: '+input_formula
         """
         Precedence order:
         %left '^' "==" "->";
@@ -282,12 +282,10 @@ class CtlParser(object):
         """
 
         input_formula = _remove_spaces_from_edges(input_formula)
-        if DEBUG:
-            print 'NOW :' + input_formula
+        logger.debug('NOW :' + input_formula)
 
         while input_formula[0] == '(' and input_formula[-1] == ')' and is_balanced_brackets(input_formula[1:-1]):
-            if DEBUG:
-                print 'R_NOW :' + input_formula
+            logger.debug('R_NOW :' + input_formula)
             input_formula = input_formula[1:-1]
             _remove_spaces_from_edges(input_formula)
 
@@ -295,8 +293,7 @@ class CtlParser(object):
             return CtlFormula(input_formula[:2], [self.parse_math_format(input_formula[2:])])
 
         parts = _split_components(input_formula)
-        if DEBUG:
-            print parts
+        logger.debug(parts)
 
         # First checking if this is a binary temporal operator.
         if input_formula[0] in ['A', 'E'] and len(parts[0]) == 1 and len(parts) > 1:
@@ -306,16 +303,14 @@ class CtlParser(object):
                                      (path_quantifier + parts[i]) in CtlFormula.binary_temporal_operators)
                 temporal_operator = parts[temp_op_index].replace('R', 'V')
             except Exception as e:
-                print 'upupu'
-                print e
-                raise Exception('Parsing Failed dur to ' + input_formula)
+                logger.critical('Parsing filed due to ' + str(input_formula) + '\n' + str(e))
+                raise Exception('Parsing Failed due to ' + input_formula)
             main_connective = path_quantifier + temporal_operator
 
             first_operand = self.parse_math_format(' '.join(parts[1:temp_op_index]))
             second_operand = self.parse_math_format(' '.join(parts[temp_op_index + 1:]))
 
             return CtlFormula(main_connective, [first_operand, second_operand])
-
 
         # Handle &, |, -> (in that order)
         if len(parts) > 2:
@@ -385,12 +380,7 @@ class CtlFileParser(object):
             raw_ctl_formulas = [raw_formulas[start: end] for (start, end) in ctl_formulas_borders if start != end]
 
             single_line_raw_formulas = [' '.join(multiline).replace('==', ' == ') for multiline in raw_ctl_formulas]
-            '''
-            print 'CHUNK'
-            for r in single_line_raw_formulas:
-                print r
-                print '----'
-            '''
+
             ctl_parser = CtlParser()
             ctl_formulas = [ctl_parser.parse_omg(raw_formula) for raw_formula in single_line_raw_formulas]
 
@@ -410,12 +400,5 @@ class CtlFileParser(object):
             chunk_borders = [(start_indexes[i], start_indexes[i + 1] if i != len(start_indexes) - 1 else len(lines))
                              for i in range(len(start_indexes))]
             chunks = [lines[start: end] for (start, end) in chunk_borders]
-            '''
-            for c in chunks:
-                print c
-            '''
+
             return [self._parse_ctl_chunk(chunk) for chunk in chunks]
-
-
-if __name__ == '__main__':
-    print CtlParser().parse_math_format('EX ~p & ~q').str_math()

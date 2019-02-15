@@ -76,6 +76,7 @@ class AigKripkeStructure(KripkeStructure):
     def get_ap_formula(self, ap, var_vector):
         return FormulaWrapper(var_vector[self._get_var_num_for_ap(ap)], [var_vector])
 
+
     def _get_formula_for_ap_literal(self, ap, var_vector, state):
         positive_form = var_vector[self._get_var_num_for_ap(ap)]
         final_form = positive_form if self.is_state_labeled_with(state, ap) else Not(positive_form)

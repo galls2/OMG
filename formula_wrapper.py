@@ -1,7 +1,5 @@
 from z3 import *
 
-from var_manager import VarManager
-
 
 class FormulaWrapper(object):
     def __init__(self, z3_formula, var_vectors):
