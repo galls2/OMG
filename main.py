@@ -30,7 +30,7 @@ def create_logger():
     logger.addHandler(ch)
     logger.setLevel(logging.DEBUG if DEBUG else logging.INFO)
     print 'hi'
-
+    logger.info('NO QE')
 
 def parse_input(src=None):
     arg_parser = OmgArgumentParser()
@@ -175,7 +175,7 @@ def regression_tests():
 if __name__ == '__main__':
     create_logger()
     #    check_properties()
-#    test_specific_test('AGS')
+#    test_specific_test('tstrst')
     regression_tests()
 #  model_checking(parse_input())
 #    test_all_iimc()

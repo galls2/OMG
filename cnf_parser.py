@@ -65,6 +65,7 @@ class CnfParser(object):
     #    s = simplify(quantifier_over_aux)
     #    print s
     #    print quantifier_over_aux
-        after_qe = Z3Utils.apply_qe(quantifier_over_aux)  ## try for
+    #    after_qe = Z3Utils.apply_qe(quantifier_over_aux)  ## try for
+        after_qe = quantifier_over_aux
     #    print 'lalalala'
         return FormulaWrapper(after_qe, var_vectors)
