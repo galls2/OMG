@@ -175,6 +175,7 @@ def regression_tests():
 if __name__ == '__main__':
     create_logger()
     #    check_properties()
+
 #    test_specific_test('tstrst')
     regression_tests()
 #  model_checking(parse_input())
