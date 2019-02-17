@@ -54,6 +54,9 @@ class AigKripkeStructure(KripkeStructure):
     def get_successors(self, state):
         return Z3Utils.get_all_successors(self._tr, state)
 
+    def get_initial_latch_values(self):
+        return self._aig_parser.get_initial_latch_values()
+
     def get_initial_states(self):
         init_latches = [0] * self._aig_parser.get_num_latches()
         init_outputs = [map(lambda state_list: state_list[0],

@@ -219,7 +219,7 @@ class Z3Utils(object):
 
     @classmethod
     def apply_qe(cls, formula):
-        return Tactic('qe')(formula).as_expr()
+        return Tactic('qe-light')(formula).as_expr()
 
     @classmethod
     def combine_ltr_with_bad_formulas(cls, ltr_formula, output_formulas, max_var_ltr):

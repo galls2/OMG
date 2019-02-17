@@ -1,3 +1,4 @@
+import itertools
 import re
 import os
 
@@ -72,6 +73,15 @@ class AvyAigParser(AigParser):
 
     def get_num_latches(self):
         return self._L
+
+    def get_initial_latch_values(self):
+        def parse_latch_line(latch_line):
+            parts = latch_line.split(' ')
+            return [0] if len(parts) == 1 else ([int(parts[1])] if parts[1] in ['0', '1'] else [0, 1])
+
+        latch_lines = self._aig_lines[1:self._L+1]
+        latch_options = [parse_latch_line(l_line) for l_line in latch_lines]
+        return itertools.product(*latch_options)
 
     def get_ap_mapping(self):
         ap_line_regex = re.compile(".*[ilo][0-9]* .*")

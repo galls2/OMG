@@ -282,10 +282,10 @@ class CtlParser(object):
         """
 
         input_formula = _remove_spaces_from_edges(input_formula)
-        logger.debug('NOW :' + input_formula)
+        logger.log(5, 'NOW :' + input_formula)
 
         while input_formula[0] == '(' and input_formula[-1] == ')' and is_balanced_brackets(input_formula[1:-1]):
-            logger.debug('R_NOW :' + input_formula)
+            logger.log(5, 'R_NOW :' + input_formula)
             input_formula = input_formula[1:-1]
             _remove_spaces_from_edges(input_formula)
 
@@ -293,7 +293,7 @@ class CtlParser(object):
             return CtlFormula(input_formula[:2], [self.parse_math_format(input_formula[2:])])
 
         parts = _split_components(input_formula)
-        logger.debug(parts)
+        logger.log(5, parts)
 
         # First checking if this is a binary temporal operator.
         if input_formula[0] in ['A', 'E'] and len(parts[0]) == 1 and len(parts) > 1:

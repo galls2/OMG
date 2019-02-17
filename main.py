@@ -43,23 +43,26 @@ def model_checking(parsed_args):
                            [set(ctl_formula.get_aps()) for chunk in ctl_chunks for ctl_formula in
                             chunk[1:]])
 
-    timer, kripke_structure = time_me(AigKripkeStructure, [parsed_args.aig_path, aps])
-    logging.getLogger('OMG').info('Kripke Structure construction took: ' + str(timer))
-    omg = OmgBuilder() \
-        .set_kripke(kripke_structure) \
-        .set_brother_unification(parsed_args.brother_unification) \
-        .set_trivial_split_elimination(parsed_args.trivial_split_elimination) \
-        .build()
+    try:
+        timer, kripke_structure = time_me(AigKripkeStructure, [parsed_args.aig_path, aps])
+        logging.getLogger('OMG').info('Kripke Structure construction took: ' + str(timer))
+        omg = OmgBuilder() \
+            .set_kripke(kripke_structure) \
+            .set_brother_unification(parsed_args.brother_unification) \
+            .set_trivial_split_elimination(parsed_args.trivial_split_elimination) \
+            .build()
 
-    for chunk in ctl_chunks:
+        for chunk in ctl_chunks:
 
-        expected_res = chunk[0]
-        if expected_res is None:
-            continue
-        for spec in chunk[1:]:
-            #            omg.get_abstract_trees_sizes()
-            print_results_for_spec(omg, expected_res, spec)
+            expected_res = chunk[0]
+            if expected_res is None:
+                continue
+            for spec in chunk[1:]:
+                #            omg.get_abstract_trees_sizes()
+                print_results_for_spec(omg, expected_res, spec)
 
+    except Exception as e:
+        logging.getLogger('OMG').critical("Exception in model checking:: "+str(e))
 
 def print_results_for_spec(omg, expected_res, spec):
     timer, (pos, neg) = time_me(omg.check_all_initial_states, [spec])
@@ -172,7 +175,7 @@ def regression_tests():
 if __name__ == '__main__':
     create_logger()
     #    check_properties()
- #   test_specific_test('adding')
+#    test_specific_test('AGS')
     regression_tests()
 #  model_checking(parse_input())
-#  test_all_iimc()
+#    test_all_iimc()
