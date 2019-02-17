@@ -50,7 +50,6 @@ class AigKripkeStructure(KripkeStructure):
         self._tr = self._connect_aigs(parse_results)
         self._ap_conversion = self._aig_parser.get_ap_mapping()
 
-
     def get_successors(self, state):
         return Z3Utils.get_all_successors(self._tr, state)
 
@@ -79,7 +78,6 @@ class AigKripkeStructure(KripkeStructure):
     def get_ap_formula(self, ap, var_vector):
         return FormulaWrapper(var_vector[self._get_var_num_for_ap(ap)], [var_vector])
 
-
     def _get_formula_for_ap_literal(self, ap, var_vector, state):
         positive_form = var_vector[self._get_var_num_for_ap(ap)]
         final_form = positive_form if self.is_state_labeled_with(state, ap) else Not(positive_form)
@@ -106,7 +104,7 @@ class AigKripkeStructure(KripkeStructure):
 
         self._ltr_formula = self._cnf_parser.dimacs_to_z3(ltr_metadata, ltr_dimacs, self._cnf_parser.parse_metadata_tr)
         self._output_formulas = \
-            [self._cnf_parser.dimacs_to_z3(output_metadata, output_dimacs,  self._cnf_parser.parse_metadata_bad)
+            [self._cnf_parser.dimacs_to_z3(output_metadata, output_dimacs, self._cnf_parser.parse_metadata_bad)
              for (output_metadata, output_dimacs) in parse_results[1:]]
 
         max_var_ltr = int(ltr_dimacs[0].split(' ')[-1])
