@@ -41,14 +41,15 @@ class KripkeStructure(object):
 
 
 class AigKripkeStructure(KripkeStructure):
-    def __init__(self, aig_path, aps):
+    def __init__(self, aig_path, aps, qe_policy):
         super(AigKripkeStructure, self).__init__(aps)
         self._aig_parser = AvyAigParser(aig_path)
         parse_results = self._aig_parser.parse()
         self._num_latches = self._aig_parser.get_num_latches()
-        self._cnf_parser = CnfParser(self._num_latches)
+        self._cnf_parser = CnfParser(self._num_latches, qe_policy)
         self._tr = self._connect_aigs(parse_results)
         self._ap_conversion = self._aig_parser.get_ap_mapping()
+        self._qe_policy = qe_policy
 
     def get_successors(self, state):
         return Z3Utils.get_all_successors(self._tr, state)
@@ -57,13 +58,19 @@ class AigKripkeStructure(KripkeStructure):
         return self._aig_parser.get_initial_latch_values()
 
     def get_initial_states(self):
-        init_latches = [0] * self._aig_parser.get_num_latches()
-        init_outputs = [map(lambda state_list: state_list[0],
-                            Z3Utils.get_all_successors(out_formula, init_latches)) \
-                        for out_formula in self._output_formulas]
+        inits_latches = [list(init) for init in self.get_initial_latch_values()]
+        inits_latches = [[0] * self._num_latches]
 
-        init_out_values = itertools.product(*init_outputs)
-        res = [init_latches + list(init_out_value) for init_out_value in init_out_values]
+        def get_outputs_for_latch_values(l_vals):
+            return itertools.product(*[out_val_list \
+                                       for out_formula in self._output_formulas
+                                       for out_val_list in Z3Utils.get_all_successors(out_formula, l_vals)])
+
+        init_outputs = {tuple(init_latches): get_outputs_for_latch_values(init_latches)
+                        for init_latches in inits_latches}
+
+        res = [init_latches + list(init_out_value) for init_latches in inits_latches for init_out_value in
+               init_outputs[tuple(init_latches)]]
         return res
 
     def _get_var_num_for_ap(self, ap):

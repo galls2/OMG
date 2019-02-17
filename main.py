@@ -15,7 +15,7 @@ TIMEOUT = 900
 BUG_LINE = '<------------------------------------------------------ BUG -------------------------------------'
 SEP = '------------------------------------------------------------------------------------------'
 
-DEFAULT_FLAGS = {'-bu': True, '-tse': True}
+DEFAULT_FLAGS = {'-bu': True, '-tse': True, '--qe_policy': 'qe-light', '-timeout': TIMEOUT}
 
 DEBUG = True
 
@@ -29,8 +29,6 @@ def create_logger():
     logger.addHandler(fh)
     logger.addHandler(ch)
     logger.setLevel(logging.DEBUG if DEBUG else logging.INFO)
-    print 'hi'
-
 
 def parse_input(src=None):
     arg_parser = OmgArgumentParser()
@@ -44,7 +42,7 @@ def model_checking(parsed_args):
                             chunk[1:]])
 
     try:
-        timer, kripke_structure = time_me(AigKripkeStructure, [parsed_args.aig_path, aps])
+        timer, kripke_structure = time_me(AigKripkeStructure, [parsed_args.aig_path, aps, parsed_args.qe_policy])
         logging.getLogger('OMG').info('Kripke Structure construction took: ' + str(timer))
         omg = OmgBuilder() \
             .set_kripke(kripke_structure) \
@@ -83,6 +81,7 @@ def time_me(measuree, args):
 
 
 def check_files(aig_paths, ctl_paths):
+    logging.getLogger('OMG').info('Run configurations: '+str(DEFAULT_FLAGS))
     for i in range(len(aig_paths)):
         aig_file_path = aig_paths[i]
         ctl_formula_path = ctl_paths[i]
@@ -90,8 +89,19 @@ def check_files(aig_paths, ctl_paths):
         file_name = ''.join(aig_file_path.split('/')[-1].split('.')[:-1])
         logging.getLogger('OMG').info('Checking ' + file_name)
 
-        input_line = '--aig-path {aig} --ctl-path {ctl} '.format(aig=aig_file_path, ctl=ctl_formula_path)
-        input_line += ' '.join([flag for flag in DEFAULT_FLAGS.keys() if DEFAULT_FLAGS[flag]])
+        input_line = ''
+        input_line += '-aig_path {aig} -ctl_path {ctl} '.format(aig=aig_file_path, ctl=ctl_formula_path)
+
+        def flag_to_text(flag):
+            if DEFAULT_FLAGS[flag] is True:
+                return flag
+            elif DEFAULT_FLAGS[flag] is False:
+                return ''
+            else:
+                return flag + ' ' + str(DEFAULT_FLAGS[flag])
+        input_line += ' '.join([flag_to_text(flag) for flag in DEFAULT_FLAGS.keys()])
+
+      #  print input_line
         parsed_args = parse_input(input_line.split())
 
         p = multiprocessing.Process(target=model_checking, args=(parsed_args,))
@@ -174,8 +184,8 @@ def regression_tests():
 
 if __name__ == '__main__':
     create_logger()
-    #    check_properties()
-#    test_specific_test('AGS')
+
+#    test_specific_test('peterson')
     regression_tests()
-#  model_checking(parse_input())
+#    model_checking(parse_input())
 #    test_all_iimc()

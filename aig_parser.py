@@ -76,7 +76,7 @@ class AvyAigParser(AigParser):
 
     def get_initial_latch_values(self):
         def parse_latch_line(latch_line):
-            parts = latch_line.split(' ')
+            parts = latch_line.replace('\n', '').split(' ')
             return [0] if len(parts) == 1 else ([int(parts[1])] if parts[1] in ['0', '1'] else [0, 1])
 
         latch_lines = self._aig_lines[1:self._L+1]
