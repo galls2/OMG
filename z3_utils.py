@@ -218,8 +218,10 @@ class Z3Utils(object):
         return EEClosureViolation(get_assignments(model, src_vars)[0], get_assignments(model, dst_vars)[0])
 
     @classmethod
-    def apply_qe(cls, formula):
-        return Tactic('qe-light')(formula).as_expr()
+    def apply_qe(cls, formula, qe_policy):
+        if qe_policy == 'no-qe':
+            return formula
+        return Tactic(qe_policy)(formula).as_expr()
 
     @classmethod
     def combine_ltr_with_bad_formulas(cls, ltr_formula, output_formulas, max_var_ltr):
