@@ -44,12 +44,26 @@ class AigKripkeStructure(KripkeStructure):
     def __init__(self, aig_path, aps, qe_policy):
         super(AigKripkeStructure, self).__init__(aps)
         self._aig_parser = AvyAigParser(aig_path)
+        self._initial_states = None
+        self._init_latch_values = self.get_initial_latch_values()
+
+        self._overwrite_aig_reset_logic()
+
         parse_results = self._aig_parser.parse()
         self._num_latches = self._aig_parser.get_num_latches()
         self._cnf_parser = CnfParser(self._num_latches, qe_policy)
         self._tr = self._connect_aigs(parse_results)
         self._ap_conversion = self._aig_parser.get_ap_mapping()
         self._qe_policy = qe_policy
+
+    def _overwrite_aig_reset_logic(self):
+        new_aig_lines = self._aig_parser.get_aig_after_reset()
+        old_aig_path = self._aig_parser.get_aig_path()
+        new_aig_path = '.'.join(old_aig_path.split('.')[:-1])+'_reset.'+old_aig_path.split('.')[-1]
+        with open(new_aig_path, 'w') as new_aig:
+            new_aig.write(''.join(new_aig_lines))
+
+        self._aig_parser = AvyAigParser(new_aig_path)
 
     def get_successors(self, state):
         return Z3Utils.get_all_successors(self._tr, state)
@@ -58,8 +72,11 @@ class AigKripkeStructure(KripkeStructure):
         return self._aig_parser.get_initial_latch_values()
 
     def get_initial_states(self):
-        inits_latches = [list(init) for init in self.get_initial_latch_values()]
-        inits_latches = [[0] * self._num_latches]
+        if self._initial_states is not None:
+            return self._initial_states
+
+        inits_latches = [list(init) for init in self._init_latch_values]
+ #       inits_latches = [[0] * self._num_latches]
 
         def get_outputs_for_latch_values(l_vals):
             return itertools.product(*[out_val_list \
@@ -71,6 +88,7 @@ class AigKripkeStructure(KripkeStructure):
 
         res = [init_latches + list(init_out_value) for init_latches in inits_latches for init_out_value in
                init_outputs[tuple(init_latches)]]
+        self._initial_states = res
         return res
 
     def _get_var_num_for_ap(self, ap):
@@ -116,3 +134,4 @@ class AigKripkeStructure(KripkeStructure):
 
         max_var_ltr = int(ltr_dimacs[0].split(' ')[-1])
         return Z3Utils.combine_ltr_with_bad_formulas(self._ltr_formula, self._output_formulas, max_var_ltr + 1)
+

@@ -106,7 +106,7 @@ def check_files(aig_paths, ctl_paths):
 
         p = multiprocessing.Process(target=model_checking, args=(parsed_args,))
         p.start()
-        p.join(parsed_args.timeout)
+        p.join(int(parsed_args.timeout))
         if p.is_alive():
             logging.getLogger('OMG').error('TIMEOUT')
 
@@ -185,7 +185,7 @@ def regression_tests():
 if __name__ == '__main__':
     create_logger()
 
-    test_specific_test('AGS')
-#    regression_tests()
+    test_specific_test('tstrst')
+  #  regression_tests()
 #    model_checking(parse_input())
   #  test_all_iimc()

@@ -79,7 +79,7 @@ class AvyAigParser(AigParser):
             parts = latch_line.replace('\n', '').split(' ')
             return [0] if len(parts) == 1 else ([int(parts[1])] if parts[1] in ['0', '1'] else [0, 1])
 
-        latch_lines = self._aig_lines[1:self._L+1]
+        latch_lines = self._aig_lines[1:self._L + 1]
         latch_options = [parse_latch_line(l_line) for l_line in latch_lines]
         return itertools.product(*latch_options)
 
@@ -96,3 +96,15 @@ class AvyAigParser(AigParser):
 
     def get_num_vars(self):
         return self._O + self._L
+
+    def get_aig_after_reset(self):
+        def reset_latch_line(_line):
+            parts = _line.split(' ')
+            return parts[0]+ ('\n' if len(parts) > 1 else '')
+
+        return [self._aig_lines[0]] + \
+               [reset_latch_line(line) for line in self._aig_lines[1:self._L + 1]] + \
+               self._aig_lines[self._L + 1:]
+
+    def get_aig_path(self):
+        return self._aig_path
