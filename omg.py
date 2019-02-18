@@ -135,6 +135,7 @@ class OmgModelChecker(object):
                 positive_answer.append(initial_state)
             else:
                 negative_answer.append(initial_state)
+                return positive_answer, negative_answer
         return positive_answer, negative_answer
 
     def _handle_and(self, node, spec, left_operand, right_operand):

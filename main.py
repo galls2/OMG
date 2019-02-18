@@ -30,6 +30,7 @@ def create_logger():
     logger.addHandler(ch)
     logger.setLevel(logging.DEBUG if DEBUG else logging.INFO)
 
+
 def parse_input(src=None):
     arg_parser = OmgArgumentParser()
     return arg_parser.parse(src)
@@ -60,17 +61,23 @@ def model_checking(parsed_args):
                 print_results_for_spec(omg, expected_res, spec)
 
     except Exception as e:
-        logging.getLogger('OMG').critical("Exception in model checking:: "+str(e))
+        logging.getLogger('OMG').critical("Exception in model checking:: " + str(e))
+
 
 def print_results_for_spec(omg, expected_res, spec):
     timer, (pos, neg) = time_me(omg.check_all_initial_states, [spec])
     spec_str = spec.str_math()
     for pos_s in pos:
-        logging.getLogger('OMG').info('M, ' + str(pos_s) + ' |= ' + spec_str + (BUG_LINE if not expected_res else ""))
+        logging.getLogger('OMG').info('M, ' + str(pos_s) + ' |= ' + spec_str)
     for neg_s in neg:
-        logging.getLogger('OMG').info('M, ' + str(neg_s) + ' |=/= ' + spec_str + (BUG_LINE if expected_res else ""))
-    logging.getLogger('OMG').info('Model checking took: ' + str(timer) +'\n'+SEP)
+        logging.getLogger('OMG').info('M, ' + str(neg_s) + ' |=/= ' + spec_str)
+    is_property_satisfied = len(neg) == 0
+    is_bug = is_property_satisfied != expected_res
 
+
+    logging.getLogger('OMG').info('M |=' + ('' if is_property_satisfied else '/=') + spec_str +
+                                  (BUG_LINE if is_bug else ''))
+    logging.getLogger('OMG').info('Model checking took: ' + str(timer) + '\n' + SEP)
 
 
 def time_me(measuree, args):
@@ -81,7 +88,7 @@ def time_me(measuree, args):
 
 
 def check_files(aig_paths, ctl_paths):
-    logging.getLogger('OMG').info('Run configurations: '+str(DEFAULT_FLAGS))
+    logging.getLogger('OMG').info('Run configurations: ' + str(DEFAULT_FLAGS))
     for i in range(len(aig_paths)):
         aig_file_path = aig_paths[i]
         ctl_formula_path = ctl_paths[i]
@@ -99,9 +106,10 @@ def check_files(aig_paths, ctl_paths):
                 return ''
             else:
                 return flag + ' ' + str(DEFAULT_FLAGS[flag])
+
         input_line += ' '.join([flag_to_text(flag) for flag in DEFAULT_FLAGS.keys()])
 
-      #  print input_line
+        #  print input_line
         parsed_args = parse_input(input_line.split())
 
         p = multiprocessing.Process(target=model_checking, args=(parsed_args,))
@@ -185,7 +193,7 @@ def regression_tests():
 if __name__ == '__main__':
     create_logger()
 
-    test_specific_test('tstrst')
-  #  regression_tests()
+    test_specific_test('rrobin')
+#  regression_tests()
 #    model_checking(parse_input())
-  #  test_all_iimc()
+#  test_all_iimc()
