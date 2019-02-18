@@ -100,7 +100,7 @@ class AvyAigParser(AigParser):
     def get_aig_after_reset(self):
         def reset_latch_line(_line):
             parts = _line.split(' ')
-            return parts[0]+ ('\n' if len(parts) > 1 else '')
+            return parts[0] + ('\n' if len(parts) > 1 else '')
 
         return [self._aig_lines[0]] + \
                [reset_latch_line(line) for line in self._aig_lines[1:self._L + 1]] + \
