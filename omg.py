@@ -166,7 +166,7 @@ class OmgModelChecker(object):
             logger.debug('AV:: NOW EXPLORING ' + node_to_explore.description())
 
             abstract_state = self._find_abstract_classification_for_node(node_to_explore)
-
+            node_to_explore.set_developed()
             self._handle_ctl_and_recur(node_to_explore, q)
             if node_to_explore.is_labeled_negatively_with(q):
                 self._strengthen_trace(node, node_to_explore)
@@ -183,8 +183,10 @@ class OmgModelChecker(object):
                     to_visit[child_node] = child_node.priority()
             else:
                 node_to_explore.add_positive_label(spec)
+  #              continue
 
             abs_states_with_nodes = node.get_abstract_labels_in_tree()  # tuples of the form (abstract_label, node)
+            self._brother_unification = False ######################################### CHANGE MEEEE
             if self._brother_unification:
                 abs_states_with_nodes = self._unify_brothers(abs_states_with_nodes)
             else:
@@ -344,7 +346,7 @@ class OmgModelChecker(object):
         concrete_state = node.concrete_label
         abstract_classification = self._find_abstract_classification_for_state(concrete_state)
         node.set_abstract_label(abstract_classification)
-        node.set_developed()
+
         '''
         abstract_classification.get_classification_node().add_classifee(concrete_state)
         '''

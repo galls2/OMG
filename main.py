@@ -71,9 +71,9 @@ def print_results_for_spec(omg, expected_res, spec):
         logging.getLogger('OMG').info('M, ' + str(pos_s) + ' |= ' + spec_str)
     for neg_s in neg:
         logging.getLogger('OMG').info('M, ' + str(neg_s) + ' |=/= ' + spec_str)
+
     is_property_satisfied = len(neg) == 0
     is_bug = is_property_satisfied != expected_res
-
 
     logging.getLogger('OMG').info('M |=' + ('' if is_property_satisfied else '/=') + spec_str +
                                   (BUG_LINE if is_bug else ''))
@@ -161,9 +161,9 @@ def test_iimc():
     check_files(aig_file_paths, ctl_formula_paths)
 
 
-def test_specific_test(test_name):
-    logging.getLogger('OMG').info('Checking {}:'.format(test_name))
-    TEST_NAMES = [test_name]
+def test_specific_tests(test_names):
+    logging.getLogger('OMG').info('Checking {}:'.format(test_names))
+    TEST_NAMES = test_names
 
     aig_file_paths = ['iimc_aigs/' + test_name + '.aig' for test_name in TEST_NAMES]
     ctl_formula_paths = [(''.join(aig_path[:-4]) + '.ctl') for aig_path in aig_file_paths]
@@ -193,7 +193,7 @@ def regression_tests():
 if __name__ == '__main__':
     create_logger()
 
-    test_specific_test('rrobin')
+    test_specific_tests(['tstrst', 'rrobin', 'swap', 'ChandyMisra', 'fifteen', 'blackjack', 'pf', 'peterson'])
 #  regression_tests()
 #    model_checking(parse_input())
 #  test_all_iimc()
