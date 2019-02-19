@@ -56,6 +56,9 @@ class AigKripkeStructure(KripkeStructure):
         self._ap_conversion = self._aig_parser.get_ap_mapping()
         self._qe_policy = qe_policy
 
+    def get_qe_policy(self):
+        return self._qe_policy
+
     def _overwrite_aig_reset_logic(self):
         new_aig_lines = self._aig_parser.get_aig_after_reset()
         old_aig_path = self._aig_parser.get_aig_path()

@@ -85,9 +85,10 @@ class Z3Utils(object):
     def get_exists_successors_in_formula(cls, abstract_targets, transitions):
         split_by_formula_tag, transitions_has_sons = cls._get_components_in_quantified(abstract_targets, transitions)
         prev_vars, new_vars = transitions_has_sons.get_var_vectors()
+        qe_policy = abstract_targets[0].get_kripke().get_qe_policy()
 
         inner = And(transitions_has_sons.get_z3_formula(), split_by_formula_tag.get_z3_formula())
-        exists_formula = simplify(Exists(new_vars, inner))
+        exists_formula = cls.apply_qe(simplify(Exists(new_vars, inner)), qe_policy)
 
         return FormulaWrapper(exists_formula, [prev_vars])
 
@@ -99,9 +100,10 @@ class Z3Utils(object):
     def get_forall_successors_in_formula(cls, abstract_targets, transitions):
         split_by_formula_tag, transitions_has_sons = cls._get_components_in_quantified(abstract_targets, transitions)
         prev_vars, new_vars = transitions_has_sons.get_var_vectors()
+        qe_policy = abstract_targets[0].get_kripke().get_qe_policy()
 
         inner = Implies(transitions_has_sons.get_z3_formula(), split_by_formula_tag.get_z3_formula())
-        forall_formula = simplify(ForAll(new_vars, inner))
+        forall_formula = cls.apply_qe(simplify(ForAll(new_vars, inner)), qe_policy)
 
         return FormulaWrapper(forall_formula, [prev_vars])
 

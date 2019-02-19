@@ -15,7 +15,7 @@ TIMEOUT = 900
 BUG_LINE = '<------------------------------------------------------ BUG -------------------------------------'
 SEP = '------------------------------------------------------------------------------------------'
 
-DEFAULT_FLAGS = {'-bu': True, '-tse': True, '--qe_policy': 'qe-light', '-timeout': TIMEOUT}
+DEFAULT_FLAGS = {'-bu': True, '-tse': True, '--qe_policy': 'no-qe', '-timeout': TIMEOUT}
 
 DEBUG = True
 
@@ -193,7 +193,7 @@ def regression_tests():
 if __name__ == '__main__':
     create_logger()
 
-    test_specific_tests(['tstrst', 'rrobin', 'swap', 'ChandyMisra', 'fifteen', 'blackjack', 'pf', 'peterson'])
-#  regression_tests()
+#    test_specific_tests(['tstrst', 'rrobin', 'swap', 'ChandyMisra', 'fifteen', 'blackjack', 'pf', 'peterson'])
+    regression_tests()
 #    model_checking(parse_input())
 #  test_all_iimc()
