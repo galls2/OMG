@@ -10,7 +10,7 @@ from omg import OmgBuilder
 import multiprocessing
 import logging
 
-TIMEOUT = 900
+TIMEOUT = 3600
 
 BUG_LINE = '<------------------------------------------------------ BUG -------------------------------------'
 SEP = '------------------------------------------------------------------------------------------'
@@ -172,7 +172,7 @@ def test_specific_tests(test_names):
 
 def test_all_iimc():
     logging.getLogger('OMG').info('Checking All IIMC examples:')
-    with open('ordered_aigs.txt', 'r') as f:
+    with open('goods.txt', 'r') as f:
         lines = f.readlines()
         TEST_NAMES = [line.split('.')[0] for line in lines if not line.startswith('#')]
 
@@ -194,6 +194,6 @@ if __name__ == '__main__':
     create_logger()
 
 #    test_specific_tests(['tstrst', 'rrobin', 'swap', 'ChandyMisra', 'fifteen', 'blackjack', 'pf', 'peterson'])
-    regression_tests()
+#    regression_tests()
 #    model_checking(parse_input())
-#  test_all_iimc()
+    test_all_iimc()
