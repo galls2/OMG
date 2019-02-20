@@ -1,5 +1,6 @@
 import functools
 import logging
+from time import sleep
 
 from heapdict import *
 
@@ -169,7 +170,9 @@ class OmgModelChecker(object):
         goal = Goal(node.concrete_label, spec)
         while to_visit:
             node_to_explore = (to_visit.popitem()[0]).reset_urgent()
+
             logger.debug('AV:: NOW EXPLORING ' + node_to_explore.description())
+            logger.debug(str(node))
 
             abstract_state = self._find_abstract_classification_for_node(node_to_explore)
             node_to_explore.set_developed(goal)
@@ -249,6 +252,7 @@ class OmgModelChecker(object):
 
         while to_visit:
             node_to_explore = (to_visit.popitem()[0]).reset_urgent()
+
             logger.debug('EV:: NOW EXPLORING ' + node_to_explore.description())
 
             self._find_abstract_classification_for_node(node_to_explore)
@@ -284,7 +288,7 @@ class OmgModelChecker(object):
                 base, abstract_states_nodes_loop = lasso_res
                 abstract_states_nodes_loop = list(abstract_states_nodes_loop)
                 if self._brother_unification:
-                    abstract_states_nodes_loop = self._unify_brothers(abstract_states_nodes_loop)
+                    abstract_states_nodes_loop = self._unify_brothers(abstract_states_nodes_loop, True)
                 else:
                     abstract_states_nodes_loop = [(a, [n]) for (a, n) in abstract_states_nodes_loop]
 
@@ -395,6 +399,7 @@ class OmgModelChecker(object):
 
         final_res = self._method_mapping[main_connective](self, node, specification, *operands)
         node.add_label(specification, final_res)
+
         return final_res
 
     def _is_witness_concrete(self, to_close, concrete_witness):

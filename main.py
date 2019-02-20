@@ -1,4 +1,6 @@
 import functools
+import logging
+import threading
 import time
 from datetime import datetime
 
@@ -6,9 +8,6 @@ from arg_parser import OmgArgumentParser
 from ctl import CtlFileParser
 from kripke_structure import AigKripkeStructure
 from omg import OmgBuilder
-
-import multiprocessing
-import logging
 
 TIMEOUT = 3600
 
@@ -36,6 +35,38 @@ def parse_input(src=None):
     return arg_parser.parse(src)
 
 
+def check_files(aig_paths, ctl_paths):
+    logging.getLogger('OMG').info('Run configurations: ' + str(DEFAULT_FLAGS))
+    for i in range(len(aig_paths)):
+        aig_file_path = aig_paths[i]
+        ctl_formula_path = ctl_paths[i]
+
+        input_line = get_input_line_for_files(aig_file_path, ctl_formula_path)
+
+        parsed_args = parse_input(input_line.split())
+
+        model_checking(parsed_args)
+        logging.getLogger('OMG').info(SEP)
+
+
+def get_input_line_for_files(aig_file_path, ctl_formula_path):
+    file_name = ''.join(aig_file_path.split('/')[-1].split('.')[:-1])
+    logging.getLogger('OMG').info('Checking ' + file_name)
+    input_line = ''
+    input_line += '-aig_path {aig} -ctl_path {ctl} '.format(aig=aig_file_path, ctl=ctl_formula_path)
+
+    def flag_to_text(flag):
+        if DEFAULT_FLAGS[flag] is True:
+            return flag
+        elif DEFAULT_FLAGS[flag] is False:
+            return ''
+        else:
+            return flag + ' ' + str(DEFAULT_FLAGS[flag])
+
+    input_line += ' '.join([flag_to_text(flag) for flag in DEFAULT_FLAGS.keys()])
+    return input_line
+
+
 def model_checking(parsed_args):
     ctl_chunks = CtlFileParser().parse_ctl_file(parsed_args.ctl_path)
     aps = functools.reduce(lambda x, y: x | y,
@@ -43,7 +74,9 @@ def model_checking(parsed_args):
                             chunk[1:]])
 
     try:
-        timer, kripke_structure = time_me(AigKripkeStructure, [parsed_args.aig_path, aps, parsed_args.qe_policy])
+        timeout = parsed_args.timeout
+        aig_path = parsed_args.aig_path
+        timer, kripke_structure = time_me(AigKripkeStructure, [aig_path, aps, parsed_args.qe_policy], timeout)
         logging.getLogger('OMG').info('Kripke Structure construction took: ' + str(timer))
         omg = OmgBuilder() \
             .set_kripke(kripke_structure) \
@@ -58,14 +91,14 @@ def model_checking(parsed_args):
                 continue
             for spec in chunk[1:]:
                 #            omg.get_abstract_trees_sizes()
-                print_results_for_spec(omg, expected_res, spec)
+                print_results_for_spec(omg, expected_res, spec, timeout)
 
     except Exception as e:
         logging.getLogger('OMG').critical("Exception in model checking:: " + str(e))
 
 
-def print_results_for_spec(omg, expected_res, spec):
-    timer, (pos, neg) = time_me(omg.check_all_initial_states, [spec])
+def print_results_for_spec(omg, expected_res, spec, timeout):
+    timer, (pos, neg) = time_me(omg.check_all_initial_states, [spec], timeout)
     spec_str = spec.str_math()
     for pos_s in pos:
         logging.getLogger('OMG').info('M, ' + str(pos_s) + ' |= ' + spec_str)
@@ -80,48 +113,31 @@ def print_results_for_spec(omg, expected_res, spec):
     logging.getLogger('OMG').info('Model checking took: ' + str(timer) + '\n' + SEP)
 
 
-def time_me(measuree, args):
+class DataWrapper(object):
+    def __init__(self):
+        self.data = None
+
+def function_caller(to_run, args, ret):
+   result = to_run(*args)
+   ret.data = result
+
+
+def time_me(measuree, args, timeout):
+    e = threading.Event()
+    res = DataWrapper()
+    t = threading.Thread(target=function_caller, args=(measuree, args, res))
     start = time.time()
-    res = measuree(*args)
-    end = time.time()
-    return end - start, res
+    t.start()
 
+    t.join(int(timeout))
+    if not t.is_alive():
+        end = time.time()
+        return end - start, res.data
 
-def check_files(aig_paths, ctl_paths):
-    logging.getLogger('OMG').info('Run configurations: ' + str(DEFAULT_FLAGS))
-    for i in range(len(aig_paths)):
-        aig_file_path = aig_paths[i]
-        ctl_formula_path = ctl_paths[i]
+    e.set()
+    t.join()
+    raise Exception('TIMEOUT')
 
-        file_name = ''.join(aig_file_path.split('/')[-1].split('.')[:-1])
-        logging.getLogger('OMG').info('Checking ' + file_name)
-
-        input_line = ''
-        input_line += '-aig_path {aig} -ctl_path {ctl} '.format(aig=aig_file_path, ctl=ctl_formula_path)
-
-        def flag_to_text(flag):
-            if DEFAULT_FLAGS[flag] is True:
-                return flag
-            elif DEFAULT_FLAGS[flag] is False:
-                return ''
-            else:
-                return flag + ' ' + str(DEFAULT_FLAGS[flag])
-
-        input_line += ' '.join([flag_to_text(flag) for flag in DEFAULT_FLAGS.keys()])
-
-        #  print input_line
-        parsed_args = parse_input(input_line.split())
-
-        p = multiprocessing.Process(target=model_checking, args=(parsed_args,))
-        p.start()
-        p.join(int(parsed_args.timeout))
-        if p.is_alive():
-            logging.getLogger('OMG').error('TIMEOUT')
-
-            # Terminate
-            p.terminate()
-            p.join()
-        logging.getLogger('OMG').info(SEP)
 
 
 def test_propositional():
@@ -193,8 +209,8 @@ def regression_tests():
 if __name__ == '__main__':
     create_logger()
 
-    test_specific_tests(['tstrst', 'rrobin', 'swap', 'fifteen', 'pf'])
+    #    test_specific_tests(['swap'])
 
-#    regression_tests()
+    regression_tests()
 #    model_checking(parse_input())
 #    test_all_iimc()
