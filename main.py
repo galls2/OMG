@@ -193,7 +193,8 @@ def regression_tests():
 if __name__ == '__main__':
     create_logger()
 
-#    test_specific_tests(['tstrst', 'rrobin', 'swap', 'ChandyMisra', 'fifteen', 'blackjack', 'pf', 'peterson'])
-    regression_tests()
+    test_specific_tests(['tstrst', 'rrobin', 'swap', 'fifteen', 'pf'])
+
+#    regression_tests()
 #    model_checking(parse_input())
 #    test_all_iimc()

@@ -163,7 +163,6 @@ class OmgModelChecker(object):
         res = self._handle_ctl_and_recur(node, operand)
         return not res
 
-
     def _handle_av(self, node, spec, p, q):
 
         to_visit = _init_heap_with(node)
@@ -180,7 +179,7 @@ class OmgModelChecker(object):
                 _map_upward_from_node(node_to_explore, lambda current_node: current_node.add_negative_label(spec),
                                       node.get_parent())
                 logger.debug('AV:: Returning FALSE for ' + node.description() +
-                            ' due to finite trace to ' + node_to_explore.description())
+                             ' due to finite trace to ' + node_to_explore.description())
                 return False
 
             self._handle_ctl_and_recur(node_to_explore, p)
@@ -190,12 +189,11 @@ class OmgModelChecker(object):
                     to_visit[child_node] = child_node.priority()
             else:
                 node_to_explore.add_positive_label(spec)
-  #              continue
+            #              continue
 
             abs_states_with_nodes = node.get_abstract_labels_in_tree(goal)  # tuples of the form (abstract_label, node)
-            self._brother_unification = False ######################################### CHANGE MEEEE
             if self._brother_unification:
-                abs_states_with_nodes = self._unify_brothers(abs_states_with_nodes)
+                abs_states_with_nodes = self._unify_brothers(abs_states_with_nodes, p)
             else:
                 abs_states_with_nodes = [(a, [n]) for (a, n) in abs_states_with_nodes]
             abs_states = unique([tup[0] for tup in abs_states_with_nodes])
@@ -444,7 +442,7 @@ class OmgModelChecker(object):
             self._refine_split_ex(dst.get_parent(), dst.concrete_label, True)
             dst = dst.get_parent()
 
-    def _unify_brothers(self, abs_states_with_nodes):  # of the form (abs, node)
+    def _unify_brothers(self, abs_states_with_nodes, agree_upon):  # of the form (abs, node)
         abstract_states, concrete_nodes = zip(*abs_states_with_nodes)
         cl_nodes = {abs_state.get_classification_node() for abs_state in abstract_states}
         cn_to_cl = {tup[1]: tup[0].get_classification_node() for tup in abs_states_with_nodes}
@@ -458,7 +456,7 @@ class OmgModelChecker(object):
             max_depth = max(with_depth.keys())
             bottom_layer = list(with_depth.pop(max_depth))
             if max_depth > 0:
-                unchanged, next_level = self._unify_same_level_brothers(bottom_layer)
+                unchanged, next_level = self._unify_same_level_brothers(bottom_layer, agree_upon)
 
                 to_return += unchanged
                 if next_level:
@@ -471,22 +469,34 @@ class OmgModelChecker(object):
         res = [(unif.cl_node.get_value(), unif.cn_nodes) for unif in to_return]
 
         logger.debug('BROTHER UNIFICATION:: reduced from ' + str(len(abs_states_with_nodes)) + ' to ' + str(len(res))
-                    if len(res) < len(abs_states_with_nodes) else '')
+                     if len(res) < len(abs_states_with_nodes) else '')
         return res
 
-    def _unify_same_level_brothers(self, bottom_layer):  # set of (classification_node,
+    def _unify_same_level_brothers(self, bottom_layer, agree_upon):  # set of (classification_node,
         # {concrete_nodes that are classified by it})
-        parent_mapping = {unif_part.cl_node.get_parent():
-                              tuple([unif_brother for unif_brother in bottom_layer if
-                                     unif_brother.cl_node.get_parent() == unif_part.cl_node.get_parent()])
-                          for unif_part in bottom_layer}
+
+        def agree(b1, b2):
+            abs1 = b1.cl_node.get_value()
+            abs2 = b2.cl_node.get_value()
+            return (abs1.is_positive_label(agree_upon) and abs2.is_positive_label(agree_upon)) or (
+                    abs1.is_negative_label(agree_upon) and abs2.is_negative_label(agree_upon)) or (
+                (not abs1.is_labeled(agree_upon) and not abs2.is_labeled(agree_upon))
+            )
+
+        parent_mapping = {u_part.cl_node.get_parent():
+                              tuple([u_brother for u_brother in bottom_layer if
+                                     u_brother.cl_node.get_parent() == u_part.cl_node.get_parent() and agree(u_brother,
+                                                                                                             u_part)])
+                          for u_part in bottom_layer}
 
         def is_col_of_size(col, _len):
             return len(col) == _len
 
+        def unify(ufs):
+            return UnificationPart(ufs[0].cl_node.get_parent(), [cn_node for uf in ufs for cn_node in uf.cn_nodes])
+
         unif_brothers = [list(tup_val) for tup_val in parent_mapping.values()]
-        unchanged = [l[0] for l in filter(lambda col: is_col_of_size(col, 1), unif_brothers)]
-        to_unify = [UnificationPart(u_part[0].cl_node.get_parent(), u_part[0].cn_nodes + u_part[1].cn_nodes)
-                    for u_part in filter(lambda col: is_col_of_size(col, 2), unif_brothers)]
+        unchanged = [l[0] for l in unif_brothers if is_col_of_size(l, 1)]
+        to_unify = [unify(u_part) for u_part in unif_brothers if is_col_of_size(u_part, 2)]
 
         return unchanged, to_unify

@@ -40,6 +40,9 @@ class AbstractState(object):
     def is_negative_label(self, label):
         return label in self.negative_labels
 
+    def is_labeled(self, label):
+        return label in self.negative_labels or label in self.positive_labels
+
     def update_classification(self, concrete_state):
         if self._classification_node.is_leaf():
             return self._classification_node.get_value()
