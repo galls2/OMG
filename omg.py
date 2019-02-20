@@ -35,14 +35,14 @@ def _map_upward_from_node(node, mapper, stop):
         current = current.get_parent()
 
 
-def label_subtree(node, spec, positivity):
-    if not node.is_developed():
+def label_subtree(node, spec, positivity, goal):
+    if not node.is_developed(goal):
         return positivity
 
     node.add_label(spec, positivity)
 
     successors = node.get_successors()
-    [label_subtree(successor, spec, positivity) for successor in (successors if successors is not None else [])]
+    [label_subtree(successor, spec, positivity, goal) for successor in (successors if successors is not None else [])]
     return positivity
 
 
@@ -50,6 +50,12 @@ def _init_heap_with(node):
     to_visit = heapdict()
     to_visit[node] = node.priority()
     return to_visit
+
+
+class Goal(object):
+    def __init__(self, concrete_state, specification):
+        self.concrete_state = concrete_state
+        self.specification = specification
 
 
 class OmgBuilder(object):
@@ -157,16 +163,17 @@ class OmgModelChecker(object):
         res = self._handle_ctl_and_recur(node, operand)
         return not res
 
+
     def _handle_av(self, node, spec, p, q):
 
         to_visit = _init_heap_with(node)
-
+        goal = Goal(node.concrete_label, spec)
         while to_visit:
             node_to_explore = (to_visit.popitem()[0]).reset_urgent()
             logger.debug('AV:: NOW EXPLORING ' + node_to_explore.description())
 
             abstract_state = self._find_abstract_classification_for_node(node_to_explore)
-            node_to_explore.set_developed()
+            node_to_explore.set_developed(goal)
             self._handle_ctl_and_recur(node_to_explore, q)
             if node_to_explore.is_labeled_negatively_with(q):
                 self._strengthen_trace(node, node_to_explore)
@@ -185,7 +192,7 @@ class OmgModelChecker(object):
                 node_to_explore.add_positive_label(spec)
   #              continue
 
-            abs_states_with_nodes = node.get_abstract_labels_in_tree()  # tuples of the form (abstract_label, node)
+            abs_states_with_nodes = node.get_abstract_labels_in_tree(goal)  # tuples of the form (abstract_label, node)
             self._brother_unification = False ######################################### CHANGE MEEEE
             if self._brother_unification:
                 abs_states_with_nodes = self._unify_brothers(abs_states_with_nodes)
@@ -226,9 +233,9 @@ class OmgModelChecker(object):
 
             if not abs_states_lead:
                 logger.debug('AV:: Found closure!')
-                return label_subtree(node, spec, True)
+                return label_subtree(node, spec, True, goal)
 
-        return label_subtree(node, spec, True)
+        return label_subtree(node, spec, True, goal)
 
     def _is_concrete_violation(self, to_close_nodes, witness_state):
         to_close_node = None

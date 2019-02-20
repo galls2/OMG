@@ -30,7 +30,7 @@ class UnwindingTree(object):
         self._abstract_label = abstract_label  # abstract state that is represented by this node
         self.depth = 0 if parent is None else parent.get_depth() + 1
         self.URGENT = False
-        self._developed = False
+        self._developed = set()
 
     def unwind_further(self):
         if self._successors is None:
@@ -43,17 +43,22 @@ class UnwindingTree(object):
     def get_successors(self):
         return self._successors
 
-    def is_developed(self):
-        return self._developed
+    def is_developed(self, goal):
+        return goal in self._developed
 
-    def set_developed(self, val=True):
-        self._developed = val
+    def set_developed(self, goal):
+        self._developed.add(goal)
+        if len(self._developed)>1:
+            print 'u'
         return self
 
+    def _get_developed(self):
+        return self._developed
+
     def reset_developed_in_tree(self):
-        self.set_developed(False)
+        self._developed.clear()
         successors = [] if self._successors is None else self._successors
-        [succ.reset_developed_in_tree() for succ in successors]
+        [s.reset_developed_in_tree() for s in successors]
         return self
 
     def is_lasso(self, stop_node):
@@ -73,11 +78,11 @@ class UnwindingTree(object):
             current = current.get_parent()
         return False
 
-    def get_abstract_labels_in_tree(self):
-        if not self.is_developed():
+    def get_abstract_labels_in_tree(self, goal):
+        if not self.is_developed(goal):
             return set()
         successors = [] if self._successors is None else self._successors
-        partial_abstract_labels = [{(self.get_abstract_label(), self)}] + [successor.get_abstract_labels_in_tree()
+        partial_abstract_labels = [{(self.get_abstract_label(), self)}] + [successor.get_abstract_labels_in_tree(goal)
                                                                            for successor in successors]
         abs_labels = functools.reduce(lambda x, y: x | y, partial_abstract_labels)
         return abs_labels
@@ -146,7 +151,7 @@ class UnwindingTree(object):
 
     def __str__(self):
         return print_tree(self, lambda node: [] if node.get_successors() is None else node.get_successors(),
-                          lambda node: str(node.concrete_label) if node.is_developed()
+                          lambda node: str(node.concrete_label) if len(node._get_developed()) > 0
                           else str(tuple(node.concrete_label)))
 
     def priority(self):

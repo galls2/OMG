@@ -154,7 +154,7 @@ def test_EV():
 
 def test_iimc():
     logging.getLogger('OMG').info('Checking Actual IIMC examples:')
-    TEST_NAMES = ['af_ag', 'debug', 'gray', 'gatedClock', 'microwave']
+    TEST_NAMES = ['af_ag', 'debug', 'gray', 'gatedClock', 'microwave', 'tstrst']
 
     aig_file_paths = ['iimc_aigs/' + test_name + '.aig' for test_name in TEST_NAMES]
     ctl_formula_paths = [(''.join(aig_path[:-4]) + '.ctl') for aig_path in aig_file_paths]
@@ -194,6 +194,6 @@ if __name__ == '__main__':
     create_logger()
 
 #    test_specific_tests(['tstrst', 'rrobin', 'swap', 'ChandyMisra', 'fifteen', 'blackjack', 'pf', 'peterson'])
-#    regression_tests()
+    regression_tests()
 #    model_checking(parse_input())
-    test_all_iimc()
+#    test_all_iimc()
