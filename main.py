@@ -179,9 +179,8 @@ def test_iimc():
 
 def test_specific_tests(test_names):
     logging.getLogger('OMG').info('Checking {}:'.format(test_names))
-    TEST_NAMES = test_names
 
-    aig_file_paths = ['iimc_aigs/' + test_name + '.aig' for test_name in TEST_NAMES]
+    aig_file_paths = ['iimc_aigs/' + test_name + '.aig' for test_name in test_names]
     ctl_formula_paths = [(''.join(aig_path[:-4]) + '.ctl') for aig_path in aig_file_paths]
     check_files(aig_file_paths, ctl_formula_paths)
 
