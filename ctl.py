@@ -282,7 +282,7 @@ class CtlParser(object):
         """
 
         input_formula = _remove_spaces_from_edges(input_formula)
-        logger.log(5, 'NOW :' + input_formula)
+     #   logger.log(5, 'NOW :' + input_formula)
 
         while input_formula[0] == '(' and input_formula[-1] == ')' and is_balanced_brackets(input_formula[1:-1]):
             logger.log(5, 'R_NOW :' + input_formula)
@@ -293,7 +293,7 @@ class CtlParser(object):
             return CtlFormula(input_formula[:2], [self.parse_math_format(input_formula[2:])])
 
         parts = _split_components(input_formula)
-        logger.log(5, parts)
+     #   logger.log(5, parts)
 
         # First checking if this is a binary temporal operator.
         if input_formula[0] in ['A', 'E'] and len(parts[0]) == 1 and len(parts) > 1:
@@ -303,7 +303,7 @@ class CtlParser(object):
                                      (path_quantifier + parts[i]) in CtlFormula.binary_temporal_operators)
                 temporal_operator = parts[temp_op_index].replace('R', 'V')
             except Exception as e:
-                logger.critical('Parsing filed due to ' + str(input_formula) + '\n' + str(e))
+       #         logger.critical('Parsing filed due to ' + str(input_formula) + '\n' + str(e))
                 raise Exception('Parsing Failed due to ' + input_formula)
             main_connective = path_quantifier + temporal_operator
 

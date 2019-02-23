@@ -48,8 +48,6 @@ class UnwindingTree(object):
 
     def set_developed(self, goal):
         self._developed.add(goal)
-        if len(self._developed)>1:
-            print 'u'
         return self
 
     def _get_developed(self):

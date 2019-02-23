@@ -1,3 +1,8 @@
+daio_receiver.aig
+af_ag.aig
+usb_phy.aig
+rrff.aig
+fifteen.aig
 coherence2.aig
 priority.aig
 IFetchControl.aig
@@ -9,15 +14,6 @@ amba8.aig
 idu32.aig
 matrix.aig
 cgw.aig
-bufferAlloc.aig
-FIFOli.aig
-spinner32.aig
-twophase.aig
-daio_receiver.aig
-af_ag.aig
-usb_phy.aig
-rrff.aig
-fifteen.aig
 sfeistel.aig
 amba4.aig
 viper.aig
@@ -26,6 +22,10 @@ redCAB.aig
 s1269b.aig
 vcordic.aig
 retherRTF.aig
+bufferAlloc.aig
+FIFOli.aig
+spinner32.aig
+twophase.aig
 spinner4.aig
 pf.aig
 am2901.aig
