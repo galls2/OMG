@@ -3,13 +3,14 @@ import logging
 import threading
 import time
 from datetime import datetime
+import multiprocessing
 
 from arg_parser import OmgArgumentParser
 from ctl import CtlFileParser
 from kripke_structure import AigKripkeStructure
 from omg import OmgBuilder
-
-TIMEOUT = 3600
+import sys
+TIMEOUT = 1500
 
 BUG_LINE = '<------------------------------------------------------ BUG -------------------------------------'
 SEP = '------------------------------------------------------------------------------------------'
@@ -73,71 +74,67 @@ def model_checking(parsed_args):
                            [set(ctl_formula.get_aps()) for chunk in ctl_chunks for ctl_formula in
                             chunk[1:]])
 
-    try:
-        timeout = parsed_args.timeout
-        aig_path = parsed_args.aig_path
-        timer, kripke_structure = time_me(AigKripkeStructure, [aig_path, aps, parsed_args.qe_policy], timeout)
-        logging.getLogger('OMG').info('Kripke Structure construction took: ' + str(timer))
-        omg = OmgBuilder() \
-            .set_kripke(kripke_structure) \
-            .set_brother_unification(parsed_args.brother_unification) \
-            .set_trivial_split_elimination(parsed_args.trivial_split_elimination) \
-            .build()
+    num_specs = sum([len(chunk[1:]) for chunk in ctl_chunks])
+    timeout = int(parsed_args.timeout)
+    aig_path = parsed_args.aig_path
 
-        for chunk in ctl_chunks:
+    def model_checking_timed():
+        try:
+            kripke = time_me(AigKripkeStructure, [aig_path, aps, parsed_args.qe_policy], "Structure construction took")
+            omg = OmgBuilder() \
+                .set_kripke(kripke) \
+                .set_brother_unification(parsed_args.brother_unification) \
+                .set_trivial_split_elimination(parsed_args.trivial_split_elimination) \
+                .build()
 
-            expected_res = chunk[0]
-            if expected_res is None:
-                continue
-            for spec in chunk[1:]:
-                #            omg.get_abstract_trees_sizes()
-                print_results_for_spec(omg, expected_res, spec, timeout)
+            for chunk in ctl_chunks:
 
-    except Exception as e:
-        logging.getLogger('OMG').critical("Exception in model checking:: " + str(e))
+                expected_res = chunk[0]
+                if expected_res is None:
+                    continue
+                for spec in chunk[1:]:
+                    #            omg.get_abstract_trees_sizes()
+                    run_with_timeout(print_results_for_spec, (omg, expected_res, spec), timeout, "Model checking took")
+        except Exception as e:
+            logging.getLogger('OMG').critical("Exception in model checking:: " + str(e))
+
+    run_with_timeout(model_checking_timed, (), (num_specs+1)*timeout, "Entire process took")
 
 
-def print_results_for_spec(omg, expected_res, spec, timeout):
-    timer, (pos, neg) = time_me(omg.check_all_initial_states, [spec], timeout)
+def print_results_for_spec(omg, expected_res, spec):
+    pos, neg = omg.check_all_initial_states(spec)
     spec_str = spec.str_math()
+    '''
     for pos_s in pos:
         logging.getLogger('OMG').info('M, ' + str(pos_s) + ' |= ' + spec_str)
     for neg_s in neg:
         logging.getLogger('OMG').info('M, ' + str(neg_s) + ' |=/= ' + spec_str)
-
+    '''
     is_property_satisfied = len(neg) == 0
     is_bug = is_property_satisfied != expected_res
 
     logging.getLogger('OMG').info('M |=' + ('' if is_property_satisfied else '/=') + spec_str +
                                   (BUG_LINE if is_bug else ''))
-    logging.getLogger('OMG').info('Model checking took: ' + str(timer) + '\n' + SEP)
 
 
-class DataWrapper(object):
-    def __init__(self):
-        self.data = None
-
-def function_caller(to_run, args, ret):
-   result = to_run(*args)
-   ret.data = result
-
-
-def time_me(measuree, args, timeout):
-    e = threading.Event()
-    res = DataWrapper()
-    t = threading.Thread(target=function_caller, args=(measuree, args, res))
+def time_me(measuree, args, message):
     start = time.time()
-    t.start()
+    res = measuree(*args)
+    end = time.time()
+    logging.getLogger('OMG').info(message + ': ' + str(end - start))
+    return res
 
-    t.join(int(timeout))
-    if not t.is_alive():
-        end = time.time()
-        return end - start, res.data
 
-    e.set()
-    t.join()
-    raise Exception('TIMEOUT')
+def run_with_timeout(to_run, args, timeout, message):
+    p = multiprocessing.Process(target=time_me, args=(to_run, args, message))
+    p.start()
+    p.join(timeout)
 
+    # If thread is still active
+    if p.is_alive():
+        logging.getLogger('OMG').info('TIMEOUT')
+        p.terminate()
+        p.join()
 
 
 def test_propositional():
@@ -186,6 +183,9 @@ def test_specific_tests(test_names):
 
 
 def test_all_iimc():
+    if len(sys.argv) > 1:
+        DEFAULT_FLAGS['--qe_policy'] = sys.argv[1]
+
     logging.getLogger('OMG').info('Checking All IIMC examples:')
     with open('goods.txt', 'r') as f:
         lines = f.readlines()
@@ -210,6 +210,6 @@ if __name__ == '__main__':
 
     #    test_specific_tests(['swap'])
 
-    regression_tests()
-#    model_checking(parse_input())
-#    test_all_iimc()
+#    regression_tests()
+    #    model_checking(parse_input())
+    test_all_iimc()
