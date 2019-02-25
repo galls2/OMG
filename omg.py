@@ -274,7 +274,7 @@ class OmgModelChecker(object):
 
             lasso_res = node_to_explore.is_lasso(node.get_parent())
             while lasso_res is not False:
-                if lasso_res is True:  # concrete lasso found!
+                if lasso_res is True:  # concrete lasso found! ## THIS GOES UP
                     #logger.debug('EV:: Found concrete lasso to: ' + node_to_explore.description())
                     self._strengthen_trace(node, node_to_explore)
                     _map_upward_from_node(node_to_explore, lambda current_node: current_node.add_positive_label(spec),
