@@ -2,4 +2,4 @@
 *_reset.aig
 *o[0-9]+.aig
 *b[0-9]+.aig
-
+.idea/*
