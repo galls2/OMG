@@ -138,7 +138,7 @@ class OmgModelChecker(object):
         positive_answer = []
         negative_answer = []
         for initial_state in self._kripke.get_initial_states():
-            self._kripke.get_graph(initial_state)
+     #       self._kripke.get_graph(initial_state)
             model_checking_result = self.handle_ctl(initial_state, specification)
             if model_checking_result:
                 positive_answer.append(initial_state)
@@ -147,27 +147,26 @@ class OmgModelChecker(object):
                 return positive_answer, negative_answer
         return positive_answer, negative_answer
 
-    def _handle_and(self, node, spec, left_operand, right_operand):
+    def _handle_and(self, node, spec, is_strengthen, left_operand, right_operand):
         return _label_state(
-            self._handle_ctl_and_recur(node, left_operand) and self._handle_ctl_and_recur(node, right_operand),
+            self._handle_ctl_and_recur(node, left_operand, is_strengthen) and self._handle_ctl_and_recur(node, right_operand, is_strengthen),
             node, spec)
 
-    def _handle_or(self, node, spec, left_operand, right_operand):
+    def _handle_or(self, node, spec, is_strengthen, left_operand, right_operand):
         return _label_state(
-            self._handle_ctl_and_recur(node, left_operand) or self._handle_ctl_and_recur(node, right_operand),
+            self._handle_ctl_and_recur(node, left_operand, is_strengthen) or self._handle_ctl_and_recur(node, right_operand, is_strengthen),
             node, spec)
 
-    def _handle_arrow(self, node, spec, left_operand, right_operand):
+    def _handle_arrow(self, node, spec, is_strengthen, left_operand, right_operand):
         return _label_state(
-            (not self._handle_ctl_and_recur(node, left_operand)) or (self._handle_ctl_and_recur(node, right_operand)),
+            (not self._handle_ctl_and_recur(node, left_operand, is_strengthen)) or (self._handle_ctl_and_recur(node, right_operand, is_strengthen)),
             node, spec)
 
-    def _handle_not(self, node, spec, operand):
-        res = self._handle_ctl_and_recur(node, operand)
+    def _handle_not(self, node, spec, is_strengthen, operand):
+        res = self._handle_ctl_and_recur(node, operand, is_strengthen)
         return not res
 
-    def _handle_av(self, node, spec, p, q):
-        is_strengthen = True
+    def _handle_av(self, node, spec, is_strengthen, p, q):
         to_visit = _init_heap_with(node)
         goal = Goal(node, spec)
         while to_visit:
@@ -253,15 +252,14 @@ class OmgModelChecker(object):
                 break
         return concretization_result, to_close_node
 
-    def _handle_ev(self, node, spec, p, q):
-        is_strengthen = True
+    def _handle_ev(self, node, spec, is_strengthen, p, q):
         to_visit = _init_heap_with(node)
         goal = Goal(node, spec)
 
         while to_visit:
             node_to_explore = (to_visit.popitem()[0]).reset_urgent()
 
-            logger.debug('EV:: NOW EXPLORING ' + node_to_explore.description())
+            #logger.debug('EV:: NOW EXPLORING ' + node_to_explore.description())
 
             self._find_abstract_classification_for_node(node_to_explore)
             node_to_explore.set_developed(goal)
@@ -307,14 +305,14 @@ class OmgModelChecker(object):
 
                 while abstract_states_nodes_loop:
                     (to_close_abs, to_close_nodes) = abstract_states_nodes_loop[0]
-                    logger.debug('EV:: Trying to close abstract state of' + to_close_nodes[0].description() + ' :')
+                    #logger.debug('EV:: Trying to close abstract state of' + to_close_nodes[0].description() + ' :')
                     res = self._abstract_structure.is_AE_closure(to_close_abs, loop_abstract_states)
                     if res is True:
-                        logger.debug(' Success!')
+                        #logger.debug(' Success!')
                         abstract_states_nodes_loop = abstract_states_nodes_loop[1:]
                     else:
-                        logger.debug(' Failed!')
-                        print res
+                        #logger.debug(' Failed!')
+                        #print res
                         abs_src_witness = self._find_abstract_classification_for_state(res)
                         to_close_node = next(_to for _to in to_close_nodes
                                              if self._find_abstract_classification_for_node(_to) == abs_src_witness)
@@ -337,15 +335,14 @@ class OmgModelChecker(object):
 
                 lasso_res = node_to_explore.is_lasso(node.get_parent())
 
-        logger.debug('EV:: Pruned all paths from ' + node.description() + ': returning FALSE')
+        #logger.debug('EV:: Pruned all paths from ' + node.description() + ': returning FALSE')
         if is_strengthen:
             self._strengthen_subtree(node, lambda _n: _n.is_developed(goal))
             return label_subtree(node, spec, False, goal)
         else:
             return False
 
-    def _handle_ex(self, node, spec, operand):
-        is_strengthen = True
+    def _handle_ex(self, node, spec, is_strengthen, operand):
         children_nodes = node.unwind_further()
         for child_node in children_nodes:
             #logger.debug('EX:: NOW EXPLORING ' + child_node.description())
@@ -388,16 +385,16 @@ class OmgModelChecker(object):
             unwinding_tree = UnwindingTree(self._kripke, None, None, state)
         unwinding_tree.reset_developed_in_tree()
 
-        res = self._handle_ctl_and_recur(unwinding_tree, specification)
+        res = self._handle_ctl_and_recur(unwinding_tree, specification, False)
         #logger.debug(str(unwinding_tree))
         #self.get_abstract_trees_sizes()
         self._unwinding_trees[tuple(state)] = unwinding_tree
 
         return res
 
-    def _handle_ctl_and_recur(self, node, specification):
+    def _handle_ctl_and_recur(self, node, specification, is_strengthen=True):
 
-        logger.debug( 'handle_ctl_and_recur: node=(' + str(node.concrete_label) + ',' + str(node.get_depth()) + '), spec=' + specification.str_math())
+        #logger.debug( 'handle_ctl_and_recur: node=(' + str(node.concrete_label) + ',' + str(node.get_depth()) + '), spec=' + specification.str_math())
 
         self._find_abstract_classification_for_node(node)
 
@@ -415,8 +412,9 @@ class OmgModelChecker(object):
         main_connective = specification.get_main_connective()
         operands = specification.get_operands()
 
-        final_res = self._method_mapping[main_connective](self, node, specification, *operands)
-        node.add_label(specification, final_res)
+        final_res = self._method_mapping[main_connective](self, node, specification, is_strengthen, *operands)
+        if is_strengthen:
+            node.add_label(specification, final_res)
 
         return final_res
 

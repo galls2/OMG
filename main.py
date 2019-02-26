@@ -1,15 +1,14 @@
 import functools
 import logging
-import threading
+import multiprocessing
+import sys
 import time
 from datetime import datetime
-import multiprocessing
 
 from arg_parser import OmgArgumentParser
 from ctl import CtlFileParser
 from kripke_structure import AigKripkeStructure
 from omg import OmgBuilder
-import sys
 
 TIMEOUT = 1500
 
@@ -107,9 +106,10 @@ def model_checking(parsed_args):
                         .set_brother_unification(parsed_args.brother_unification) \
                         .set_trivial_split_elimination(parsed_args.trivial_split_elimination) \
                         .build()
-
+                '''
                 for r in kripke.get_aps():
                     print r
+                '''
                 expected_res = chunk[0]
                 if expected_res is None:
                     continue
@@ -229,7 +229,7 @@ def regression_tests():
 if __name__ == '__main__':
     create_logger()
 
-#    test_specific_tests(['microwave'])
+    #    test_specific_tests(['microwave'])
 
     regression_tests()
     #    model_checking(parse_input())
