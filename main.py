@@ -10,12 +10,13 @@ from ctl import CtlFileParser
 from kripke_structure import AigKripkeStructure
 from omg import OmgBuilder
 import sys
+
 TIMEOUT = 1500
 
 BUG_LINE = '<------------------------------------------------------ BUG -------------------------------------'
 SEP = '------------------------------------------------------------------------------------------'
 
-DEFAULT_FLAGS = {'-bu': True, '-tse': True, '--qe_policy': 'qe-light', '-timeout': TIMEOUT}
+DEFAULT_FLAGS = {'-bu': True, '-tse': True, '--qe_policy': 'qe', '-timeout': TIMEOUT, '-few_aps': True}
 
 DEBUG = True
 
@@ -70,25 +71,45 @@ def get_input_line_for_files(aig_file_path, ctl_formula_path):
 
 def model_checking(parsed_args):
     ctl_chunks = CtlFileParser().parse_ctl_file(parsed_args.ctl_path)
-    aps = functools.reduce(lambda x, y: x | y,
-                           [set(ctl_formula.get_aps()) for chunk in ctl_chunks for ctl_formula in
-                            chunk[1:]])
+    few_aps = parsed_args.few_aps
 
-    num_specs = sum([len(chunk[1:]) for chunk in ctl_chunks])
+    def chunk_aps(_chunk):
+        return functools.reduce(lambda x, y: x | y,
+                                [set(ctl_formula.get_aps()) for ctl_formula in _chunk[1:]])
+
+    ap_chunks = {i: chunk_aps(ctl_chunks[i]) for i in range(len(ctl_chunks))}
+
+    num_specs = sum([len(__chunk[1:]) for __chunk in ctl_chunks])
     timeout = int(parsed_args.timeout)
     aig_path = parsed_args.aig_path
 
     def model_checking_timed():
         try:
-            kripke = time_me(AigKripkeStructure, [aig_path, aps, parsed_args.qe_policy], "Structure construction took")
-            omg = OmgBuilder() \
-                .set_kripke(kripke) \
-                .set_brother_unification(parsed_args.brother_unification) \
-                .set_trivial_split_elimination(parsed_args.trivial_split_elimination) \
-                .build()
+            if not few_aps:
+                aps = functools.reduce(lambda x, y: x | y, ap_chunks.values())
+                kripke = time_me(AigKripkeStructure, [aig_path, aps, parsed_args.qe_policy],
+                                 "Structure construction took")
+                omg = OmgBuilder() \
+                    .set_kripke(kripke) \
+                    .set_brother_unification(parsed_args.brother_unification) \
+                    .set_trivial_split_elimination(parsed_args.trivial_split_elimination) \
+                    .build()
 
-            for chunk in ctl_chunks:
+            for i in range(len(ctl_chunks)):
+                chunk = ctl_chunks[i]
 
+                if few_aps:
+                    aps = ap_chunks[i]
+                    kripke = time_me(AigKripkeStructure, [aig_path, aps, parsed_args.qe_policy],
+                                     "Structure construction took")
+                    omg = OmgBuilder() \
+                        .set_kripke(kripke) \
+                        .set_brother_unification(parsed_args.brother_unification) \
+                        .set_trivial_split_elimination(parsed_args.trivial_split_elimination) \
+                        .build()
+
+                for r in kripke.get_aps():
+                    print r
                 expected_res = chunk[0]
                 if expected_res is None:
                     continue
@@ -98,7 +119,7 @@ def model_checking(parsed_args):
         except Exception as e:
             logging.getLogger('OMG').critical("Exception in model checking:: " + str(e))
 
-    run_with_timeout(model_checking_timed, (), (num_specs+1)*timeout, "Entire process took")
+    run_with_timeout(model_checking_timed, (), (num_specs + 1) * timeout, "Entire process took")
 
 
 def print_results_for_spec(omg, expected_res, spec):
@@ -208,8 +229,8 @@ def regression_tests():
 if __name__ == '__main__':
     create_logger()
 
-    #    test_specific_tests(['swap'])
+#    test_specific_tests(['microwave'])
 
-#    regression_tests()
+    regression_tests()
     #    model_checking(parse_input())
-    test_all_iimc()
+#    test_all_iimc()

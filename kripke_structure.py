@@ -138,3 +138,16 @@ class AigKripkeStructure(KripkeStructure):
         max_var_ltr = int(ltr_dimacs[0].split(' ')[-1])
         return Z3Utils.combine_ltr_with_bad_formulas(self._ltr_formula, self._output_formulas, max_var_ltr + 1)
 
+    def get_graph(self, src_state):
+        edges = {}
+        to_explore = {tuple(src_state)}
+        while to_explore:
+            next_state = to_explore.pop()
+            if tuple(next_state) in edges.keys():
+                continue
+            successors = self.get_successors(list(next_state))
+            edges[next_state] = successors
+            to_explore |= set([tuple(t) for t in successors])
+
+        for s in edges.keys():
+            print str(s) + '-> '+ ','.join([str(dst) for dst in edges[s]])
