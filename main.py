@@ -122,6 +122,9 @@ def model_checking(parsed_args):
     run_with_timeout(model_checking_timed, (), (num_specs + 1) * timeout, "Entire process took")
 
 
+RES_DICT = {True: 0, False: 1}
+
+
 def print_results_for_spec(omg, expected_res, spec):
     pos, neg = omg.check_all_initial_states(spec)
     spec_str = spec.str_math()
@@ -134,6 +137,7 @@ def print_results_for_spec(omg, expected_res, spec):
     is_property_satisfied = len(neg) == 0
     is_bug = is_property_satisfied != expected_res
 
+    logging.getLogger('OMG').info('result = ' + str(RES_DICT[is_property_satisfied]))
     logging.getLogger('OMG').info('M |=' + ('' if is_property_satisfied else '/=') + spec_str +
                                   (BUG_LINE if is_bug else ''))
 
@@ -206,6 +210,7 @@ def test_specific_tests(test_names):
 def test_all_iimc():
     if len(sys.argv) > 1:
         DEFAULT_FLAGS['--qe_policy'] = sys.argv[1]
+        DEFAULT_FLAGS['-few_aps'] = True if len(sys.argv) > 2 else False
 
     logging.getLogger('OMG').info('Checking All IIMC examples:')
     with open('goods.txt', 'r') as f:
@@ -231,6 +236,6 @@ if __name__ == '__main__':
 
     #    test_specific_tests(['microwave'])
 
-#    regression_tests()
+    regression_tests()
     #    model_checking(parse_input())
-    test_all_iimc()
+#    test_all_iimc()

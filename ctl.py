@@ -151,6 +151,9 @@ class CtlFormula(object):
     def get_operands(self):
         return self._operands
 
+    def size(self):
+        return 1 if self.is_leaf() else 1 + sum([op.size() for op in self._operands])
+
     def get_main_connective(self):
         return self._node_data
 
