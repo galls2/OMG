@@ -10,12 +10,12 @@ from ctl import CtlFileParser
 from kripke_structure import AigKripkeStructure
 from omg import OmgBuilder
 
-TIMEOUT = 1500
+TIMEOUT = 3600
 
 BUG_LINE = '<------------------------------------------------------ BUG -------------------------------------'
 SEP = '------------------------------------------------------------------------------------------'
 
-DEFAULT_FLAGS = {'-bu': True, '-tse': True, '--qe_policy': 'qe', '-timeout': TIMEOUT, '-few_aps': True}
+DEFAULT_FLAGS = {'-bu': True, '-tse': True, '--qe_policy': 'no-qe', '-timeout': TIMEOUT, '-few_aps': False}
 
 
 DEBUG = True
@@ -234,9 +234,8 @@ def regression_tests():
 
 if __name__ == '__main__':
     create_logger()
+#    test_specific_tests(['heap'])
 
-    #    test_specific_tests(['microwave'])
-
-#    regression_tests()
+    regression_tests()
     #    model_checking(parse_input())
-    test_all_iimc()
+    #test_all_iimc()
