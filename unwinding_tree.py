@@ -152,5 +152,5 @@ class UnwindingTree(object):
                           lambda node: str(node.concrete_label) if len(node._get_developed()) > 0
                           else str(tuple(node.concrete_label)))
 
-    def priority(self):
+    def unwinding_priority(self):
         return 0 if self.URGENT else self.depth+1
