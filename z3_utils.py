@@ -4,6 +4,9 @@ from z3 import *
 
 from formula_wrapper import FormulaWrapper
 from var_manager import VarManager
+import logging
+
+logger = logging.getLogger('OMG')
 
 
 
@@ -210,19 +213,22 @@ class Z3Utils(object):
         dst = Not(Or(*dst_formulas))
 
         closure_formula = And(src, transitions.get_z3_formula(), dst)
+     #   logger.debug('Check start')
         s = Solver()
         res = s.check(closure_formula)
-
+      #  logger.debug('check end.')
         if res == unsat:
             return True
 
         model = s.model()
+      #  logger.debug(str(model))
         return EEClosureViolation(get_assignments(model, src_vars)[0], get_assignments(model, dst_vars)[0])
 
     @classmethod
     def apply_qe(cls, formula, qe_policy):
         if qe_policy == 'no-qe':
             return formula
+      #  formula = Tactic('ctx-solver-simplify')(formula).as_expr()
         return Tactic(qe_policy)(formula).as_expr()
 
     @classmethod

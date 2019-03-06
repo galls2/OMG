@@ -143,7 +143,7 @@ class AigKripkeStructure(KripkeStructure):
         to_explore = {tuple(src_state)}
         while to_explore:
             next_state = to_explore.pop()
-            if tuple(next_state) in edges.keys():
+            if tuple(next_state) in edges.keys() or tuple(next_state) in to_explore:
                 continue
             successors = self.get_successors(list(next_state))
             edges[next_state] = successors

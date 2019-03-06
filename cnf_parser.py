@@ -35,7 +35,7 @@ class CnfParser(object):
         parsed_parts = [[p for p in meta_line.split(' ') if p != ''] for meta_line in tr_metadata]
         parsed_with_vectors = [line for line in parsed_parts if
                                any([line[0].startswith(prefix) for prefix in PREFIXES])]
-        var_vectors = [[Bool(raw_var) for raw_var in parsed_part[1:]] for parsed_part in parsed_with_vectors]
+        var_vectors = [[z3.Bool(raw_var) for raw_var in parsed_part[1:]] for parsed_part in parsed_with_vectors]
         if DEBUG:
             assert len(var_vectors) and all([len(vec) == self._num_regs for vec in var_vectors])
         return var_vectors

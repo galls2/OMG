@@ -13,7 +13,7 @@ from omg import OmgBuilder
 TIMEOUT = 3600
 
 BUG_LINE = '<------------------------------------------------------ BUG -------------------------------------'
-SEP = '------------------------------------------------------------------------------------------'
+SEP = '---------'
 
 DEFAULT_FLAGS = {'-bu': True, '-tse': True, '--qe_policy': 'no-qe', '-timeout': TIMEOUT, '-few_aps': False}
 
@@ -88,7 +88,7 @@ def model_checking(parsed_args):
             if not few_aps:
                 aps = functools.reduce(lambda x, y: x | y, ap_chunks.values())
                 kripke = time_me(AigKripkeStructure, [aig_path, aps, parsed_args.qe_policy],
-                                 "Structure construction took")
+                                 "Construction")
                 omg = OmgBuilder() \
                     .set_kripke(kripke) \
                     .set_brother_unification(parsed_args.brother_unification) \
@@ -101,7 +101,7 @@ def model_checking(parsed_args):
                 if few_aps:
                     aps = ap_chunks[i]
                     kripke = time_me(AigKripkeStructure, [aig_path, aps, parsed_args.qe_policy],
-                                     "Structure construction took")
+                                     "Constuction")
                     omg = OmgBuilder() \
                         .set_kripke(kripke) \
                         .set_brother_unification(parsed_args.brother_unification) \
@@ -116,11 +116,11 @@ def model_checking(parsed_args):
                     continue
                 for spec in chunk[1:]:
                     #            omg.get_abstract_trees_sizes()
-                    run_with_timeout(print_results_for_spec, (omg, expected_res, spec), timeout, "Model checking took")
+                    run_with_timeout(print_results_for_spec, (omg, expected_res, spec), timeout, "Checking")
         except Exception as e:
             logging.getLogger('OMG').critical("Exception in model checking:: " + str(e))
 
-    run_with_timeout(model_checking_timed, (), (num_specs + 1) * timeout, "Entire process took")
+    run_with_timeout(model_checking_timed, (), (num_specs + 1) * timeout, "Everything")
 
 
 RES_DICT = {True: 0, False: 1}
@@ -128,7 +128,7 @@ RES_DICT = {True: 0, False: 1}
 
 def print_results_for_spec(omg, expected_res, spec):
     pos, neg = omg.check_all_initial_states(spec)
-    spec_str = spec.str_math()
+  #  spec_str = spec.str_math()
     '''
     for pos_s in pos:
         logging.getLogger('OMG').info('M, ' + str(pos_s) + ' |= ' + spec_str)
@@ -138,9 +138,9 @@ def print_results_for_spec(omg, expected_res, spec):
     is_property_satisfied = len(neg) == 0
     is_bug = is_property_satisfied != expected_res
 
-    logging.getLogger('OMG').info('result = ' + str(RES_DICT[is_property_satisfied]))
-    logging.getLogger('OMG').info('M |=' + ('' if is_property_satisfied else '/=') + spec_str +
-                                  (BUG_LINE if is_bug else ''))
+    logging.getLogger('OMG').info(str(RES_DICT[is_property_satisfied]))
+    if is_bug:
+        logging.getLogger('OMG').info(BUG_LINE)
 
 
 def time_me(measuree, args, message):
@@ -234,8 +234,8 @@ def regression_tests():
 
 if __name__ == '__main__':
     create_logger()
-#    test_specific_tests(['heap'])
+ #   test_specific_tests(['heap'])
 
-    regression_tests()
+  #  regression_tests()
     #    model_checking(parse_input())
-    #test_all_iimc()
+    test_all_iimc()

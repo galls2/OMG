@@ -52,7 +52,9 @@ class AbstractionClassifier(object):
 
     def classify(self, concrete_state):
         if self._cache.exists_key(tuple(concrete_state)):
-            return self._cache[tuple(concrete_state)]
+            res = self._cache[tuple(concrete_state)]
+            assert res.get_classification_node().is_leaf()
+            return res
 
         concrete_atomic_labels = collection_to_sorted_tuple(self._kripke.get_aps_for_state(concrete_state))
         if concrete_atomic_labels not in self._classification_trees.keys():

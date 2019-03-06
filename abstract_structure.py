@@ -1,5 +1,10 @@
+import logging
+
 from abstraction_classifier import collection_to_sorted_tuple
 from z3_utils import Z3Utils
+
+
+logger = logging.getLogger('OMG')
 
 
 def init_dict_by_key(dict, key, default_val):
@@ -100,11 +105,12 @@ class AbstractStructure(object):
         return self
 
     def is_EE_closure(self, to_close, close_with):
+   #     print len(close_with)
         close_with = [cl for cl in close_with if
                       to_close not in self._NE_may.keys() or cl not in self._NE_may[to_close]]
 
         # this is not empty
-
+    #    print len(close_with)
         def exists_superset(over_approxs):
             return True if to_close in over_approxs.keys() and \
                            any([set(close_with).issuperset(set(op)) for op in over_approxs[to_close]]) else None
@@ -124,6 +130,7 @@ class AbstractStructure(object):
         if subset_res:
             return subset_res
 
+      #  logger.debug('Z3ing')
         closure_result = Z3Utils.is_EE_closed(to_close, close_with)
 
         if closure_result is True:
