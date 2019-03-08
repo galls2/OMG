@@ -3,7 +3,6 @@ import logging
 from abstraction_classifier import collection_to_sorted_tuple
 from z3_utils import Z3Utils
 
-
 logger = logging.getLogger('OMG')
 
 
@@ -85,7 +84,6 @@ class AbstractStructure(object):
         self._abstract_states.add(abstract_state)
         return self
 
-
     def add_must_hyper(self, src, hyper_dst):
         init_dict_by_key(self._E_must, src, hyper_dst)
         return self
@@ -99,18 +97,18 @@ class AbstractStructure(object):
         return self
 
     def add_NE_may_over(self, src, dst):
-        if src in self._NE_may_over.keys(): #tuple of (violation, non-closers)
+        if src in self._NE_may_over.keys():  # tuple of (violation, non-closers)
             self._NE_may_over[src] = {ent for ent in self._NE_may_over[src] if not set(ent[1]).issubset(set(dst[1]))}
         init_dict_by_key(self._NE_may_over, src, dst)  ###MINIMZE
         return self
 
     def is_EE_closure(self, to_close, close_with):
-   #     print len(close_with)
+        #     print len(close_with)
         close_with = [cl for cl in close_with if
                       to_close not in self._NE_may.keys() or cl not in self._NE_may[to_close]]
 
         # this is not empty
-    #    print len(close_with)
+        #    print len(close_with)
         def exists_superset(over_approxs):
             return True if to_close in over_approxs.keys() and \
                            any([set(close_with).issuperset(set(op)) for op in over_approxs[to_close]]) else None
@@ -130,7 +128,7 @@ class AbstractStructure(object):
         if subset_res:
             return subset_res
 
-      #  logger.debug('Z3ing')
+        #  logger.debug('Z3ing')
         closure_result = Z3Utils.is_EE_closed(to_close, close_with)
 
         if closure_result is True:
@@ -207,7 +205,7 @@ class AbstractStructure(object):
         ne_may_over.update({key:
                                 tuple({(n_cl_opt[0], n_cl_opt[1] if abs_to_close not in n_cl_opt[1] else
                                 tuple(set(n_cl_opt[1]) | {abs_pos, abs_neg})) for n_cl_opt in
-                                        ne_may_over[key]})
+                                       ne_may_over[key]})
                             for key in ne_may_over.keys()})
 
         return None, (abs_pos, abs_neg)
@@ -260,8 +258,9 @@ class AbstractStructure(object):
         # split info
 
         updated_abstract_sons = tuple(abstract_sons if abstract_state_to_split not in abstract_sons else \
-            ([a for a in abstract_sons if a != abstract_state_to_split] + [new_abs_sons_closed,
-                                                                           new_abs_sons_not_closed]))
+                                          ([a for a in abstract_sons if a != abstract_state_to_split] + [
+                                              new_abs_sons_closed,
+                                              new_abs_sons_not_closed]))
 
         self.add_E_may_over(new_abs_sons_closed, updated_abstract_sons)
         self.add_NE_may_over(new_abs_sons_not_closed, (None, updated_abstract_sons))

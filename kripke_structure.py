@@ -1,7 +1,10 @@
 import itertools
 
+from BitVector import BitVector
+
 from aig_parser import AvyAigParser
 from cnf_parser import CnfParser
+from common import State
 from formula_wrapper import FormulaWrapper
 from z3_utils import Z3Utils
 from z3 import *
@@ -40,6 +43,7 @@ class KripkeStructure(object):
         raise NotImplementedError()
 
 
+
 class AigKripkeStructure(KripkeStructure):
     def __init__(self, aig_path, aps, qe_policy):
         super(AigKripkeStructure, self).__init__(aps)
@@ -62,7 +66,7 @@ class AigKripkeStructure(KripkeStructure):
     def _overwrite_aig_reset_logic(self):
         new_aig_lines = self._aig_parser.get_aig_after_reset()
         old_aig_path = self._aig_parser.get_aig_path()
-        new_aig_path = '.'.join(old_aig_path.split('.')[:-1])+'_reset.'+old_aig_path.split('.')[-1]
+        new_aig_path = '.'.join(old_aig_path.split('.')[:-1]) + '_reset.' + old_aig_path.split('.')[-1]
         with open(new_aig_path, 'w') as new_aig:
             new_aig.write(''.join(new_aig_lines))
 
@@ -79,17 +83,23 @@ class AigKripkeStructure(KripkeStructure):
             return self._initial_states
 
         inits_latches = [list(init) for init in self._init_latch_values]
- #       inits_latches = [[0] * self._num_latches]
+
+        #       inits_latches = [[0] * self._num_latches]
 
         def get_outputs_for_latch_values(l_vals):
             return itertools.product(*[out_val_list \
                                        for out_formula in self._output_formulas
-                                       for out_val_list in Z3Utils.get_all_successors(out_formula, l_vals)])
+                                       for out_val_list in Z3Utils.get_all_next_assignments(out_formula, l_vals)])
 
         init_outputs = {tuple(init_latches): get_outputs_for_latch_values(init_latches)
                         for init_latches in inits_latches}
 
-        res = [init_latches + list(init_out_value) for init_latches in inits_latches for init_out_value in
+        def list_to_state(lst):
+            data = BitVector(bitlist=lst)
+            return State(data)
+
+        res = [list_to_state(init_latches + list(init_out_value)) for init_latches in inits_latches for init_out_value
+               in
                init_outputs[tuple(init_latches)]]
         self._initial_states = res
         return res
@@ -140,14 +150,14 @@ class AigKripkeStructure(KripkeStructure):
 
     def get_graph(self, src_state):
         edges = {}
-        to_explore = {tuple(src_state)}
+        to_explore = {src_state}
         while to_explore:
             next_state = to_explore.pop()
-            if tuple(next_state) in edges.keys() or tuple(next_state) in to_explore:
+            if next_state in edges.keys() or next_state in to_explore:
                 continue
-            successors = self.get_successors(list(next_state))
+            successors = self.get_successors(next_state)
             edges[next_state] = successors
-            to_explore |= set([tuple(t) for t in successors])
+            to_explore |= set(successors)
 
         for s in edges.keys():
-            print str(s) + '-> '+ ','.join([str(dst) for dst in edges[s]])
+            print str(s) + '-> ' + ','.join([str(dst) for dst in edges[s]])

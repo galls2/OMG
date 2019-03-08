@@ -16,13 +16,15 @@ class AbstractionCache(object):
         self._data = {}
 
     def exists_key(self, key):
-        return key in self._data.keys()
+        if type(key) == type([1]):
+            print 'g'
+        return tuple(key.data) in self._data.keys()
 
     def __getitem__(self, item):
-        return self._data[item]
+        return self._data[tuple(item.data)]
 
     def __setitem__(self, key, value):
-        self._data[key] = value
+        self._data[tuple(key.data)] = value
         return self
 
     def remove_by_value(self, value):
@@ -51,8 +53,8 @@ class AbstractionClassifier(object):
         return new_abstract_label
 
     def classify(self, concrete_state):
-        if self._cache.exists_key(tuple(concrete_state)):
-            res = self._cache[tuple(concrete_state)]
+        if self._cache.exists_key(concrete_state):
+            res = self._cache[concrete_state]
             assert res.get_classification_node().is_leaf()
             return res
 
@@ -61,7 +63,7 @@ class AbstractionClassifier(object):
             return None
 
         abstract_label = self._classification_trees[concrete_atomic_labels].classify(concrete_state)
-        self._cache[tuple(concrete_state)] = abstract_label
+        self._cache[concrete_state] = abstract_label
         return abstract_label
 
     def add_classification(self, atomic_labels, abstract_state):

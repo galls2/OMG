@@ -1,13 +1,14 @@
 import itertools
 
+from BitVector import BitVector
 from z3 import *
 
+from common import State
 from formula_wrapper import FormulaWrapper
 from var_manager import VarManager
 import logging
 
 logger = logging.getLogger('OMG')
-
 
 
 class EEClosureViolation(object):
@@ -51,15 +52,16 @@ def get_vars(f):
 
 
 def z3_val_to_int(z3_val):
-    if z3_val.sexpr() == 'true':
-        return 1
-    return 0
+    return 1 if z3_val.sexpr() == 'true' else 0
 
 
 def get_assignments(model, variables):
     partial_assignment = [([z3_val_to_int(model[var])] if model[var] is not None else [0, 1]) for var in variables]
     return [list(comb) for comb in itertools.product(*partial_assignment)]
 
+def get_states(model, variables):
+    res_list = get_assignments(model, variables)
+    return [State(BitVector(bitlist=raw_state)) for raw_state in res_list]
 
 class Z3Utils(object):
     copies_counter = 0
@@ -140,9 +142,8 @@ class Z3Utils(object):
         return cls.get_split_formula(to_split, split_by, transitions, cls.get_forall_successors_in_formula)
 
     @classmethod
-    def get_all_successors(cls, tr, src):
+    def get_all_next_assignments(cls, tr, src_values):
         s = Solver()
-        src_values = map(lambda val: int(val), src)
         curr_tr = tr.substitute(Z3Utils.int_vec_to_z3(src_values))
 
         next_states = []
@@ -160,13 +161,19 @@ class Z3Utils(object):
                   for var in next_vector if model[var] is not None])
             curr_z3 = simplify(And(curr_z3, blocking_cube))
         #    print curr_z3
-
         return next_states
+
+    @classmethod
+    def get_all_successors(cls, tr, src):
+
+        src_values = src.values()
+        next_assignments = cls.get_all_next_assignments(tr, src_values)
+        return [State(BitVector(bitlist=cube)) for cube in next_assignments]
 
     @classmethod
     def has_successor_in_abstract(cls, concrete_state, abstract_witness):
         kripke = abstract_witness.get_kripke()
-        transitions_from_concrete = kripke.get_tr_formula().substitute(Z3Utils.int_vec_to_z3(concrete_state))
+        transitions_from_concrete = kripke.get_tr_formula().substitute(Z3Utils.int_vec_to_z3(concrete_state.data))
         variables = transitions_from_concrete.get_var_vectors()[0]
         abs_formula = abstract_witness.get_descriptive_formula().substitute(variables, 0, variables) \
             .get_z3_formula()
@@ -176,7 +183,7 @@ class Z3Utils(object):
         if s.check(f) == unsat:
             return False
 
-        return get_assignments(s.model(), variables)[0]
+        return get_states(s.model(), variables)[0]
 
     @classmethod
     def is_AE_closed(cls, to_close, close_with):
@@ -198,7 +205,7 @@ class Z3Utils(object):
             return True
 
         model = s.model()
-        ass = get_assignments(model, src_vars)[0]
+        ass = get_states(model, src_vars)[0]
         return ass
 
     @classmethod
@@ -213,22 +220,22 @@ class Z3Utils(object):
         dst = Not(Or(*dst_formulas))
 
         closure_formula = And(src, transitions.get_z3_formula(), dst)
-     #   logger.debug('Check start')
+        #   logger.debug('Check start')
         s = Solver()
         res = s.check(closure_formula)
-      #  logger.debug('check end.')
+        #  logger.debug('check end.')
         if res == unsat:
             return True
 
         model = s.model()
-      #  logger.debug(str(model))
-        return EEClosureViolation(get_assignments(model, src_vars)[0], get_assignments(model, dst_vars)[0])
+        #  logger.debug(str(model))
+        return EEClosureViolation(get_states(model, src_vars)[0], get_states(model, dst_vars)[0])
 
     @classmethod
     def apply_qe(cls, formula, qe_policy):
         if qe_policy == 'no-qe':
             return formula
-      #  formula = Tactic('ctx-solver-simplify')(formula).as_expr()
+        #  formula = Tactic('ctx-solver-simplify')(formula).as_expr()
         return Tactic(qe_policy)(formula).as_expr()
 
     @classmethod
@@ -255,8 +262,4 @@ class Z3Utils(object):
 
         return FormulaWrapper(tr_formula, var_vectors)
 
-'''
-def test_parse_partial_assignment():
-    if __name__ == '__main__':
-        print Z3Utils.get_all_successors(FormulaWrapper(Bool('x'), [[Bool('x')], [Bool('y')]]), [1])
-'''
+
