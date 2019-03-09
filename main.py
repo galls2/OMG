@@ -10,7 +10,7 @@ from ctl import CtlFileParser
 from kripke_structure import AigKripkeStructure
 from omg import OmgBuilder
 
-TIMEOUT = 1800
+TIMEOUT = 3600
 
 BUG_LINE = '<------------------------------------------------------ BUG -------------------------------------'
 SEP = '---------'
@@ -234,8 +234,8 @@ def regression_tests():
 
 if __name__ == '__main__':
     create_logger()
-  #  test_specific_tests(['rrff'])
+#    test_specific_tests(['rrff'])
 
-    regression_tests()
-    #    model_checking(parse_input())
+#    regression_tests()
+    model_checking(parse_input())
 #    test_all_iimc()

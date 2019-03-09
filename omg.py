@@ -138,7 +138,7 @@ class OmgModelChecker(object):
         positive_answer = []
         negative_answer = []
         for initial_state in self._kripke.get_initial_states():
-            #       self._kripke.get_graph(initial_state)
+            # self._kripke.get_graph(initial_state)
             model_checking_result = self.handle_ctl(initial_state, specification)
             if model_checking_result:
                 positive_answer.append(initial_state)
@@ -177,8 +177,8 @@ class OmgModelChecker(object):
         while to_visit:
             node_to_explore = (to_visit.popitem()[0]).reset_urgent()
 
-#        logger.debug('AV:: NOW EXPLORING ' + node_to_explore.description())
-#            logger.debug(str(node))
+            # logger.debug('AV:: NOW EXPLORING ' + node_to_explore.description())
+            # logger.debug(str(node))
 
             abstract_state = self._find_abstract_classification_for_node(node_to_explore)
             node_to_explore.set_developed(goal)
@@ -198,7 +198,6 @@ class OmgModelChecker(object):
                     to_visit[child_node] = child_node.unwinding_priority()
             else:
                 node_to_explore.add_positive_label(spec)
-            #              continue
 
             inductive_res = self._check_inductive_av(goal, p, to_visit)
             if inductive_res:
@@ -224,36 +223,37 @@ class OmgModelChecker(object):
             abs_state_lead = abs_states_lead[0]
             to_close_abstract, to_close_nodes = abs_state_lead
 
-          #  logger.debug('AV:: Trying to close abstract state of' + to_close_nodes[0].description() + ' :')
+            # logger.debug('AV:: Trying to close abstract state of' + to_close_nodes[0].description() + ' :')
             res = self._abstract_structure.is_EE_closure(to_close_abstract, abs_states)
             if res is True:
-         #       logger.debug(' Success!')
+                # logger.debug(' Success!')
                 abs_states_lead.remove(abs_state_lead)
             else:
                 src_to_witness, witness_state = res.conc_src, res.conc_dst
-           #     logger.debug(' Failed! Due to ' + str((src_to_witness, witness_state)))
+                # logger.debug(' Failed! Due to '+str(src_to_witness) +' to '+ str(witness_state))
                 concretization_result = self._is_concrete_violation(to_close_nodes, witness_state)
                 if concretization_result.exists():
                     witness_concrete_state = concretization_result.dst_conc
                     to_close_node = concretization_result.src_node
-            #        logger.debug("CONC")
+                    # logger.debug("CONC")
 
                     if to_close_node.get_successors() is None:
                         node_to_set = to_close_node
                     else:
                         node_to_set = next((successor for successor in to_close_node.get_successors()
-                                       if successor.concrete_label == witness_concrete_state), None)
-
+                                            if successor.concrete_label == witness_concrete_state), None)
+                    if node_to_set is None:
+                        print 'pu'
                     node_to_set.set_urgent()
                     to_visit[node_to_set] = node_to_set.unwinding_priority()
 
                 else:
-             #       logger.debug("REFINE")
+                    # logger.debug("REFINE")
                     abs_src_witness = self._find_abstract_classification_for_state(src_to_witness)
                     to_close_node = next((_to for _to in to_close_nodes
-                                         if self._find_abstract_classification_for_node(_to) == abs_src_witness), None)
+                                          if self._find_abstract_classification_for_node(_to) == abs_src_witness), None)
                     if to_close_node is None:
-                        print 'nodes: '+str(len(to_close_nodes))
+                        print 'nodes: ' + str(len(to_close_nodes))
                         for _t in to_close_nodes:
                             print _t.description()
                         print str(src_to_witness)
@@ -263,23 +263,24 @@ class OmgModelChecker(object):
                 return False
         return True
 
-    def get_next_to_av_close(self, abs_states_lead): #(abs_label, nodes)
+    def get_next_to_av_close(self, abs_states_lead):  # (abs_label, nodes)
         def avg_depth(nodes_collection):
-            return sum([node.get_depth() for node in nodes_collection])/len(abs_states_lead)
+            return sum([node.get_depth() for node in nodes_collection]) / len(abs_states_lead)
 
         sorted_by_depth = {avg_depth(tup[1]): tup for tup in abs_states_lead}
         max_avg_depth = max(k for k in sorted_by_depth.keys())
         return sorted_by_depth[max_avg_depth]
-        #return abs_states_labeled[0] -- prev
+        # return abs_states_labeled[0] -- prev
 
     # NEW WAY
+
     def _is_concrete_violation(self, to_close_nodes, witness_state):
 
         abstract_witness = self._find_abstract_classification_for_state(witness_state)
         res = Z3Utils.concrete_transition_to_abstract(to_close_nodes, abstract_witness)
         return ConcretizationResult() if res is False else ConcretizationResult(*res)
 
-    #OLD WAY
+    # OLD WAY
     '''
     def _is_concrete_violation(self, to_close_nodes, witness_state):
 
