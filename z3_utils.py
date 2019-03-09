@@ -171,6 +171,40 @@ class Z3Utils(object):
         return [State(BitVector(bitlist=cube)) for cube in next_assignments]
 
     @classmethod
+    def concrete_transition_to_abstract(cls, nodes_from, abstract_witness):
+        kripke = abstract_witness.get_kripke()
+        tr = kripke.get_tr_formula()
+
+        def sub_src(tr, src_node):
+            z3_vec = Z3Utils.int_vec_to_z3(src_node.concrete_label.data)
+            return tr.substitute(z3_vec)
+        tr_from_concs = [sub_src(tr, node) for node in nodes_from]
+
+        variables = tr_from_concs[0].get_var_vectors()[0]
+        abs_formula = abstract_witness.get_descriptive_formula().substitute(variables, 0, variables) \
+            .get_z3_formula()
+
+        flags = [Bool('f'+str(i)) for i in range(len(tr_from_concs))]
+
+        def flagify(f_wrap, flag):
+            return f_wrap.get_z3_formula() == flag
+
+        tr_flagged = [flagify(tr_from_concs[i], flags[i]) for i in range(len(tr_from_concs))]
+        all_tr_flagged = And(*tr_flagged)
+        some_flag = Or(*flags)
+        f = And(all_tr_flagged, abs_formula, some_flag)
+
+        s = Solver()
+        if s.check(f) == unsat:
+            return False
+
+        model = s.model()
+
+        witness_index = next(i for i in range(len(tr_from_concs)) if model[flags[i]] is not None and z3_val_to_int(model[flags[i]]) == 1)
+        return nodes_from[witness_index], get_states(model, variables)[0]
+
+
+    @classmethod
     def has_successor_in_abstract(cls, concrete_state, abstract_witness):
         kripke = abstract_witness.get_kripke()
         transitions_from_concrete = kripke.get_tr_formula().substitute(Z3Utils.int_vec_to_z3(concrete_state.data))
@@ -184,6 +218,7 @@ class Z3Utils(object):
             return False
 
         return get_states(s.model(), variables)[0]
+
 
     @classmethod
     def is_AE_closed(cls, to_close, close_with):

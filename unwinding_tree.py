@@ -145,12 +145,12 @@ class UnwindingTree(object):
         return self < other
 
     def description(self):
-        return str(tuple(self.concrete_label))+','+str(self.depth)
+        return str(self.concrete_label)+','+str(self.depth)
 
     def __str__(self):
         return print_tree(self, lambda node: [] if node.get_successors() is None else node.get_successors(),
                           lambda node: str(node.concrete_label) if len(node._get_developed()) > 0
-                          else str(tuple(node.concrete_label)))
+                          else '#'+str(node.concrete_label))+'#'
 
     def unwinding_priority(self):
         return 0 if self.URGENT else self.depth+1

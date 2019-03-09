@@ -6,6 +6,7 @@ from heapdict import *
 
 from abstract_structure import AbstractStructure, AbstractState
 from abstraction_classifier import AbstractionClassifier
+from common import ConcretizationResult
 from unwinding_tree import UnwindingTree
 from z3_utils import Z3Utils
 
@@ -204,7 +205,7 @@ class OmgModelChecker(object):
                 return label_subtree(node, spec, True, goal)
 
         if is_strengthen:
-            self._strengthen_subtree(node, lambda _n: _n.is_developed(g))
+            self._strengthen_subtree(node, lambda _n: _n.is_developed(goal))
             return label_subtree(node, spec, True, goal)
         else:
             return True
@@ -231,14 +232,17 @@ class OmgModelChecker(object):
             else:
                 src_to_witness, witness_state = res.conc_src, res.conc_dst
            #     logger.debug(' Failed! Due to ' + str((src_to_witness, witness_state)))
-                concretization_result, to_close_node = self._is_concrete_violation(to_close_nodes, witness_state)
-                if concretization_result:
+                concretization_result = self._is_concrete_violation(to_close_nodes, witness_state)
+                if concretization_result.exists():
+                    witness_concrete_state = concretization_result.dst_conc
+                    to_close_node = concretization_result.src_node
             #        logger.debug("CONC")
+
                     if to_close_node.get_successors() is None:
                         node_to_set = to_close_node
                     else:
                         node_to_set = next((successor for successor in to_close_node.get_successors()
-                                       if successor.concrete_label == concretization_result))
+                                       if successor.concrete_label == witness_concrete_state), None)
 
                     node_to_set.set_urgent()
                     to_visit[node_to_set] = node_to_set.unwinding_priority()
@@ -246,8 +250,15 @@ class OmgModelChecker(object):
                 else:
              #       logger.debug("REFINE")
                     abs_src_witness = self._find_abstract_classification_for_state(src_to_witness)
-                    to_close_node = next(_to for _to in to_close_nodes
-                                         if self._find_abstract_classification_for_node(_to) == abs_src_witness)
+                    to_close_node = next((_to for _to in to_close_nodes
+                                         if self._find_abstract_classification_for_node(_to) == abs_src_witness), None)
+                    if to_close_node is None:
+                        print 'nodes: '+str(len(to_close_nodes))
+                        for _t in to_close_nodes:
+                            print _t.description()
+                        print str(src_to_witness)
+
+
                     self._refine_split_ex(to_close_node, [witness_state], False)
                 return False
         return True
@@ -261,6 +272,15 @@ class OmgModelChecker(object):
         return sorted_by_depth[max_avg_depth]
         #return abs_states_labeled[0] -- prev
 
+    # NEW WAY
+    def _is_concrete_violation(self, to_close_nodes, witness_state):
+
+        abstract_witness = self._find_abstract_classification_for_state(witness_state)
+        res = Z3Utils.concrete_transition_to_abstract(to_close_nodes, abstract_witness)
+        return ConcretizationResult() if res is False else ConcretizationResult(*res)
+
+    #OLD WAY
+    '''
     def _is_concrete_violation(self, to_close_nodes, witness_state):
 
         abstract_witness = self._find_abstract_classification_for_state(witness_state)
@@ -268,7 +288,8 @@ class OmgModelChecker(object):
         computed = ((Z3Utils.has_successor_in_abstract(_to.concrete_label, abstract_witness), _to) for _to in
                     to_close_nodes)
         to_ret = next((son for son in computed if son[0]), (None, None))
-        return to_ret
+        return ConcretizationResult(to_ret[1], to_ret[0])
+    '''
 
     def _handle_ev(self, node, spec, is_strengthen, p, q):
         to_visit = _init_heap_with(node)

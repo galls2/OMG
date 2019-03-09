@@ -20,3 +20,15 @@ class State(object):
 
     def __ne__(self, o):
         return not self == o
+
+    def __str__(self):
+        return str(self.data)
+
+
+class ConcretizationResult(object):
+    def __init__(self, src=None, dst=None):
+        self.src_node = src
+        self.dst_conc = dst
+
+    def exists(self):
+        return not (self.src_node is None and self.dst_conc is None)
