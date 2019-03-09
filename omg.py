@@ -173,10 +173,13 @@ class OmgModelChecker(object):
 
     def _handle_av(self, node, spec, is_strengthen, p, q):
         to_visit = _init_heap_with(node)
+        visited = set()
         goal = Goal(node, spec)
         while to_visit:
             node_to_explore = (to_visit.popitem()[0]).reset_urgent()
-
+            if node_to_explore.concrete_label in visited:
+                continue
+            visited.add(node_to_explore.concrete_label)
             # logger.debug('AV:: NOW EXPLORING ' + node_to_explore.description())
             # logger.debug(str(node))
 
@@ -195,6 +198,8 @@ class OmgModelChecker(object):
             if node_to_explore.is_labeled_negatively_with(p):
                 children_nodes = node_to_explore.unwind_further()
                 for child_node in children_nodes:
+                    if child_node.concrete_label in visited:
+                        continue
                     to_visit[child_node] = child_node.unwinding_priority()
             else:
                 node_to_explore.add_positive_label(spec)
@@ -240,10 +245,9 @@ class OmgModelChecker(object):
                     if to_close_node.get_successors() is None:
                         node_to_set = to_close_node
                     else:
-                        node_to_set = next((successor for successor in to_close_node.get_successors()
-                                            if successor.concrete_label == witness_concrete_state), None)
-                    if node_to_set is None:
-                        print 'pu'
+                        node_to_set = next(successor for successor in to_close_node.get_successors()
+                                            if successor.concrete_label == witness_concrete_state)
+
                     node_to_set.set_urgent()
                     to_visit[node_to_set] = node_to_set.unwinding_priority()
 
@@ -252,12 +256,13 @@ class OmgModelChecker(object):
                     abs_src_witness = self._find_abstract_classification_for_state(src_to_witness)
                     to_close_node = next((_to for _to in to_close_nodes
                                           if self._find_abstract_classification_for_node(_to) == abs_src_witness), None)
+                    '''
                     if to_close_node is None:
                         print 'nodes: ' + str(len(to_close_nodes))
                         for _t in to_close_nodes:
                             print _t.description()
                         print str(src_to_witness)
-
+                    '''
 
                     self._refine_split_ex(to_close_node, [witness_state], False)
                 return False
