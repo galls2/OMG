@@ -184,65 +184,27 @@ class Z3Utils(object):
         abs_formula = abstract_witness.get_descriptive_formula().substitute(variables, 0, variables).get_z3_formula()
 
         flags = [Bool('f'+str(i)) for i in range(len(tr_from_concs))]
-        some_flag = Or(*flags)
 
-        tr_flagged = [tr_from_concs[i].get_z3_formula() == flags[i] for i in range(len(tr_from_concs))]
+        tr_flagged = [Implies(flags[i], tr_from_concs[i].get_z3_formula()) for i in range(len(tr_from_concs))]
         all_tr_flagged = And(*tr_flagged)
-        f = And(all_tr_flagged, abs_formula, some_flag)
+
+        f = And(all_tr_flagged, abs_formula)
 
         s = Solver()
-        if s.check(f) == unsat:
-            return False
+        s.add(f)
+        s.push()
 
-        model = s.model()
-
-        witness_index = next(i for i in range(len(tr_from_concs)) if model[flags[i]] is not None and z3_val_to_int(model[flags[i]]) == 1)
-        return nodes_from[witness_index], get_states(model, variables)[0]
-
-    @classmethod
-    def concrete_transition_to_abstract_new(cls, nodes_from, abstract_witness):
-        kripke = abstract_witness.get_kripke()
-        tr = kripke.get_tr_formula()
-
-        v_tag = tr.get_var_vectors()[1]
-        abs_formula = abstract_witness.get_descriptive_formula().substitute(v_tag, 0, v_tag).get_z3_formula()
-
-        flags = [Bool('f' + str(i)) for i in range(len(nodes_from))]
-        some_flag = Or(*flags)
-
-        def state_to_cube(state, vars):
-            return And(*[vars[j] if state[j] else Not(vars[j]) for j in range(len(vars))])
-
-        v = tr.get_var_vectors()[0]
-        init_v = [state_to_cube(nodes_from[i].concrete_label, v) == flags[i] for i in range(len(nodes_from))] # v=si <-> fi
-
-        all_tr_flagged = And(*init_v)
-        f = And(all_tr_flagged, tr.get_z3_formula(), abs_formula, some_flag)
-
-        s = Solver()
-        if s.check(f) == unsat:
-            return False
-
-        model = s.model()
-
-        witness_index = next(
-            i for i in range(len(nodes_from)) if model[flags[i]] is not None and z3_val_to_int(model[flags[i]]) == 1)
-        return nodes_from[witness_index], get_states(model, v_tag)[0]
-
-    @classmethod
-    def has_successor_in_abstract(cls, concrete_state, abstract_witness):
-        kripke = abstract_witness.get_kripke()
-        transitions_from_concrete = kripke.get_tr_formula().substitute(Z3Utils.int_vec_to_z3(concrete_state.data))
-        variables = transitions_from_concrete.get_var_vectors()[0]
-        abs_formula = abstract_witness.get_descriptive_formula().substitute(variables, 0, variables) \
-            .get_z3_formula()
-        f = And(transitions_from_concrete.get_z3_formula(), abs_formula)
-
-        s = Solver()
-        if s.check(f) == unsat:
-            return False
-
-        return get_states(s.model(), variables)[0]
+        for i in range(len(flags)):
+            flag = flags[i]
+            s.add(flag)
+            s.push()
+            sat_res = s.check()
+            if sat_res == sat:
+                model = s.model()
+                return nodes_from[i], get_states(model, variables)[0]
+            else:
+                s.pop()
+        return False
 
 
     @classmethod

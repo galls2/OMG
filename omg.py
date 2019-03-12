@@ -138,7 +138,7 @@ class OmgModelChecker(object):
         positive_answer = []
         negative_answer = []
         for initial_state in self._kripke.get_initial_states():
-            # self._kripke.get_graph(initial_state)
+            #self._kripke.get_graph(initial_state)
             model_checking_result = self.handle_ctl(initial_state, specification)
             if model_checking_result:
                 positive_answer.append(initial_state)
@@ -255,14 +255,14 @@ class OmgModelChecker(object):
                     # logger.debug("REFINE")
                     abs_src_witness = self._find_abstract_classification_for_state(src_to_witness)
                     to_close_node = next((_to for _to in to_close_nodes
-                                          if self._find_abstract_classification_for_node(_to) == abs_src_witness), None)
-                    '''
+                                          if self._find_abstract_classification_for_node(_to) == abs_src_witness))
+
                     if to_close_node is None:
                         print 'nodes: ' + str(len(to_close_nodes))
                         for _t in to_close_nodes:
                             print _t.description()
                         print str(src_to_witness)
-                    '''
+                    
 
                     self._refine_split_ex(to_close_node, [witness_state], False)
                 return False
@@ -277,7 +277,7 @@ class OmgModelChecker(object):
         return sorted_by_depth[max_avg_depth]
         # return abs_states_labeled[0] -- prev
 
-    # NEW WAY
+
 
     def _is_concrete_violation(self, to_close_nodes, witness_state):
 
@@ -285,17 +285,7 @@ class OmgModelChecker(object):
         res = Z3Utils.concrete_transition_to_abstract(to_close_nodes, abstract_witness)
         return ConcretizationResult() if res is False else ConcretizationResult(*res)
 
-    # OLD WAY
-    '''
-    def _is_concrete_violation(self, to_close_nodes, witness_state):
 
-        abstract_witness = self._find_abstract_classification_for_state(witness_state)
-
-        computed = ((Z3Utils.has_successor_in_abstract(_to.concrete_label, abstract_witness), _to) for _to in
-                    to_close_nodes)
-        to_ret = next((son for son in computed if son[0]), (None, None))
-        return ConcretizationResult(to_ret[1], to_ret[0])
-    '''
 
     def _handle_ev(self, node, spec, is_strengthen, p, q):
         to_visit = _init_heap_with(node)
