@@ -233,7 +233,7 @@ def regression_tests():
 
 if __name__ == '__main__':
     create_logger()
- #   test_specific_tests(['rrff'])
+  #  test_specific_tests(['debug'])
 
     regression_tests()
 #    model_checking(parse_input())

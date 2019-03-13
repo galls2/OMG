@@ -1,7 +1,8 @@
 import logging
 
 from abstraction_classifier import collection_to_sorted_tuple
-from z3_utils import Z3Utils
+from formula_wrapper import FormulaWrapper, unsat
+from z3_utils import Z3Utils, Solver, And, Not, Bool, Implies
 
 logger = logging.getLogger('OMG')
 
@@ -163,14 +164,22 @@ class AbstractStructure(object):
     def split_abstract_state(self, node_to_close, abstract_sons, formula_getter, check_trivial_split):
         kripke = self.kripke
         abs_to_close = node_to_close.get_abstract_label()
-        pos_formula, neg_formula = \
+        base_formula, quantified_part, vars = \
             formula_getter(abs_to_close, abstract_sons, kripke.get_tr_formula())
 
         if self._trivial_split and check_trivial_split:
-            if not pos_formula.is_sat():
+            s = Solver()
+            s.add(base_formula)
+            Y_flag, N_flag = Bool('Y'), Bool('N')
+            s.add(Implies(Y_flag, quantified_part))
+            s.add(Implies(N_flag, Not(quantified_part)))
+            if s.check(Y_flag) == unsat:
                 return False, abs_to_close
-            if not neg_formula.is_sat():
+            if s.check(N_flag) == unsat:
                 return True, abs_to_close
+
+        pos_formula = FormulaWrapper(And(base_formula, quantified_part), [vars])
+        neg_formula = FormulaWrapper(And(base_formula, Not(quantified_part)), [vars])
 
         def create_abstract_state_split(formula):
             return AbstractState(abs_to_close.atomic_labels, kripke, formula) \

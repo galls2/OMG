@@ -117,18 +117,16 @@ class Z3Utils(object):
         formula_to_split_pos = to_split.get_descriptive_formula()
         quantifier_wrapper_pos = quantified_part_getter(split_by, transitions)
         quantified_formula = quantifier_wrapper_pos.get_z3_formula()
-        pos_quantifier = simplify(
-            And(formula_to_split_pos.get_z3_formula(), quantified_formula))  # A(v) & Qv'[phi(v,v')]
+       # pos_quantifier = simplify(And(formula_to_split_pos.get_z3_formula(), quantified_formula))  # A(v) & Qv'[phi(v,v')]
 
-        formula_to_split_neg = to_split.get_descriptive_formula()
-        quantifier_wrapper_neg = quantified_part_getter(split_by, transitions)
-        negated_quantified_formula = Not(quantifier_wrapper_neg.get_z3_formula())
-        neg_quantifier = simplify(
-            And(formula_to_split_neg.get_z3_formula(), negated_quantified_formula))  # A(v) & ~Qv'[phi(v,v')]
+    #    formula_to_split_neg = to_split.get_descriptive_formula()
+     #   quantifier_wrapper_neg = quantified_part_getter(split_by, transitions)
+     #   negated_quantified_formula = Not(quantifier_wrapper_neg.get_z3_formula())
+     #   neg_quantifier = simplify( And(formula_to_split_neg.get_z3_formula(), negated_quantified_formula))  # A(v) & ~Qv'[phi(v,v')]
 
         v_vars = to_split.get_descriptive_formula().get_var_vectors()[0]
-        return FormulaWrapper(pos_quantifier, [v_vars]), FormulaWrapper(neg_quantifier, [v_vars])
-
+        #return FormulaWrapper(pos_quantifier, [v_vars]), FormulaWrapper(neg_quantifier, [v_vars])
+        return formula_to_split_pos.get_z3_formula(), quantified_formula, v_vars
     @classmethod
     def get_ex_split_formulas(cls, to_split, split_by, transitions):
         return cls.get_split_formula(to_split, split_by, transitions, cls.get_exists_successors_in_formula)
@@ -196,14 +194,10 @@ class Z3Utils(object):
 
         for i in range(len(flags)):
             flag = flags[i]
-            s.add(flag)
-            s.push()
-            sat_res = s.check()
+            sat_res = s.check(flag)
             if sat_res == sat:
                 model = s.model()
                 return nodes_from[i], get_states(model, variables)[0]
-            else:
-                s.pop()
         return False
 
 
