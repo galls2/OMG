@@ -1,12 +1,11 @@
 import itertools
+import logging
 
-from BitVector import BitVector
 from z3 import *
 
 from common import State
 from formula_wrapper import FormulaWrapper
 from var_manager import VarManager
-import logging
 
 logger = logging.getLogger('OMG')
 
@@ -59,9 +58,11 @@ def get_assignments(model, variables):
     partial_assignment = [([z3_val_to_int(model[var])] if model[var] is not None else [0, 1]) for var in variables]
     return [list(comb) for comb in itertools.product(*partial_assignment)]
 
+
 def get_states(model, variables):
     res_list = get_assignments(model, variables)
-    return [State(BitVector(bitlist=raw_state)) for raw_state in res_list]
+    return [State.from_int_list(raw_state) for raw_state in res_list]
+
 
 class Z3Utils(object):
     copies_counter = 0
@@ -117,16 +118,17 @@ class Z3Utils(object):
         formula_to_split_pos = to_split.get_descriptive_formula()
         quantifier_wrapper_pos = quantified_part_getter(split_by, transitions)
         quantified_formula = quantifier_wrapper_pos.get_z3_formula()
-       # pos_quantifier = simplify(And(formula_to_split_pos.get_z3_formula(), quantified_formula))  # A(v) & Qv'[phi(v,v')]
+        # pos_quantifier = simplify(And(formula_to_split_pos.get_z3_formula(), quantified_formula))  # A(v) & Qv'[phi(v,v')]
 
-    #    formula_to_split_neg = to_split.get_descriptive_formula()
-     #   quantifier_wrapper_neg = quantified_part_getter(split_by, transitions)
-     #   negated_quantified_formula = Not(quantifier_wrapper_neg.get_z3_formula())
-     #   neg_quantifier = simplify( And(formula_to_split_neg.get_z3_formula(), negated_quantified_formula))  # A(v) & ~Qv'[phi(v,v')]
+        #    formula_to_split_neg = to_split.get_descriptive_formula()
+        #   quantifier_wrapper_neg = quantified_part_getter(split_by, transitions)
+        #   negated_quantified_formula = Not(quantifier_wrapper_neg.get_z3_formula())
+        #   neg_quantifier = simplify( And(formula_to_split_neg.get_z3_formula(), negated_quantified_formula))  # A(v) & ~Qv'[phi(v,v')]
 
         v_vars = to_split.get_descriptive_formula().get_var_vectors()[0]
-        #return FormulaWrapper(pos_quantifier, [v_vars]), FormulaWrapper(neg_quantifier, [v_vars])
+        # return FormulaWrapper(pos_quantifier, [v_vars]), FormulaWrapper(neg_quantifier, [v_vars])
         return formula_to_split_pos.get_z3_formula(), quantified_formula, v_vars
+
     @classmethod
     def get_ex_split_formulas(cls, to_split, split_by, transitions):
         return cls.get_split_formula(to_split, split_by, transitions, cls.get_exists_successors_in_formula)
@@ -163,10 +165,9 @@ class Z3Utils(object):
 
     @classmethod
     def get_all_successors(cls, tr, src):
-
         src_values = src.values()
         next_assignments = cls.get_all_next_assignments(tr, src_values)
-        return [State(BitVector(bitlist=cube)) for cube in next_assignments]
+        return [State.from_int_list(cube) for cube in next_assignments]
 
     @classmethod
     def concrete_transition_to_abstract(cls, nodes_from, abstract_witness):
@@ -176,12 +177,13 @@ class Z3Utils(object):
         def sub_src(tr, src_node):
             z3_vec = Z3Utils.int_vec_to_z3(src_node.concrete_label.data)
             return tr.substitute(z3_vec)
+
         tr_from_concs = [sub_src(tr, node) for node in nodes_from]
 
         variables = tr_from_concs[0].get_var_vectors()[0]
         abs_formula = abstract_witness.get_descriptive_formula().substitute(variables, 0, variables).get_z3_formula()
 
-        flags = [Bool('f'+str(i)) for i in range(len(tr_from_concs))]
+        flags = [Bool('f' + str(i)) for i in range(len(tr_from_concs))]
 
         tr_flagged = [Implies(flags[i], tr_from_concs[i].get_z3_formula()) for i in range(len(tr_from_concs))]
         all_tr_flagged = And(*tr_flagged)
@@ -199,7 +201,6 @@ class Z3Utils(object):
                 model = s.model()
                 return nodes_from[i], get_states(model, variables)[0]
         return False
-
 
     @classmethod
     def is_AE_closed(cls, to_close, close_with):
@@ -277,5 +278,3 @@ class Z3Utils(object):
         tr_formula = And(ltr_formula.get_z3_formula(), *substituted_output_z3_formulas)
 
         return FormulaWrapper(tr_formula, var_vectors)
-
-

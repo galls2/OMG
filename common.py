@@ -23,6 +23,15 @@ class State(object):
 
     def __str__(self):
         return str(self.data)
+    '''
+    @staticmethod
+    def from_int_list(int_list):
+        return State(BitVector(bitlist=int_list))
+    '''
+
+    @staticmethod
+    def from_int_list(int_list):
+        return State(int_list)
 
 
 class ConcretizationResult(object):

@@ -95,6 +95,16 @@ class UnificationPart(object):
         self.cn_nodes = cn_nodes
 
 
+def get_next_to_av_close(abs_states_lead):  # (abs_label, nodes)
+    def avg_depth(nodes_collection):
+        return sum([node.get_depth() for node in nodes_collection]) / len(abs_states_lead)
+
+    sorted_by_depth = {avg_depth(tup[1]): tup for tup in abs_states_lead}
+    max_avg_depth = max(k for k in sorted_by_depth.keys())
+    return sorted_by_depth[max_avg_depth]
+    # return abs_states_labeled[0] -- prev
+
+
 class OmgModelChecker(object):
     """
     This is the main tool's class.
@@ -138,7 +148,7 @@ class OmgModelChecker(object):
         positive_answer = []
         negative_answer = []
         for initial_state in self._kripke.get_initial_states():
-            #self._kripke.get_graph(initial_state)
+            # self._kripke.get_graph(initial_state)
             model_checking_result = self.handle_ctl(initial_state, specification)
             if model_checking_result:
                 positive_answer.append(initial_state)
@@ -246,7 +256,7 @@ class OmgModelChecker(object):
                         node_to_set = to_close_node
                     else:
                         node_to_set = next(successor for successor in to_close_node.get_successors()
-                                            if successor.concrete_label == witness_concrete_state)
+                                           if successor.concrete_label == witness_concrete_state)
 
                     node_to_set.set_urgent()
                     to_visit[node_to_set] = node_to_set.unwinding_priority()
@@ -262,22 +272,10 @@ class OmgModelChecker(object):
                         for _t in to_close_nodes:
                             print _t.description()
                         print str(src_to_witness)
-                    
 
                     self._refine_split_ex(to_close_node, [witness_state], False)
                 return False
         return True
-
-    def get_next_to_av_close(self, abs_states_lead):  # (abs_label, nodes)
-        def avg_depth(nodes_collection):
-            return sum([node.get_depth() for node in nodes_collection]) / len(abs_states_lead)
-
-        sorted_by_depth = {avg_depth(tup[1]): tup for tup in abs_states_lead}
-        max_avg_depth = max(k for k in sorted_by_depth.keys())
-        return sorted_by_depth[max_avg_depth]
-        # return abs_states_labeled[0] -- prev
-
-
 
     def _is_concrete_violation(self, to_close_nodes, witness_state):
 
@@ -285,10 +283,9 @@ class OmgModelChecker(object):
         res = Z3Utils.concrete_transition_to_abstract(to_close_nodes, abstract_witness)
         return ConcretizationResult() if res is False else ConcretizationResult(*res)
 
-
-
     def _handle_ev(self, node, spec, is_strengthen, p, q):
         to_visit = _init_heap_with(node)
+        visited = set()
         goal = Goal(node, spec)
 
         while to_visit:
@@ -303,18 +300,23 @@ class OmgModelChecker(object):
             if node_to_explore.is_labeled_negatively_with(q):
                 continue  # This is not the druid we're looking for
 
-            self._handle_ctl_and_recur(node_to_explore, p)
-            if node_to_explore.is_labeled_positively_with(p):
-                if is_strengthen:
-                    self._strengthen_trace(node, node_to_explore)
-                    _map_upward_from_node(node_to_explore, lambda current_node: current_node.add_positive_label(spec),
-                                          node.get_parent())
-                    # logger.debug('EV:: Found finite trace from ' + node.description() + ' to ' + node_to_explore.description())
-                return True
-            else:
-                children_nodes = node_to_explore.unwind_further()
-                for child_node in children_nodes:
-                    to_visit[child_node] = child_node.unwinding_priority()
+            if node_to_explore.concrete_label not in visited:
+                visited.add(node_to_explore.concrete_label)
+
+                self._handle_ctl_and_recur(node_to_explore, p)
+                if node_to_explore.is_labeled_positively_with(p):
+                    if is_strengthen:
+                        self._strengthen_trace(node, node_to_explore)
+                        _map_upward_from_node(node_to_explore, lambda current_node: current_node.add_positive_label(spec),
+                                              node.get_parent())
+                        # logger.debug('EV:: Found finite trace from ' + node.description() + ' to ' + node_to_explore.description())
+                    return True
+                else:
+                    children_nodes = node_to_explore.unwind_further()
+                    for child_node in children_nodes:
+                        if child_node.concrete_label in visited:
+                            continue
+                        to_visit[child_node] = child_node.unwinding_priority()
 
             inductive_res = self._check_inductive_ev(is_strengthen, node, node_to_explore, spec)
             if inductive_res:

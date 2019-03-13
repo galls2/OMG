@@ -1,13 +1,12 @@
 import itertools
 
-from BitVector import BitVector
+from z3 import *
 
 from aig_parser import AvyAigParser
 from cnf_parser import CnfParser
 from common import State
 from formula_wrapper import FormulaWrapper
 from z3_utils import Z3Utils
-from z3 import *
 
 
 class KripkeStructure(object):
@@ -95,8 +94,8 @@ class AigKripkeStructure(KripkeStructure):
                         for init_latches in inits_latches}
 
         def list_to_state(lst):
-            data = BitVector(bitlist=lst)
-            return State(data)
+            return State.from_int_list(lst)
+
 
         res = [list_to_state(init_latches + list(init_out_value)) for init_latches in inits_latches for init_out_value
                in
