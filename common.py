@@ -15,9 +15,6 @@ class State(object):
     def __eq__(self, o):
         return self.data == o.data
 
-    def __hash__(self):
-        return super(State, self).__hash__()
-
     def __ne__(self, o):
         return not self == o
 
@@ -28,6 +25,9 @@ class State(object):
     def from_int_list(int_list):
         return State(BitVector(bitlist=int_list))
     '''
+
+    def __hash__(self):
+        return hash(tuple(self.data))
 
     @staticmethod
     def from_int_list(int_list):

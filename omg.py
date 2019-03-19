@@ -148,7 +148,7 @@ class OmgModelChecker(object):
         positive_answer = []
         negative_answer = []
         for initial_state in self._kripke.get_initial_states():
-            # self._kripke.get_graph(initial_state)
+         #   self._kripke.get_graph(initial_state)
             model_checking_result = self.handle_ctl(initial_state, specification)
             if model_checking_result:
                 positive_answer.append(initial_state)
@@ -190,8 +190,8 @@ class OmgModelChecker(object):
             if node_to_explore.concrete_label in visited:
                 continue
             visited.add(node_to_explore.concrete_label)
-            # logger.debug('AV:: NOW EXPLORING ' + node_to_explore.description())
-            # logger.debug(str(node))
+            logger.debug('AV:: NOW EXPLORING ' + node_to_explore.description())
+            logger.debug(str(node))
 
             abstract_state = self._find_abstract_classification_for_node(node_to_explore)
             node_to_explore.set_developed(goal)
@@ -218,6 +218,7 @@ class OmgModelChecker(object):
             if inductive_res:
                 return label_subtree(node, spec, True, goal)
 
+        logger.error(is_strengthen)
         if is_strengthen:
             self._strengthen_subtree(node, lambda _n: _n.is_developed(goal))
             return label_subtree(node, spec, True, goal)
@@ -235,22 +236,22 @@ class OmgModelChecker(object):
         abs_states_lead = [abs_tuple for abs_tuple in abs_states_with_nodes
                            if abs_tuple[1][0].is_labeled_negatively_with(p)]
         while abs_states_lead:
-            abs_state_lead = abs_states_lead[0]
+            abs_state_lead = get_next_to_av_close(abs_states_lead)
             to_close_abstract, to_close_nodes = abs_state_lead
 
-            # logger.debug('AV:: Trying to close abstract state of' + to_close_nodes[0].description() + ' :')
+            logger.debug('AV:: Trying to close abstract state of' + to_close_nodes[0].description() + ' :')
             res = self._abstract_structure.is_EE_closure(to_close_abstract, abs_states)
             if res is True:
-                # logger.debug(' Success!')
+                logger.debug(' Success!')
                 abs_states_lead.remove(abs_state_lead)
             else:
                 src_to_witness, witness_state = res.conc_src, res.conc_dst
-                # logger.debug(' Failed! Due to '+str(src_to_witness) +' to '+ str(witness_state))
+                logger.debug(' Failed! Due to ' + str(src_to_witness) + ' to ' + str(witness_state))
                 concretization_result = self._is_concrete_violation(to_close_nodes, witness_state)
                 if concretization_result.exists():
                     witness_concrete_state = concretization_result.dst_conc
                     to_close_node = concretization_result.src_node
-                    # logger.debug("CONC")
+                    logger.debug("CONC")
 
                     if to_close_node.get_successors() is None:
                         node_to_set = to_close_node
@@ -262,7 +263,7 @@ class OmgModelChecker(object):
                     to_visit[node_to_set] = node_to_set.unwinding_priority()
 
                 else:
-                    # logger.debug("REFINE")
+                    logger.debug("REFINE")
                     abs_src_witness = self._find_abstract_classification_for_state(src_to_witness)
                     to_close_node = next((_to for _to in to_close_nodes
                                           if self._find_abstract_classification_for_node(_to) == abs_src_witness))
@@ -307,7 +308,8 @@ class OmgModelChecker(object):
                 if node_to_explore.is_labeled_positively_with(p):
                     if is_strengthen:
                         self._strengthen_trace(node, node_to_explore)
-                        _map_upward_from_node(node_to_explore, lambda current_node: current_node.add_positive_label(spec),
+                        _map_upward_from_node(node_to_explore,
+                                              lambda current_node: current_node.add_positive_label(spec),
                                               node.get_parent())
                         # logger.debug('EV:: Found finite trace from ' + node.description() + ' to ' + node_to_explore.description())
                     return True
