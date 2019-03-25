@@ -176,6 +176,7 @@ def test_AV():
     logging.getLogger('OMG').info('Checking AVs:')
     aig_file_paths = ['iimc_aigs/af_ag.aig', 'iimc_aigs/gray.aig', 'iimc_aigs/gray.aig']
     ctl_formula_paths = ['iimc_aigs/af_ag_checkAV.ctl', 'iimc_aigs/gray_regression.ctl', 'iimc_aigs/gray_AV_abs.ctl']
+
     check_files(aig_file_paths, ctl_formula_paths)
 
 
@@ -228,8 +229,8 @@ def regression_tests():
 
 if __name__ == '__main__':
     create_logger()
-    test_specific_tests(['cgw'])
+    test_specific_tests(['debug'])
 
-   # regression_tests()
+ #   regression_tests()
 #    model_checking(parse_input())
  #   test_all_iimc()

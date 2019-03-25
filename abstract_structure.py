@@ -7,12 +7,12 @@ from z3_utils import Z3Utils, Solver, And, Not, Bool, Implies
 logger = logging.getLogger('OMG')
 
 
-def init_dict_by_key(dict, key, default_val):
-    if key not in dict.keys():
-        dict[key] = {collection_to_sorted_tuple(default_val)}
+def init_dict_by_key(d, key, val):
+    if key not in d.keys():
+        d[key] = {val}
     else:
-        dict[key].add(collection_to_sorted_tuple(default_val))
-    return dict
+        d[key].add(val)
+    return d
 
 
 class AbstractState(object):
@@ -86,21 +86,21 @@ class AbstractStructure(object):
         return self
 
     def add_must_hyper(self, src, hyper_dst):
-        init_dict_by_key(self._E_must, src, hyper_dst)
+        init_dict_by_key(self._E_must, src, tuple(hyper_dst))
         return self
 
     def add_NE_may(self, src, dst):
-        init_dict_by_key(self._NE_may, src, [dst])
+        init_dict_by_key(self._NE_may, src, dst)
         return self
 
     def add_E_may_over(self, src, dst):
-        init_dict_by_key(self._E_may_over, src, dst)
+        init_dict_by_key(self._E_may_over, src, tuple(dst))
         return self
 
     def add_NE_may_over(self, src, dst):
         if src in self._NE_may_over.keys():  # tuple of (violation, non-closers)
             self._NE_may_over[src] = {ent for ent in self._NE_may_over[src] if not set(ent[1]).issubset(set(dst[1]))}
-        init_dict_by_key(self._NE_may_over, src, dst)  ###MINIMZE
+        init_dict_by_key(self._NE_may_over, src, tuple(dst))
         return self
 
     def is_EE_closure(self, to_close, close_with):
@@ -238,7 +238,7 @@ class AbstractStructure(object):
             if res[0] is True:
                 self.add_must_hyper(abstract_state_to_split, abstract_sons)
             else:
-                self.add_NE_may(abstract_state_to_split, abstract_sons)
+                [self.add_NE_may(abstract_state_to_split, abstract_son) for abstract_son in abstract_sons]
             return res[0], abstract_state_to_split
 
         new_abs_has_sons, new_abs_no_sons = res[1]

@@ -13,7 +13,7 @@ def _raw_lit_to_lit(raw_lit):
 
 
 def _line_to_clause(line):
-    parts = [raw_lit for raw_lit in line.split(' ') if raw_lit not in ['', '\n', '\t']]
+    parts = [raw_lit for raw_lit in line.split() if raw_lit not in ['', '\n', '\t']]
     if parts[-1] == '0':
         parts = parts[:-1]
     clause_parts = [_raw_lit_to_lit(raw_lit) for raw_lit in parts]
@@ -32,7 +32,7 @@ class CnfParser(object):
 
     def parse_metadata_tr(self, tr_metadata):
         PREFIXES = ['CURRENT', 'NEXT']
-        parsed_parts = [[p for p in meta_line.split(' ') if p != ''] for meta_line in tr_metadata]
+        parsed_parts = [[p for p in meta_line.split() if p != ''] for meta_line in tr_metadata]
         parsed_with_vectors = [line for line in parsed_parts if
                                any([line[0].startswith(prefix) for prefix in PREFIXES])]
         var_vectors = [[z3.Bool(raw_var) for raw_var in parsed_part[1:]] for parsed_part in parsed_with_vectors]

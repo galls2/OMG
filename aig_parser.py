@@ -27,7 +27,7 @@ class AvyAigParser(AigParser):
         self._aig_lines = []
         with open(aig_path, 'r') as aig_file:
             self._aig_lines = aig_file.readlines()
-            self._M, self._I, self._L, self._O, self._A = [int(val) for val in self._aig_lines[0].split(' ')[1:6]]
+            self._M, self._I, self._L, self._O, self._A = [int(val) for val in self._aig_lines[0].split()[1:6]]
 
     def get_cnf(self, aig_path, cmd_arg):
         output_file_name = aig_path.split('/')[-1][:-4]
@@ -57,7 +57,7 @@ class AvyAigParser(AigParser):
         os.system('rm ' + pattern_to_remove)
 
     def parse(self):
-        time_me(self.split_aig,[], 'split')
+        self.split_aig()
 
         def get_file_num_name(idx, O):
             return str(idx).zfill(len(str(O)))
@@ -67,7 +67,7 @@ class AvyAigParser(AigParser):
         ltr_aig_path = bad_file_names[0]
 
         ltr_metadata, ltr_dimacs = time_me(self.get_cnf, [ltr_aig_path, 'Tr'], 'cnfing ltr')
-        bads = [time_me(self.get_cnf, [aig, 'Bad'], 'cnfing bad '+str(aig)) for aig in bad_file_names]
+        bads = [time_me(self.get_cnf, [aig, 'Bad'], 'cnfing bad ' + str(aig)) for aig in bad_file_names]
         self.delete_aux_files()
         return [(ltr_metadata, ltr_dimacs)] + bads
 
@@ -76,7 +76,7 @@ class AvyAigParser(AigParser):
 
     def get_initial_latch_values(self):
         def parse_latch_line(latch_line):
-            parts = latch_line.replace('\n', '').split(' ')
+            parts = latch_line.split()
             return [0] if len(parts) == 1 else ([int(parts[1])] if parts[1] in ['0', '1'] else [0, 1])
 
         latch_lines = self._aig_lines[1:self._L + 1]
@@ -85,11 +85,11 @@ class AvyAigParser(AigParser):
 
     def get_ap_mapping(self):
         ap_line_regex = re.compile(".*[ilo][0-9]* .*")
-        aps_lines = filter(lambda line: re.match(ap_line_regex, line.replace('\n', '')), self._aig_lines)
+        aps_lines = [line for line in self._aig_lines if re.match(ap_line_regex, line.replace('\n', ''))]
 
         ap_part_regex = re.compile("[ilo][0-9]* .*")
-        aps = map(lambda ap_line: re.findall(ap_part_regex, ap_line)[0], aps_lines)
-        return {' '.join(line.split(' ')[1:]): line.split(' ')[0] for line in aps}
+        aps = [re.findall(ap_part_regex, ap_line)[0] for ap_line in aps_lines]
+        return {' '.join(line.split(' ')[1:]): line.split()[0] for line in aps}
 
     def get_num_outputs(self):
         return self._O
@@ -98,12 +98,9 @@ class AvyAigParser(AigParser):
         return self._O + self._L
 
     def get_aig_after_reset(self):
-        def reset_latch_line(_line):
-            parts = _line.split(' ')
-            return parts[0] + ('\n' if len(parts) > 1 else '')
 
-        return [self._aig_lines[0]] + \
-               [reset_latch_line(line) for line in self._aig_lines[1:self._L + 1]] + \
+        return self._aig_lines[0:1] + \
+               [line.split()[0]+'\n' for line in self._aig_lines[1:self._L + 1]] + \
                self._aig_lines[self._L + 1:]
 
     def get_aig_path(self):

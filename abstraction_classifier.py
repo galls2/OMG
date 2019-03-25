@@ -16,15 +16,13 @@ class AbstractionCache(object):
         self._data = {}
 
     def exists_key(self, key):
-        if type(key) == type([1]):
-            print 'g'
-        return tuple(key.data) in self._data.keys()
+        return key in self._data.keys()
 
     def __getitem__(self, item):
-        return self._data[tuple(item.data)]
+        return self._data[item]
 
     def __setitem__(self, key, value):
-        self._data[tuple(key.data)] = value
+        self._data[key] = value
         return self
 
     def remove_by_value(self, value):
@@ -58,7 +56,7 @@ class AbstractionClassifier(object):
             assert res.get_classification_node().is_leaf()
             return res
 
-        concrete_atomic_labels = collection_to_sorted_tuple(self._kripke.get_aps_for_state(concrete_state))
+        concrete_atomic_labels = collection_to_sorted_tuple(concrete_state.get_sat_aps())
         if concrete_atomic_labels not in self._classification_trees.keys():
             return None
 
@@ -100,9 +98,9 @@ class AbstractionClassifier(object):
             ret += 'Tree for APs: ' + str([ap.str_math() for ap in bis0]) + '\n'
             ret += '-------------\n'
             ret += print_tree(self._classification_trees[bis0],
-                              lambda n: [] if n.get_successors() is None else n.get_successors().values(),
+                              lambda n: [] if n.get_successors() is None else n.get_successors().to_int_vec(),
                               lambda l: inspect.getsource(l.get_query()) if not l.is_leaf() else
-                              str(l.get_value().get_descriptive_formula().get_z3_formula()))
+                              str(l.get_value().get_descriptive_formula().get_z3()))
         return ret
 
 

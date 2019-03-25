@@ -5,7 +5,7 @@ from heapdict import *
 
 from abstract_structure import AbstractStructure, AbstractState
 from abstraction_classifier import AbstractionClassifier
-from common import ConcretizationResult, time_me
+from common import ConcretizationResult, time_me, int_vec_to_z3
 from common import time_me_c
 from unwinding_tree import UnwindingTree
 from z3_utils import Z3Utils
@@ -190,8 +190,8 @@ class OmgModelChecker(object):
             if node_to_explore.concrete_label in visited:
                 continue
             visited.add(node_to_explore.concrete_label)
-            #logger.debug('AV:: NOW EXPLORING ' + node_to_explore.description())
-            #logger.debug(str(node))
+            logger.debug('AV:: NOW EXPLORING ' + node_to_explore.description())
+            logger.debug(str(node))
 
             abstract_state = self._find_abstract_classification_for_node(node_to_explore)
             node_to_explore.set_developed(goal)
@@ -233,7 +233,7 @@ class OmgModelChecker(object):
             abs_state_lead = get_next_to_av_close(abs_states_lead)
             to_close_abstract, to_close_nodes = abs_state_lead
 
-            #logger.debug('AV:: Trying to close abstract state of' + to_close_nodes[0].description() + ' :')
+            logger.debug('AV:: Trying to close abstract state of' + to_close_nodes[0].description() + ' :')
             res = self._abstract_structure.is_EE_closure(to_close_abstract, abs_states)
             if res is True:
                 #logger.debug(' Success!')
@@ -286,7 +286,7 @@ class OmgModelChecker(object):
         while to_visit:
             node_to_explore = (to_visit.popitem()[0]).reset_urgent()
 
-            # logger.debug('EV:: NOW EXPLORING ' + node_to_explore.description())
+            logger.debug('EV:: NOW EXPLORING ' + node_to_explore.description())
 
             self._find_abstract_classification_for_node(node_to_explore)
 
@@ -329,10 +329,10 @@ class OmgModelChecker(object):
         lasso_res = node_to_explore.is_lasso(node.get_parent())
         while lasso_res is not False:
             if lasso_res is True:  # concrete lasso found! ## THIS GOES UP
-                # logger.debug('EV:: Found concrete lasso to: ' + node_to_explore.description())
+                logger.debug('EV:: Found concrete lasso to: ' + node_to_explore.description())
                 return self._handle_proving_trace(is_strengthen, node, node_to_explore, spec, to_return=True)
 
-            # logger.debug('EV:: STARTING ABSTRACT CLOSURE ATTEMPT')
+            logger.debug('EV:: STARTING ABSTRACT CLOSURE ATTEMPT')
 
             base, abstract_states_nodes_loop = lasso_res
             abstract_states_nodes_loop = list(abstract_states_nodes_loop)
@@ -346,13 +346,13 @@ class OmgModelChecker(object):
 
             while abstract_states_nodes_loop:
                 (to_close_abs, to_close_nodes) = abstract_states_nodes_loop[0]
-                # logger.debug('EV:: Trying to close abstract state of' + to_close_nodes[0].description() + ' :')
+                logger.debug('EV:: Trying to close abstract state of' + to_close_nodes[0].description() + ' :')
                 res = self._abstract_structure.is_AE_closure(to_close_abs, loop_abstract_states)
                 if res is True:
-                    # logger.debug(' Success!')
+                    logger.debug(' Success!')
                     abstract_states_nodes_loop = abstract_states_nodes_loop[1:]
                 else:
-                    # logger.debug(' Failed!')
+                    logger.debug(' Failed!')
                     # print res
                     abs_src_witness = self._find_abstract_classification_for_state(res)
                     to_close_node = next(_to for _to in to_close_nodes
@@ -404,8 +404,8 @@ class OmgModelChecker(object):
         kripke = self._kripke
         abstract_state = self._abstraction.classify(concrete_state)
         if abstract_state is None:
-            atomic_propositions = kripke.get_aps_for_state(concrete_state)
-            bis0_formula = kripke.get_bis0_formula(concrete_state)
+            atomic_propositions = concrete_state.get_sat_aps()
+            bis0_formula = concrete_state.get_bis0_formula()
             abstract_state = AbstractState(atomic_propositions, kripke, bis0_formula)
 
             classification_leaf = self._abstraction.add_classification(atomic_propositions, abstract_state)
@@ -471,7 +471,7 @@ class OmgModelChecker(object):
         query_formula_wrapper = query_getter(witness_abstract_states, self._kripke.get_tr_formula())
 
         def query(concrete_state):
-            return query_formula_wrapper.substitute(Z3Utils.int_vec_to_z3(concrete_state.data)).is_sat()
+            return query_formula_wrapper.assign_state(concrete_state).is_sat()
 
         query_labeling_mapper = {True: abs_pos, False: abs_neg}
 
@@ -493,6 +493,7 @@ class OmgModelChecker(object):
         witness_abstract_states = [self._find_abstract_classification_for_state(dst) for dst in dst_states]
 
         if self._abstract_structure.is_known_E_must_between(self._find_abstract_classification_for_node(node_src), witness_abstract_states):
+            print 'gu'
             return
         self._refine_split_next(node_src, witness_abstract_states, self._abstract_structure.split_abstract_state_ex,
                                 Z3Utils.get_exists_successors_in_formula, check_trivial, known_reclassification)
