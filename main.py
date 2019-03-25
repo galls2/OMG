@@ -6,6 +6,7 @@ import time
 from datetime import datetime
 
 from arg_parser import OmgArgumentParser
+from common import time_me
 from ctl import CtlFileParser
 from kripke_structure import AigKripkeStructure
 from omg import OmgBuilder
@@ -20,7 +21,7 @@ DEFAULT_FLAGS = {'-bu': True, '-tse': True, '--qe_policy': 'no-qe', '-timeout': 
 
 DEBUG = True
 
-
+AV_CLOSURE = 0.0
 def create_logger():
     logger = logging.getLogger('OMG')
     fh = logging.FileHandler('logs/run_' + str(datetime.now()) + '.log')
@@ -143,12 +144,6 @@ def print_results_for_spec(omg, expected_res, spec):
         logging.getLogger('OMG').info(BUG_LINE)
 
 
-def time_me(measuree, args, message):
-    start = time.time()
-    res = measuree(*args)
-    end = time.time()
-    logging.getLogger('OMG').info(message + ': ' + str(end - start))
-    return res
 
 
 def run_with_timeout(to_run, args, timeout, message):
@@ -235,6 +230,6 @@ if __name__ == '__main__':
     create_logger()
     test_specific_tests(['cgw'])
 
- #   regression_tests()
+   # regression_tests()
 #    model_checking(parse_input())
  #   test_all_iimc()

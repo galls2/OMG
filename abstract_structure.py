@@ -139,17 +139,27 @@ class AbstractStructure(object):
 
         return closure_result
 
+    def is_known_E_must_between(self, src, dsts):
+        def exists_superset(over_approxs):
+            return True if src in over_approxs.keys() and \
+                           any([set(dsts).issuperset(set(op)) for op in over_approxs[src]]) else None
+
+        return exists_superset(self._E_must) is True or exists_superset(self._E_may_over) is True
+
+    def is_known_may_over_between(self, src, dsts):
+        def exists_superset(over_approxs):
+            return True if src in over_approxs.keys() and \
+                           any([set(dsts).issuperset(set(op)) for op in over_approxs[src]]) else None
+
+        return exists_superset(self._E_may_over)
+
     def is_AE_closure(self, to_close, close_with):
         close_with = [cl for cl in close_with if
                       to_close not in self._NE_may.keys() or cl not in self._NE_may[to_close]]
 
         # this is not empty
 
-        def exists_superset(over_approxs):
-            return True if to_close in over_approxs.keys() and \
-                           any([set(close_with).issuperset(set(op)) for op in over_approxs[to_close]]) else None
-
-        if exists_superset(self._E_must) or exists_superset(self._E_may_over) is True:
+        if self.is_known_E_must_between(to_close, close_with):
             return True
 
         closure_result = Z3Utils.is_AE_closed(to_close, close_with)
@@ -242,13 +252,13 @@ class AbstractStructure(object):
 
         for abs_son in updated_abstract_sons:
             self.add_NE_may(new_abs_no_sons, abs_son)
-            self._E_may_over[new_abs_no_sons] = set([tuple(set(closers).difference({abs_son}))
-                                                     for closers in self._E_may_over[
-                                                         new_abs_no_sons]]) if new_abs_no_sons in self._E_may_over.keys() else set()
-            self._E_must[new_abs_no_sons] = set([tuple(set(closers).difference({abs_son}))
-                                                 for closers in self._E_must[
-                                                     new_abs_no_sons]]) if new_abs_no_sons in self._E_must.keys() else set()
 
+        if new_abs_no_sons in self._E_may_over.keys():
+            self._E_may_over[new_abs_no_sons] = tuple([set(closers).difference(set(updated_abstract_sons))
+                                                       for closers in self._E_may_over[new_abs_no_sons]])
+        if new_abs_no_sons in self._E_must.keys():
+            self._E_must[new_abs_no_sons] = tuple([set(closers).difference(set(updated_abstract_sons))
+                                                       for closers in self._E_must[new_abs_no_sons]])
         return None, (new_abs_has_sons, new_abs_no_sons)
 
     def split_abstract_state_ax(self, node_to_close, abstract_sons, check_trivial):

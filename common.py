@@ -1,3 +1,9 @@
+import logging
+import time
+
+logger = logging.getLogger('OMG')
+
+
 class State(object):
     def __init__(self, data):
         self.data = data
@@ -41,3 +47,17 @@ class ConcretizationResult(object):
 
     def exists(self):
         return not (self.src_node is None and self.dst_conc is None)
+
+
+def time_me(measuree, args, message):
+    start = time.time()
+    res = measuree(*args)
+    end = time.time()
+    logger.info(message + ': ' + str(end - start))
+    return res
+
+def time_me_c(measuree, args, message):
+    start = time.time()
+    res = measuree(*args)
+    end = time.time()
+    return end-start, res

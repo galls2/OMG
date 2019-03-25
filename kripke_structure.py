@@ -4,7 +4,7 @@ from z3 import *
 
 from aig_parser import AvyAigParser
 from cnf_parser import CnfParser
-from common import State
+from common import State, time_me
 from formula_wrapper import FormulaWrapper
 from z3_utils import Z3Utils
 
@@ -48,14 +48,14 @@ class AigKripkeStructure(KripkeStructure):
         super(AigKripkeStructure, self).__init__(aps)
         self._aig_parser = AvyAigParser(aig_path)
         self._initial_states = None
-        self._init_latch_values = self.get_initial_latch_values()
+        self._init_latch_values = time_me(self.get_initial_latch_values,[],'LATCH VALUES INIT')
 
-        self._overwrite_aig_reset_logic()
+        time_me(self._overwrite_aig_reset_logic, [], 'REWRITE_RESET')
 
-        parse_results = self._aig_parser.parse()
+        parse_results = time_me(self._aig_parser.parse, [], 'REPARSE')
         self._num_latches = self._aig_parser.get_num_latches()
         self._cnf_parser = CnfParser(self._num_latches, qe_policy)
-        self._tr = self._connect_aigs(parse_results)
+        self._tr = time_me(self._connect_aigs, [parse_results], 'connecting aigs')
         self._ap_conversion = self._aig_parser.get_ap_mapping()
         self._qe_policy = qe_policy
 

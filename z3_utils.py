@@ -3,7 +3,7 @@ import logging
 
 from z3 import *
 
-from common import State
+from common import State, time_me
 from formula_wrapper import FormulaWrapper
 from var_manager import VarManager
 
@@ -236,7 +236,7 @@ class Z3Utils(object):
                         for closer in close_with]
         dst = Not(Or(*dst_formulas))
 
-        closure_formula = And(src, transitions.get_z3_formula(), dst)
+        closure_formula = simplify(And(src, transitions.get_z3_formula(), dst))
         #   logger.debug('Check start')
         s = Solver()
         res = s.check(closure_formula)

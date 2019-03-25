@@ -154,3 +154,6 @@ class UnwindingTree(object):
 
     def unwinding_priority(self):
         return 0 if self.URGENT else self.depth+1
+
+    def set_abstract_label(self, abstract_label):
+        self._abstract_label = abstract_label

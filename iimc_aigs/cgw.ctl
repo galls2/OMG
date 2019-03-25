@@ -6,5 +6,3 @@
 #PASS: (1)
 #From any reachable safe state it is possible to complete successfully.
 AG safe -> (E safe U final)
-
-

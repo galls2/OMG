@@ -2,6 +2,8 @@ import itertools
 import re
 import os
 
+from common import time_me
+
 OMG_EXE_PATH = '~/Desktop/extavy/cmake-build-debug/avy/src/omg'
 AIG_SPLIT_EXE_PATH = '/home/galls2/Downloads/aiger-1.9.9/aigsplit'
 AIG_EXAMPLE_PATH = 'AigFiles/'
@@ -55,7 +57,7 @@ class AvyAigParser(AigParser):
         os.system('rm ' + pattern_to_remove)
 
     def parse(self):
-        self.split_aig()
+        time_me(self.split_aig,[], 'split')
 
         def get_file_num_name(idx, O):
             return str(idx).zfill(len(str(O)))
@@ -64,10 +66,8 @@ class AvyAigParser(AigParser):
                           for i in range(self._O)]
         ltr_aig_path = bad_file_names[0]
 
-        #  ltr_aig_path = '../../../../../PycharmProjects/OMG/iimc_aigs/'+ltr_aig_path.split('/')[-1]
-
-        ltr_metadata, ltr_dimacs = self.get_cnf(ltr_aig_path, 'Tr')
-        bads = [self.get_cnf(aig, 'Bad') for aig in bad_file_names]
+        ltr_metadata, ltr_dimacs = time_me(self.get_cnf, [ltr_aig_path, 'Tr'], 'cnfing ltr')
+        bads = [time_me(self.get_cnf, [aig, 'Bad'], 'cnfing bad '+str(aig)) for aig in bad_file_names]
         self.delete_aux_files()
         return [(ltr_metadata, ltr_dimacs)] + bads
 
