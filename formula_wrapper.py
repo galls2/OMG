@@ -47,6 +47,10 @@ class FormulaWrapper(object):
         s = Solver()
         return s.check(self.get_z3()) == sat
 
+    def sat_get_model(self):
+        s = Solver()
+        return True, s.model() if s.check(self._z3_formula) else False
+
     def __hash__(self):
         return hash(self._z3_formula)
 

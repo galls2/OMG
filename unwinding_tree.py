@@ -112,6 +112,8 @@ class UnwindingTree(object):
 
     def get_abstract_label(self):
         known_abstract_state = self._abstract_label
+        if known_abstract_state.get_classification_node().is_leaf():
+            return known_abstract_state
         current_abstract_state = known_abstract_state.update_classification(self.concrete_label)
         self._abstract_label = current_abstract_state
         return current_abstract_state
@@ -154,6 +156,3 @@ class UnwindingTree(object):
 
     def unwinding_priority(self):
         return 0 if self.URGENT else self.depth+1
-
-    def set_abstract_label(self, abstract_label):
-        self._abstract_label = abstract_label

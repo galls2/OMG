@@ -3,6 +3,7 @@ import logging
 
 from z3 import *
 
+from common import z3_val_to_int
 from state import State
 from formula_wrapper import FormulaWrapper
 from var_manager import VarManager
@@ -48,10 +49,6 @@ def get_vars(f):
 
     collect(f)
     return map(lambda d: d.n, list(r))
-
-
-def z3_val_to_int(z3_val):
-    return 1 if z3_val.sexpr() == 'true' else 0
 
 
 def get_assignments(model, variables):
@@ -140,7 +137,7 @@ class Z3Utils(object):
     @classmethod
     def all_sat(cls, formula_wrap):
         s = Solver()
-        next_states = []
+        assignments = []
         s.add(formula_wrap.get_z3())
 
         all_vars = [_v for v_list in formula_wrap.get_var_vectors() for _v in v_list]
@@ -148,14 +145,14 @@ class Z3Utils(object):
             model = s.model()
             cubes = get_assignments(model, all_vars)
 
-            next_states += cubes
+            assignments += cubes
             # Not(l1 & ... &ln) = Not(l1) | ... | Not(ln)
 
             blocking_cube = Or(
                 *[Not(var) if z3_val_to_int(model[var]) is 1 else var
                   for var in all_vars if model[var] is not None])
             s.add(blocking_cube)
-        return next_states
+        return assignments
 
     @classmethod
     def get_all_successors(cls, tr, state):

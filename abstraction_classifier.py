@@ -29,6 +29,7 @@ class AbstractionCache(object):
         self._data = {k: self._data[k] for k in self._data.keys() if self._data[k] != value}
         return self
 
+
 class AbstractionClassifier(object):
     """docstring for AbstractionClassifier."""
 
@@ -84,7 +85,7 @@ class AbstractionClassifier(object):
         depth = classification_node_to_split.get_depth()
         for query_result in query_labeling_mapper.keys():
             new_leaf = AbstractionClassifierTree(self._kripke, None, dict(), classification_node_to_split,
-                                                 self, query_labeling_mapper[query_result], depth+1)
+                                                 self, query_labeling_mapper[query_result], depth + 1)
             successors[query_result] = new_leaf
 
         classification_node_to_split.split(query, successors)
@@ -171,4 +172,3 @@ class AbstractionClassifierTree(object):
 
     def size(self):
         return 1 + sum([s.size() for s in self._successors.values()])
-

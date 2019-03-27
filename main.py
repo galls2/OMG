@@ -2,11 +2,10 @@ import functools
 import logging
 import multiprocessing
 import sys
-import time
 from datetime import datetime
 
 from arg_parser import OmgArgumentParser
-from common import time_me
+from common import time_me, profiler
 from ctl import CtlFileParser
 from kripke_structure import AigKripkeStructure
 from omg import OmgBuilder
@@ -16,12 +15,13 @@ TIMEOUT = 3600
 BUG_LINE = '<------------------------------------------------------ BUG -------------------------------------'
 SEP = '---------'
 
-DEFAULT_FLAGS = {'-bu': True, '-tse': True, '--qe_policy': 'no-qe', '-timeout': TIMEOUT, '-few_aps': False}
-
+DEFAULT_FLAGS = {'-bu': True, '-tse': False, '--qe_policy': 'no-qe', '-timeout': TIMEOUT, '-few_aps': False}
 
 DEBUG = True
 
 AV_CLOSURE = 0.0
+
+
 def create_logger():
     logger = logging.getLogger('OMG')
     fh = logging.FileHandler('logs/run_' + str(datetime.now()) + '.log')
@@ -128,22 +128,16 @@ RES_DICT = {True: 0, False: 1}
 
 
 def print_results_for_spec(omg, expected_res, spec):
-    pos, neg = omg.check_all_initial_states(spec)
-  #  spec_str = spec.str_math()
-    '''
-    for pos_s in pos:
-        logging.getLogger('OMG').info('M, ' + str(pos_s) + ' |= ' + spec_str)
-    for neg_s in neg:
-        logging.getLogger('OMG').info('M, ' + str(neg_s) + ' |=/= ' + spec_str)
-    '''
+    pos, neg = profiler(omg.check_all_initial_states, [spec])
+    #    pos, neg = omg.check_all_initial_states(spec)
+
+    #  spec_str = spec.str_math()
     is_property_satisfied = len(neg) == 0
     is_bug = is_property_satisfied != expected_res
 
     logging.getLogger('OMG').info(str(RES_DICT[is_property_satisfied]))
     if is_bug:
         logging.getLogger('OMG').info(BUG_LINE)
-
-
 
 
 def run_with_timeout(to_run, args, timeout, message):
@@ -229,8 +223,9 @@ def regression_tests():
 
 if __name__ == '__main__':
     create_logger()
-    test_specific_tests(['debug'])
 
- #   regression_tests()
+    test_specific_tests(['cgw'])
+
+#    regression_tests()
 #    model_checking(parse_input())
- #   test_all_iimc()
+#   test_all_iimc()
