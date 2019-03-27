@@ -128,8 +128,8 @@ RES_DICT = {True: 0, False: 1}
 
 
 def print_results_for_spec(omg, expected_res, spec):
-    pos, neg = profiler(omg.check_all_initial_states, [spec])
-    #    pos, neg = omg.check_all_initial_states(spec)
+  #  pos, neg = profiler(omg.check_all_initial_states, [spec])
+    pos, neg = omg.check_all_initial_states(spec)
 
     #  spec_str = spec.str_math()
     is_property_satisfied = len(neg) == 0
@@ -224,8 +224,8 @@ def regression_tests():
 if __name__ == '__main__':
     create_logger()
 
-    test_specific_tests(['cgw'])
+#    test_specific_tests(['cgw'])
 
 #    regression_tests()
 #    model_checking(parse_input())
-#   test_all_iimc()
+    test_all_iimc()

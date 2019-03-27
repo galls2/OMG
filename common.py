@@ -16,7 +16,7 @@ def profiler(func, params):
     ps = pstats.Stats(pr, stream=s).sort_stats('cumtime')
     ps.print_stats()
     print s.getvalue()
-    ps.print_callers(1.0, '*' )
+    ps.print_callers(1.0, '*')
     ps.print_callees()
     return res
 

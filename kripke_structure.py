@@ -33,12 +33,12 @@ class AigKripkeStructure(KripkeStructure):
         self._initial_states = None
         self._init_latch_values = self._get_initial_latch_values()
 
-        time_me(self._overwrite_aig_reset_logic, [], 'REWRITE_RESET')
+        self._overwrite_aig_reset_logic()
 
-        parse_results = time_me(self._aig_parser.parse, [], 'REPARSE')
+        parse_results = self._aig_parser.parse()
         self._num_latches = self._aig_parser.get_num_latches()
         self._cnf_parser = CnfParser(self._num_latches, qe_policy)
-        self._tr = time_me(self._connect_aigs, [parse_results], 'connecting aigs')
+        self._tr = self._connect_aigs(parse_results)
         self._ap_conversion = self._aig_parser.get_ap_mapping()
 
     def get_qe_policy(self):

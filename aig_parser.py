@@ -66,8 +66,8 @@ class AvyAigParser(AigParser):
                           for i in range(self._O)]
         ltr_aig_path = bad_file_names[0]
 
-        ltr_metadata, ltr_dimacs = time_me(self.get_cnf, [ltr_aig_path, 'Tr'], 'cnfing ltr')
-        bads = [time_me(self.get_cnf, [aig, 'Bad'], 'cnfing bad ' + str(aig)) for aig in bad_file_names]
+        ltr_metadata, ltr_dimacs = self.get_cnf(ltr_aig_path, 'Tr')
+        bads = [self.get_cnf(aig, 'Bad') for aig in bad_file_names]
         self.delete_aux_files()
         return [(ltr_metadata, ltr_dimacs)] + bads
 

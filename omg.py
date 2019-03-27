@@ -192,7 +192,7 @@ class OmgModelChecker(object):
             if node_to_explore.concrete_label in visited:
                 continue
             visited.add(node_to_explore.concrete_label)
-            logger.debug(str(goal)+':: AV:: NOW EXPLORING ' + node_to_explore.description())
+         #   logger.debug(str(goal)+':: AV:: NOW EXPLORING ' + node_to_explore.description())
             # logger.debug(str(node))
 
             abstract_state = self._find_abstract_classification_for_node(node_to_explore)
