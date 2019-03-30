@@ -134,7 +134,7 @@ class PythonAigParser(AigParser):
         formulas = {lit: Bool(str(lit)) for lit in in_lits + prev_state_lits}
         formulas[0] = BoolVal(False)
         formulas[1] = BoolVal(True)
-        first_and_line_idx = next(i for i in range(len(aag_lines)) if len(aag_lines[i].split()) == 3)
+        first_and_line_idx = next(i for i in range(len(aag_lines)) if len(aag_lines[i].split()) == 3 and int(aag_lines[i].split()[0]) != int(aag_lines[i].split()[2]))
         aag_from_and = aag_lines[first_and_line_idx:]
         first_and_lit = int(aag_lines[first_and_line_idx].split()[0])
         for lit_to_calc in next_state_lits + out_lits:
@@ -167,7 +167,7 @@ class PythonAigParser(AigParser):
         var_vectors = [prev_var_vector, next_var_vector]
 
         if in_vars:
-            quantified_input = Z3Utils.apply_qe(And(*[Exists(in_vars, f) for f in [ltr_z3] + outputs_z3]), qe_policy)
+            quantified_input = Z3Utils.apply_qe(And(Exists(in_vars, ltr_z3), Exists(in_vars, And(*outputs_z3))), qe_policy)
         else:
             quantified_input = And(*[f for f in [ltr_z3] + outputs_z3])
 
