@@ -21,7 +21,7 @@ def _line_to_clause(line):
     return clause
 
 
-class CnfParser(object):
+class CnfParser( object):
     def __init__(self, num_regs, qe_policy):
         super(CnfParser, self).__init__()
         self._num_regs = num_regs
