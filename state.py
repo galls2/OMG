@@ -45,8 +45,8 @@ class State(object):
         AP = self.kripke.get_aps()
         _, model = self.formula_wrapper.sat_get_model()
 
-        f = And(*[self.ap_lit_by_model(model, ap) for ap in AP])
-        self.bis0 = FormulaWrapper(f, self.formula_wrapper.get_var_vectors())
+        f = And(self.kripke.get_output_formula().get_z3(), *[self.ap_lit_by_model(model, ap) for ap in AP])
+        self.bis0 = FormulaWrapper(f, self.formula_wrapper.get_var_vectors(), [self.kripke.get_input_var_vector()])
         return self.bis0
 
     def get_sat_aps(self):
@@ -58,5 +58,5 @@ class State(object):
     @staticmethod
     def from_int_list(int_list, _vars, kripke):
         cube = int_list_to_cube(int_list, _vars)
-        f_wrap = FormulaWrapper(cube, [_vars])
+        f_wrap = FormulaWrapper(cube, [_vars], [kripke.get_input_var_vector()])
         return State(f_wrap, kripke)

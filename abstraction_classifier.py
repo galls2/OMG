@@ -142,6 +142,14 @@ class AbstractionClassifierTree(object):
     def get_successors(self):
         return self._successors
 
+    def get_binary_string(self):
+        cl = self
+        res = 'E'
+        while cl.get_parent():
+            parent = cl.get_parent()
+            res = ('0' if parent.get_successors()[False] is cl else '1') + res
+            cl = cl.get_parent()
+        return res
     '''
     def get_classifees(self):
         return self._classifees

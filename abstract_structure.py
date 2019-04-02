@@ -1,7 +1,7 @@
 import logging
 
-from abstraction_classifier import collection_to_sorted_tuple
 from formula_wrapper import FormulaWrapper, unsat
+from var_manager import VarManager
 from z3_utils import Z3Utils, Solver, And, Not, Bool, Implies
 
 logger = logging.getLogger('OMG')
@@ -25,7 +25,7 @@ class AbstractState(object):
 
         self.atomic_labels = atomic_labels
         self._classification_node = None
-
+        self._debug_name = VarManager.new_abs_name()
         self._formula = formula
 
     def get_descriptive_formula(self):
@@ -47,6 +47,9 @@ class AbstractState(object):
 
     def is_labeled(self, label):
         return label in self.negative_labels or label in self.positive_labels
+
+    def get_input_vector(self):
+        return self.get_descriptive_formula().get_input_vectors()[0]
 
     def update_classification(self, concrete_state):
         if self._classification_node.is_leaf():
@@ -174,22 +177,22 @@ class AbstractStructure(object):
     def split_abstract_state(self, node_to_close, abstract_sons, formula_getter, check_trivial_split):
         kripke = self.kripke
         abs_to_close = node_to_close.get_abstract_label()
-        base_formula, quantified_part, vars = \
+        base_formula, quantified_part, vars, input_vector = \
             formula_getter(abs_to_close, abstract_sons, kripke.get_tr_formula())
 
         if self._trivial_split and check_trivial_split:
             s = Solver()
             s.add(base_formula)
-            Y_flag, N_flag = Bool('Y'), Bool('N')
-            s.add(Implies(Y_flag, quantified_part))
-            s.add(Implies(N_flag, Not(quantified_part)))
-            if s.check(Y_flag) == unsat:
+            y_flag, n_flag = Bool('Y'), Bool('N')
+            s.add(Implies(y_flag, quantified_part))
+            s.add(Implies(n_flag, Not(quantified_part)))
+            if s.check(y_flag) == unsat:
                 return False, abs_to_close
-            if s.check(N_flag) == unsat:
+            if s.check(n_flag) == unsat:
                 return True, abs_to_close
 
-        pos_formula = FormulaWrapper(And(base_formula, quantified_part), [vars])
-        neg_formula = FormulaWrapper(And(base_formula, Not(quantified_part)), [vars])
+        pos_formula = FormulaWrapper(And(base_formula, quantified_part), [vars], [input_vector])
+        neg_formula = FormulaWrapper(And(base_formula, Not(quantified_part)), [vars], [input_vector])
 
         def create_abstract_state_split(formula):
             return AbstractState(abs_to_close.atomic_labels, kripke, formula) \

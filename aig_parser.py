@@ -2,9 +2,8 @@ import itertools
 import os
 import re
 
-from z3 import Bool, Not, And, simplify, Or, Exists, substitute, BoolVal
+from z3 import Bool, Not, And, simplify, Or, substitute, BoolVal
 
-from cnf_parser import CnfParser
 from formula_wrapper import FormulaWrapper
 from state import State
 from z3_utils import Z3Utils
@@ -93,7 +92,7 @@ class PythonAigParser(AigParser):
         if to_calc % 2 == 1:
             self._dfs(lit_hash, to_calc - 1, lines, first_and_lit)
             if main_connective(lit_hash[to_calc - 1], 'and'):
-                and_line = lines[(to_calc - first_and_lit)/2].split()
+                and_line = lines[(to_calc - first_and_lit) / 2].split()
                 l, r = int(and_line[1]), int(and_line[2])
                 if main_connective(lit_hash[l], 'not') and main_connective(lit_hash[r], 'not'):
                     lit_hash[to_calc] = Or(lit_hash[l - 1], lit_hash[r - 1])
@@ -101,7 +100,7 @@ class PythonAigParser(AigParser):
             lit_hash[to_calc] = Not(lit_hash[to_calc - 1])
             return
 
-        and_line = lines[(to_calc - first_and_lit)/2].split()
+        and_line = lines[(to_calc - first_and_lit) / 2].split()
         l, r = int(and_line[1]), int(and_line[2])
         self._dfs(lit_hash, l, lines, first_and_lit)
         self._dfs(lit_hash, r, lines, first_and_lit)
@@ -115,33 +114,63 @@ class PythonAigParser(AigParser):
         return self._L
 
     def get_tr_and_initial(self, qe_policy, kripke):
-        aag_path = self._to_aag()
-
-        f = open(aag_path, 'r')
-        aag_lines = f.readlines()
-        self._M, self._I, self._L, self._O, self._A = [int(val) for val in aag_lines[0].split()[1:6]]
-        f.close()
+        aag_lines = self._get_aag_lines()
 
         self._prefetch_ap_mapping(aag_lines)
         self._init_latch_values = _latch_lines_to_init_values(aag_lines[1 + self._I: 1 + self._I + self._L],
                                                               _parse_aag_latch_line)
 
-        in_lits = [int(l.split()[0]) for l in aag_lines[1: self._I + 1]]
-        next_state_lits = [int(l.split()[1]) for l in aag_lines[self._I + 1: self._I + self._L + 1]]
-        prev_state_lits = [int(l.split()[0]) for l in aag_lines[self._I + 1: self._I + self._L + 1]]
-        out_lits = [int(l.split()[0]) for l in aag_lines[self._I + self._L + 1: self._I + self._L + self._O + 1]]
+        in_lits, next_state_lits, out_lits, prev_state_lits = self._get_literal_lists(aag_lines)
 
-        formulas = {lit: Bool(str(lit)) for lit in in_lits + prev_state_lits}
-        formulas[0] = BoolVal(False)
-        formulas[1] = BoolVal(True)
-        first_and_line_idx = next(i for i in range(len(aag_lines)) if len(aag_lines[i].split()) == 3 and int(aag_lines[i].split()[0]) != int(aag_lines[i].split()[2]))
-        aag_from_and = aag_lines[first_and_line_idx:]
-        first_and_lit = int(aag_lines[first_and_line_idx].split()[0])
-        for lit_to_calc in next_state_lits + out_lits:
-            self._dfs(formulas, lit_to_calc, aag_from_and, first_and_lit)
+        formulas = self._get_formulas_hash(aag_lines, in_lits, next_state_lits, out_lits, prev_state_lits)
 
-        max_var = 2*self._M + 3
+        in_vars, next_in_vars, next_output_vars, next_state_vars, prev_output_vars, prev_state_vars = self._get_var_lists()
+
+        ltr_z3_no_sub = simplify(And(*[next_state_vars[_l] == formulas[next_state_lits[_l]] for _l in
+                                       range(self._L)]))  # in_lits,prev_state_lits->nextstate_vars
+        outputs_z3_no_sub = [simplify(next_output_vars[_o] == formulas[out_lits[_o]]) for _o in
+                             range(self._O)]  # in_lits,prev_state_lits->nextoutput_vars
+
+        current_in_vars = [Bool(str(_i)) for _i in in_lits]
+        curr_prev_latch_vars = [Bool(str(_l)) for _l in prev_state_lits]
+
+        outputs_z3_next = [substitute(outputs_z3_no_sub[_o], zip(current_in_vars + curr_prev_latch_vars, next_in_vars + next_state_vars)) for _o
+                      in range(self._O)]
+        outputs_z3_prev = [substitute(outputs_z3_no_sub[_o],
+                                      zip(current_in_vars + curr_prev_latch_vars + [next_output_vars[_o]], in_vars + prev_state_vars+[prev_output_vars[_o]]))
+                           for _o
+                           in range(self._O)]
+        ltr_no_prev_output_z3 = substitute(ltr_z3_no_sub, zip(current_in_vars + curr_prev_latch_vars, in_vars + prev_state_vars))
+        ltr_z3 = And(ltr_no_prev_output_z3, *outputs_z3_prev)
+
+        output_formulas = [FormulaWrapper(outputs_z3_next[_o], [next_state_vars, [next_output_vars[_o]]], [next_in_vars]) for _o in
+                           range(self._O)]
+
+        prev_var_vector = prev_state_vars + prev_output_vars
+        next_var_vector = next_state_vars + next_output_vars
+        var_vectors = [prev_var_vector, next_var_vector]
+
+        inner_tr = And(ltr_z3, *outputs_z3_next)
+        '''
+        if in_vars:
+            quantified_input = Z3Utils.apply_qe(And(Exists(in_vars, ltr_z3), Exists(in_vars, And(*outputs_z3_next))),
+                                                qe_policy)
+        else:
+            quantified_input = And(*[f for f in [ltr_z3] + outputs_z3_next])
+        '''
+
+        tr = FormulaWrapper(inner_tr, var_vectors, [in_vars, next_in_vars])
+
+        initial_states = get_initial_states(self._init_latch_values, output_formulas, kripke, tr)
+
+        output_formula_wrapper = FormulaWrapper(And(*outputs_z3_prev), [prev_var_vector], [in_vars])
+        return tr, initial_states, output_formula_wrapper
+
+    def _get_var_lists(self):
+        max_var = 2 * self._M + 3
         in_vars = [Bool(str(max_var + _i)) for _i in range(self._I)]
+        max_var += self._I
+        next_in_vars = [Bool(str(max_var + _i)) for _i in range(self._I)]
         max_var += self._I
         prev_state_vars = [Bool(str(max_var + _pl)) for _pl in range(self._L)]
         max_var += self._L
@@ -151,43 +180,51 @@ class PythonAigParser(AigParser):
         max_var += self._O
         next_output_vars = [Bool(str(max_var + i)) for i in range(self._O)]
         max_var += self._O
+        return in_vars, next_in_vars, next_output_vars, next_state_vars, prev_output_vars, prev_state_vars
 
-        ltr_z3_no_sub = simplify(And(*[next_state_vars[_l] == formulas[next_state_lits[_l]] for _l in range(self._L)])) #in_lits,prev_state_lits->nextstate_vars
-        outputs_z3_no_sub = [simplify(next_output_vars[_o] == formulas[out_lits[_o]]) for _o in range(self._O)]  #in_lits,prev_state_lits->nextoutput_vars
+    def _get_literal_lists(self, aag_lines):
+        in_lits = [int(l.split()[0]) for l in aag_lines[1: self._I + 1]]
+        next_state_lits = [int(l.split()[1]) for l in aag_lines[self._I + 1: self._I + self._L + 1]]
+        prev_state_lits = [int(l.split()[0]) for l in aag_lines[self._I + 1: self._I + self._L + 1]]
+        out_lits = [int(l.split()[0]) for l in aag_lines[self._I + self._L + 1: self._I + self._L + self._O + 1]]
+        return in_lits, next_state_lits, out_lits, prev_state_lits
 
-        in_p_vars = [Bool(str(_i)) for _i in in_lits]
-        state_p_vars = [Bool(str(_l)) for _l in prev_state_lits]
-        ltr_z3 = substitute(ltr_z3_no_sub, zip(in_p_vars + state_p_vars, in_vars + prev_state_vars))
-        outputs_z3 = [substitute(outputs_z3_no_sub[_o], zip(in_p_vars + state_p_vars, in_vars + next_state_vars)) for _o in range(self._O)]
+    def _get_aag_lines(self):
+        aag_path = self._to_aag()
+        f = open(aag_path, 'r')
+        aag_lines = f.readlines()
+        self._M, self._I, self._L, self._O, self._A = [int(val) for val in aag_lines[0].split()[1:6]]
+        f.close()
+        return aag_lines
 
-        output_formulas = [FormulaWrapper(outputs_z3[_o], [next_state_vars, [next_output_vars[_o]]]) for _o in range(self._O)]
-
-        prev_var_vector = prev_state_vars + prev_output_vars
-        next_var_vector = next_state_vars + next_output_vars
-        var_vectors = [prev_var_vector, next_var_vector]
-
-        if in_vars:
-            quantified_input = Z3Utils.apply_qe(And(Exists(in_vars, ltr_z3), Exists(in_vars, And(*outputs_z3))), qe_policy)
-        else:
-            quantified_input = And(*[f for f in [ltr_z3] + outputs_z3])
-
-        tr = FormulaWrapper(quantified_input, var_vectors)
-
-        initial_states = get_initial_states(self._init_latch_values, output_formulas, kripke, tr)
-
-        return tr, initial_states
+    def _get_formulas_hash(self, aag_lines, in_lits, next_state_lits, out_lits, prev_state_lits):
+        formulas = {lit: Bool(str(lit)) for lit in in_lits + prev_state_lits}
+        formulas[0] = BoolVal(False)
+        formulas[1] = BoolVal(True)
+        first_and_line_idx = next((i for i in range(len(aag_lines)) if
+                                  len(aag_lines[i].split()) == 3 and int(aag_lines[i].split()[0]) != int(
+                                      aag_lines[i].split()[2]) and int(aag_lines[i].split()[2]) != 1), len(aag_lines))
+        aag_from_and = aag_lines[first_and_line_idx:]
+        first_and_lit = int(aag_from_and[0].split()[0]) if aag_from_and else None
+        for lit_to_calc in next_state_lits + out_lits:
+            self._dfs(formulas, lit_to_calc, aag_from_and, first_and_lit)
+        return formulas
 
     def get_ap_mapping(self):
         return self._ap_mapping
 
     def _prefetch_ap_mapping(self, aag_lines):
-        ap_line_regex = re.compile(".*[ilo][0-9]* .*")
-        aps_lines = [line for line in aag_lines if re.match(ap_line_regex, line.replace('\n', ''))]
+        ap_line_regex = re.compile("[lo][0-9]* .*")
+        ap_lines = [line for line in aag_lines if re.match(ap_line_regex, line.replace('\n', ''))]
 
-        ap_part_regex = re.compile("[ilo][0-9]* .*")
-        aps = [re.findall(ap_part_regex, ap_line)[0] for ap_line in aps_lines]
-        self._ap_mapping = {' '.join(line.split(' ')[1:]): line.split()[0] for line in aps}
+        #  ap_part_regex = re.compile("[lo][0-9]* .*")
+        #  aps_ = [re.findall(ap_part_regex, ap_line)[0] for ap_line in aps_lines]
+        aps = set(ap_line.split()[1] for ap_line in ap_lines)
+        #  self._ap_mapping = {' '.join(line.split(' ')[1:]): line.split()[0] for line in aps}
+        r = {ap: next(ap_line.split()[0] for ap_line in ap_lines if ap_line.split()[1] == ap) for ap in aps}
+        self._ap_mapping = r
 
+'''
 
 def split_aig(aig_path):
     if not os.path.isfile(AIG_SPLIT_EXE_PATH):
@@ -291,3 +328,4 @@ class AvyAigParser(AigParser):
 
     def get_num_latches(self):
         return self._L
+'''

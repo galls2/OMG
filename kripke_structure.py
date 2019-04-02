@@ -1,4 +1,4 @@
-from aig_parser import AvyAigParser, PythonAigParser
+from aig_parser import PythonAigParser
 from z3_utils import Z3Utils
 
 
@@ -27,15 +27,22 @@ class AigKripkeStructure(KripkeStructure):
         self._aig_parser = PythonAigParser(aig_path)
         self._num_latches = self._aig_parser.get_num_latches()
 
-        self._tr, initial_states_gen = self._aig_parser.get_tr_and_initial(qe_policy, self)
+        self._tr, initial_states_gen, self._output_formula = self._aig_parser.get_tr_and_initial(qe_policy, self)
+        self._input_vars = self._tr.get_input_vectors()[0]
         self._initial_states = list(initial_states_gen)
         self._ap_conversion = self._aig_parser.get_ap_mapping()
+
+    def get_output_formula(self):
+        return self._output_formula
 
     def get_qe_policy(self):
         return self._qe_policy
 
     def get_tr_formula(self):
         return self._tr
+
+    def get_input_var_vector(self):
+        return self._input_vars
 
     def get_var_vector(self):
         return self._tr.get_var_vectors()[0]

@@ -52,13 +52,13 @@ def get_vars(f):
 
 
 def get_assignments(model, variables):
-    partial_assignment = [([z3_val_to_int(model[var])] if model[var] is not None else [0, 1]) for var in variables]
-    return [list(comb) for comb in itertools.product(*partial_assignment)]
+    partial_assignment = (([z3_val_to_int(model[var])] if model[var] is not None else [0, 1]) for var in variables)
+    return (list(comb) for comb in itertools.product(*partial_assignment))
 
 
 def get_states(model, variables, kripke):
     res_list = get_assignments(model, variables)
-    return [State.from_int_list(raw_state, kripke.get_var_vector(), kripke) for raw_state in res_list]
+    return (State.from_int_list(raw_state, kripke.get_var_vector(), kripke) for raw_state in res_list)
 
 
 class Z3Utils(object):
@@ -71,48 +71,59 @@ class Z3Utils(object):
     Given [B1,...,Bn], R
     Returns (B1(v')|....Bn(v'), R(v,v'))
     '''
-
     @classmethod
-    def _get_components_in_quantified(cls, abstract_targets, transitions):
-        abstract_targets_formula = FormulaWrapper.Or([target.get_descriptive_formula() for target in abstract_targets])
-        new_vars = VarManager.duplicate_vars(transitions.get_var_vectors()[0])
-        split_by_formula_tag = abstract_targets_formula.substitute(new_vars, 0, new_vars)  # B(v) [v<-v']
-        transitions_has_sons = transitions.substitute(new_vars, 1, new_vars)  # R(u,v) [v<-v']
+    def _get_components_in_quantified(cls, abs_targets, tr):
+        next_input_vector = tr.get_input_vectors()[1]
+        new_vars = VarManager.duplicate_vars(tr.get_var_vectors()[0])
+
+        abs_targets_sub = [target.get_descriptive_formula()
+                               .substitute_inputs(next_input_vector, 0)
+                               .substitute(new_vars, 0) for target in abs_targets]
+        abs_or = Or(*[_t.get_z3() for _t in abs_targets_sub])
+        split_by_formula_tag = FormulaWrapper(abs_or, [new_vars], [next_input_vector])
+
+        transitions_has_sons = tr.substitute(new_vars, 1, new_vars)  # R(u,v) [v<-v']
         return split_by_formula_tag, transitions_has_sons
 
     '''
     Returns Ev'[TR(v,v') & OR(targets(v'))]
     '''
-
     @classmethod
     def get_exists_successors_in_formula(cls, abstract_targets, transitions):
+        kripke = abstract_targets[0].get_kripke()
+        in_vec = transitions.get_input_vectors()[0]
+
         split_by_formula_tag, transitions_has_sons = cls._get_components_in_quantified(abstract_targets, transitions)
         prev_vars, new_vars = transitions_has_sons.get_var_vectors()
-        qe_policy = abstract_targets[0].get_kripke().get_qe_policy()
+        qe_policy = kripke.get_qe_policy()
 
         inner = And(transitions_has_sons.get_z3(), split_by_formula_tag.get_z3())
         exists_formula = cls.apply_qe(simplify(Exists(new_vars, inner)), qe_policy)
-
-        return FormulaWrapper(exists_formula, [prev_vars])
+        legal_source = kripke.get_output_formula().substitute_inputs(in_vec, 0).substitute(prev_vars, 0)
+        return FormulaWrapper(And(legal_source.get_z3(), exists_formula), [prev_vars], [in_vec])
 
     '''
     Returns Av'[TR(v,v') -> OR(targets(v'))]
     '''
-
     @classmethod
     def get_forall_successors_in_formula(cls, abstract_targets, transitions):
+        kripke = abstract_targets[0].get_kripke()
+        in_vec = transitions.get_input_vectors()[0]
         split_by_formula_tag, transitions_has_sons = cls._get_components_in_quantified(abstract_targets, transitions)
         prev_vars, new_vars = transitions_has_sons.get_var_vectors()
-        qe_policy = abstract_targets[0].get_kripke().get_qe_policy()
+        qe_policy = kripke.get_qe_policy()
 
         inner = Implies(transitions_has_sons.get_z3(), split_by_formula_tag.get_z3())
         forall_formula = cls.apply_qe(simplify(ForAll(new_vars, inner)), qe_policy)
 
-        return FormulaWrapper(forall_formula, [prev_vars])
+        legal_source = kripke.get_output_formula().substitute_inputs(in_vec, 0).substitute(prev_vars, 0)
+
+        return FormulaWrapper(And(legal_source.get_z3(), forall_formula), [prev_vars], [in_vec])
 
     @classmethod
     def get_split_formula(cls, to_split, split_by, transitions, quantified_part_getter):
-        formula_to_split_pos = to_split.get_descriptive_formula()
+        input_vars = transitions.get_input_vectors()[0]
+        formula_to_split = to_split.get_descriptive_formula().substitute_inputs(transitions.get_input_vectors()[0], 0)
         quantifier_wrapper_pos = quantified_part_getter(split_by, transitions)
         quantified_formula = quantifier_wrapper_pos.get_z3()
         # pos_quantifier = simplify(And(formula_to_split_pos.get_z3_formula(), quantified_formula))  # A(v) & Qv'[phi(v,v')]
@@ -124,7 +135,7 @@ class Z3Utils(object):
 
         v_vars = to_split.get_descriptive_formula().get_var_vectors()[0]
         # return FormulaWrapper(pos_quantifier, [v_vars]), FormulaWrapper(neg_quantifier, [v_vars])
-        return formula_to_split_pos.get_z3(), quantified_formula, v_vars
+        return formula_to_split.get_z3(), quantified_formula, v_vars, transitions.get_input_vectors()[0]
 
     @classmethod
     def get_ex_split_formulas(cls, to_split, split_by, transitions):
@@ -143,7 +154,7 @@ class Z3Utils(object):
         all_vars = [_v for v_list in formula_wrap.get_var_vectors() for _v in v_list]
         while s.check() == sat:
             model = s.model()
-            cubes = get_assignments(model, all_vars)
+            cubes = list(get_assignments(model, all_vars))
 
             assignments += cubes
             # Not(l1 & ... &ln) = Not(l1) | ... | Not(ln)
@@ -172,7 +183,7 @@ class Z3Utils(object):
         tr_from_concs = [sub_src(tr, node) for node in nodes_from]
 
         variables = tr_from_concs[0].get_var_vectors()[0]
-        abs_formula = abstract_witness.get_descriptive_formula().substitute(variables, 0, variables).get_z3()
+        abs_formula = abstract_witness.get_descriptive_formula().substitute(variables, 0, variables).substitute_inputs(tr.get_input_vectors()[1], 0).get_z3()
 
         flags = [Bool('f' + str(i)) for i in range(len(tr_from_concs))]
 
@@ -190,7 +201,7 @@ class Z3Utils(object):
             sat_res = s.check(flag)
             if sat_res == sat:
                 model = s.model()
-                return nodes_from[i], get_states(model, variables, kripke)[0]
+                return nodes_from[i], next(get_states(model, variables, kripke))
         return False
 
     @classmethod
@@ -198,9 +209,9 @@ class Z3Utils(object):
         kripke = to_close.get_kripke()
         transitions = kripke.get_tr_formula()
         src_vars, dst_vars = transitions.get_var_vectors()
-
-        src = to_close.get_descriptive_formula().substitute(src_vars, 0).get_z3()
-        dst_formulas = [closer.get_descriptive_formula().substitute(dst_vars, 0).get_z3()
+        input_vars, input_tag_vars = transitions.get_input_vectors()
+        src = to_close.get_descriptive_formula().substitute(src_vars, 0).substitute_inputs(input_vars, 0).get_z3()
+        dst_formulas = [closer.get_descriptive_formula().substitute(dst_vars, 0).substitute_inputs(input_tag_vars, 0).get_z3()
                         for closer in close_with]
         dst = Not(Or(*dst_formulas))
 
@@ -213,7 +224,7 @@ class Z3Utils(object):
             return True
 
         model = s.model()
-        ass = get_states(model, src_vars, kripke)[0]
+        ass = next(get_states(model, src_vars, kripke))
         return ass
 
     @classmethod
@@ -221,9 +232,11 @@ class Z3Utils(object):
         kripke = to_close.get_kripke()
         transitions = kripke.get_tr_formula()
         src_vars, dst_vars = transitions.get_var_vectors()
+        input_vars, input_tag_vars = transitions.get_input_vectors()
 
-        src = to_close.get_descriptive_formula().substitute(src_vars, 0).get_z3()
-        dst_formulas = [closer.get_descriptive_formula().substitute(dst_vars, 0).get_z3()
+        src_wrapper = to_close.get_descriptive_formula().substitute(src_vars, 0).substitute_inputs(input_vars, 0)
+        src = src_wrapper.get_z3()
+        dst_formulas = [closer.get_descriptive_formula().substitute(dst_vars, 0).substitute_inputs(input_tag_vars, 0).get_z3()
                         for closer in close_with]
         dst = Not(Or(*dst_formulas))
 
@@ -237,7 +250,17 @@ class Z3Utils(object):
 
         model = s.model()
         #  logger.debug(str(model))
-        return EEClosureViolation(get_states(model, src_vars, kripke)[0], get_states(model, dst_vars, kripke)[0])
+        '''
+        for s in get_states(model, src_vars, kripke):
+            f = to_close.get_descriptive_formula().assign_state(s).is_sat()
+            if not f:
+                print 'agag'
+                to_close.get_classification_node()._classifier.classify(s)
+
+                f = to_close.get_descriptive_formula().assign_state(s).is_sat()
+        '''
+
+        return EEClosureViolation(next(get_states(model, src_vars, kripke)), next(get_states(model, dst_vars, kripke)))
 
     @classmethod
     def apply_qe(cls, formula, qe_policy):
@@ -246,6 +269,7 @@ class Z3Utils(object):
         #  formula = Tactic('ctx-solver-simplify')(formula).as_expr()
         return Tactic(qe_policy)(formula).as_expr()
 
+    '''
     @classmethod
     def combine_ltr_with_bad_formulas(cls, ltr_formula, output_formulas, max_var_ltr):
         prev_output_vars = [Bool(str(max_var_ltr + i)) for i in range(len(output_formulas))]
@@ -269,3 +293,4 @@ class Z3Utils(object):
         tr_formula = And(ltr_formula.get_z3(), *substituted_output_z3_formulas)
 
         return FormulaWrapper(tr_formula, var_vectors)
+    '''
