@@ -24,7 +24,7 @@ class VarManager(object):
 
     @classmethod
     def new_abs_name(cls):
-        new_name = 'A'+str(cls.abstract_state_counter)
+        new_name = int(cls.abstract_state_counter)
         cls.abstract_state_counter += 1
         return new_name
 

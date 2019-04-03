@@ -68,7 +68,8 @@ class AbstractionClassifier(object):
     def add_classification(self, atomic_labels, abstract_state):
         assert atomic_labels not in self._classification_trees.keys()
         ap_tuple = collection_to_sorted_tuple(atomic_labels)
-        classification_tree = AbstractionClassifierTree(self._kripke, None, dict(), None, self, abstract_state, 0)
+        classification_tree = AbstractionClassifierTree(self._kripke, None, dict(), None, self, abstract_state, 0,
+                                                        'Base')
         self._classification_trees[ap_tuple] = classification_tree
         return classification_tree
 
@@ -79,13 +80,13 @@ class AbstractionClassifier(object):
         self._cache.remove_by_value(abstract_state_to_remove)
         return self
 
-    def split(self, query, classification_node_to_split, query_labeling_mapper):
+    def split(self, query, classification_node_to_split, query_labeling_mapper, sp_reason):
 
         successors = dict()
         depth = classification_node_to_split.get_depth()
         for query_result in query_labeling_mapper.keys():
             new_leaf = AbstractionClassifierTree(self._kripke, None, dict(), classification_node_to_split,
-                                                 self, query_labeling_mapper[query_result], depth + 1)
+                                                 self, query_labeling_mapper[query_result], depth + 1, sp_reason)
             successors[query_result] = new_leaf
 
         classification_node_to_split.split(query, successors)
@@ -108,7 +109,7 @@ class AbstractionClassifier(object):
 class AbstractionClassifierTree(object):
     """docstring for AbstractionClassifier."""
 
-    def __init__(self, kripke, query, successors, parent, classifier, value, depth):
+    def __init__(self, kripke, query, successors, parent, classifier, value, depth, split_string):
         super(AbstractionClassifierTree, self).__init__()
         self._kripke = kripke
         self._query = query
@@ -118,6 +119,10 @@ class AbstractionClassifierTree(object):
         #    self._classifees = set()  # Elements that are classified
         self._classifier = classifier
         self._depth = depth
+        self._split_string = split_string
+
+    def get_split_string(self):
+        return self._split_string
 
     def classify(self, concrete_state):
         if self.is_leaf():
@@ -150,6 +155,7 @@ class AbstractionClassifierTree(object):
             res = ('0' if parent.get_successors()[False] is cl else '1') + res
             cl = cl.get_parent()
         return res
+
     '''
     def get_classifees(self):
         return self._classifees

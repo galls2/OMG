@@ -98,9 +98,12 @@ class Z3Utils(object):
         qe_policy = kripke.get_qe_policy()
 
         inner = And(transitions_has_sons.get_z3(), split_by_formula_tag.get_z3())
-        exists_formula = cls.apply_qe(simplify(Exists(new_vars, inner)), qe_policy)
-        legal_source = kripke.get_output_formula().substitute_inputs(in_vec, 0).substitute(prev_vars, 0)
-        return FormulaWrapper(And(legal_source.get_z3(), exists_formula), [prev_vars], [in_vec])
+        exists_formula = cls.apply_qe(simplify(Exists(new_vars+in_vec, inner)), qe_policy)
+     #   exists_formula = cls.apply_qe(simplify(Exists(new_vars, inner)), qe_policy)
+
+       # legal_source = kripke.get_output_formula().substitute_inputs(in_vec, 0).substitute(prev_vars, 0)
+       # return FormulaWrapper(And(legal_source.get_z3(), exists_formula), [prev_vars], [in_vec])
+        return FormulaWrapper(exists_formula, [prev_vars], [in_vec])
 
     '''
     Returns Av'[TR(v,v') -> OR(targets(v'))]
@@ -114,11 +117,12 @@ class Z3Utils(object):
         qe_policy = kripke.get_qe_policy()
 
         inner = Implies(transitions_has_sons.get_z3(), split_by_formula_tag.get_z3())
-        forall_formula = cls.apply_qe(simplify(ForAll(new_vars, inner)), qe_policy)
+        forall_formula = cls.apply_qe(simplify(ForAll(new_vars+in_vec, inner)), qe_policy)
 
-        legal_source = kripke.get_output_formula().substitute_inputs(in_vec, 0).substitute(prev_vars, 0)
+ #       legal_source = kripke.get_output_formula().substitute_inputs(in_vec, 0).substitute(prev_vars, 0)
 
-        return FormulaWrapper(And(legal_source.get_z3(), forall_formula), [prev_vars], [in_vec])
+#        return FormulaWrapper(And(legal_source.get_z3(), forall_formula), [prev_vars], [in_vec])
+        return FormulaWrapper(forall_formula, [prev_vars], [in_vec])
 
     @classmethod
     def get_split_formula(cls, to_split, split_by, transitions, quantified_part_getter):
@@ -259,7 +263,6 @@ class Z3Utils(object):
 
                 f = to_close.get_descriptive_formula().assign_state(s).is_sat()
         '''
-
         return EEClosureViolation(next(get_states(model, src_vars, kripke)), next(get_states(model, dst_vars, kripke)))
 
     @classmethod

@@ -1,5 +1,6 @@
 import logging
 
+from common import abstract_states_to_int, subset_abs, in_abs, add_elems_to_abs, remove_elems
 from formula_wrapper import FormulaWrapper, unsat
 from var_manager import VarManager
 from z3_utils import Z3Utils, Solver, And, Not, Bool, Implies
@@ -15,6 +16,13 @@ def init_dict_by_key(d, key, val):
     return d
 
 
+def exists_superset_for_key(_dict, key, superset_of):
+    if key not in _dict.keys():
+        return False
+    val = abstract_states_to_int(superset_of)
+    return any([subset_abs(val, _e) for _e in _dict[key]])
+
+
 class AbstractState(object):
     def __init__(self, atomic_labels, kripke, formula):
         super(AbstractState, self).__init__()
@@ -25,8 +33,14 @@ class AbstractState(object):
 
         self.atomic_labels = atomic_labels
         self._classification_node = None
-        self._debug_name = VarManager.new_abs_name()
+        self._id = VarManager.new_abs_name()
         self._formula = formula
+
+    def get_id(self):
+        return self._id
+
+    def get_debug_name(self):
+        return 'A' + str(self._id)
 
     def get_descriptive_formula(self):
         return self._formula
@@ -70,6 +84,9 @@ class AbstractState(object):
     def get_kripke(self):
         return self._kripke
 
+    def get_split_string(self):
+        return self._classification_node.get_split_string()
+
 
 class AbstractStructure(object):
     """docstring for AbstractStructure."""
@@ -88,79 +105,64 @@ class AbstractStructure(object):
         self._abstract_states.add(abstract_state)
         return self
 
-    def add_must_hyper(self, src, hyper_dst):
-        init_dict_by_key(self._E_must, src, tuple(hyper_dst))
+    def add_must_hyper(self, src, abs_states):
+        val = abstract_states_to_int(abs_states)
+        init_dict_by_key(self._E_must, src, val)
         return self
 
-    def add_NE_may(self, src, dst):
-        init_dict_by_key(self._NE_may, src, dst)
+    def add_NE_may(self, src, abs_state):
+        init_dict_by_key(self._NE_may, src, abs_state.get_id())
         return self
 
-    def add_E_may_over(self, src, dst):
-        init_dict_by_key(self._E_may_over, src, tuple(dst))
+    def add_E_may_over(self, src, abs_states):
+        val = abstract_states_to_int(abs_states)
+        init_dict_by_key(self._E_may_over, src, val)
         return self
 
-    def add_NE_may_over(self, src, dst):
+    def add_NE_may_over(self, src, _dst):
+        val = abstract_states_to_int(_dst[1])
         if src in self._NE_may_over.keys():  # tuple of (violation, non-closers)
-            self._NE_may_over[src] = {ent for ent in self._NE_may_over[src] if not set(ent[1]).issubset(set(dst[1]))}
-        init_dict_by_key(self._NE_may_over, src, tuple(dst))
+            self._NE_may_over[src] = {ent for ent in self._NE_may_over[src] if not subset_abs(ent[1], val)}
+        init_dict_by_key(self._NE_may_over, src, (_dst[0], val))
         return self
 
     def is_EE_closure(self, to_close, close_with):
-        #     print len(close_with)
-        close_with = [cl for cl in close_with if
-                      to_close not in self._NE_may.keys() or cl not in self._NE_may[to_close]]
+        if to_close in self._NE_may:
+            close_with = [cl for cl in close_with if cl.get_id() not in self._NE_may[to_close]]
 
-        # this is not empty
-        #    print len(close_with)
-        def exists_superset(over_approxs):
-            return True if to_close in over_approxs.keys() and \
-                           any([set(close_with).issuperset(set(op)) for op in over_approxs[to_close]]) else None
-
-        def exists_subset(n_over_approxs):
-            if to_close not in n_over_approxs.keys():
+        def exists_subset(_n_over):
+            if to_close not in _n_over.keys():
                 return False
-            candidates = [op[0]
-                          for op in n_over_approxs[to_close] if
-                          set(close_with).issubset(set(op[1])) and op[0] is not None]
-            return candidates[0] if candidates else False
+            candidates = (op[0] for op in _n_over[to_close] if
+                          subset_abs(c_idx, op[1]) and op[0] is not None)
+            return next(candidates, False)
 
-        if exists_superset(self._E_may_over) is True:
+        c_idx = abstract_states_to_int(close_with)
+        if to_close in self._E_may_over.keys() and any([subset_abs(c, c_idx) for c in self._E_may_over[to_close]]):
             return True
 
         subset_res = exists_subset(self._NE_may_over)
         if subset_res:
             return subset_res
 
-        #  logger.debug('Z3ing')
         closure_result = Z3Utils.is_EE_closed(to_close, close_with)
 
         if closure_result is True:
             self.add_E_may_over(to_close, close_with)
         else:
-            self.add_NE_may_over(to_close, (closure_result, tuple(close_with)))
+            self.add_NE_may_over(to_close, (closure_result, close_with))
 
         return closure_result
 
     def is_known_E_must_between(self, src, dsts):
-        def exists_superset(over_approxs):
-            return True if src in over_approxs.keys() and \
-                           any([set(dsts).issuperset(set(op)) for op in over_approxs[src]]) else None
-
-        return exists_superset(self._E_must) is True or exists_superset(self._E_may_over) is True
+        return exists_superset_for_key(self._E_must, src, dsts) or exists_superset_for_key(self._E_may_over, src, dsts)
 
     def is_known_may_over_between(self, src, dsts):
-        def exists_superset(over_approxs):
-            return True if src in over_approxs.keys() and \
-                           any([set(dsts).issuperset(set(op)) for op in over_approxs[src]]) else None
-
-        return exists_superset(self._E_may_over)
+        return exists_superset_for_key(self._E_may_over, src, dsts)
 
     def is_AE_closure(self, to_close, close_with):
-        close_with = [cl for cl in close_with if
-                      to_close not in self._NE_may.keys() or cl not in self._NE_may[to_close]]
-
-        # this is not empty
+        if to_close in self._NE_may:
+            close_with = [cl for cl in close_with if cl.get_id() not in self._NE_may[to_close]]
 
         if self.is_known_E_must_between(to_close, close_with):
             return True
@@ -169,8 +171,6 @@ class AbstractStructure(object):
 
         if closure_result is True:
             self.add_must_hyper(to_close, close_with)
-        else:
-            [self.add_NE_may(to_close, closer) for closer in close_with]
 
         return closure_result
 
@@ -194,22 +194,22 @@ class AbstractStructure(object):
         pos_formula = FormulaWrapper(And(base_formula, quantified_part), [vars], [input_vector])
         neg_formula = FormulaWrapper(And(base_formula, Not(quantified_part)), [vars], [input_vector])
 
-        def create_abstract_state_split(formula):
+        def create_abs_state(formula):
             return AbstractState(abs_to_close.atomic_labels, kripke, formula) \
                 .add_positive_labels(abs_to_close.positive_labels) \
                 .add_negative_labels(abs_to_close.negative_labels)
 
-        abs_pos = create_abstract_state_split(pos_formula)
-        abs_neg = create_abstract_state_split(neg_formula)
+        abs_pos, abs_neg = create_abs_state(pos_formula), create_abs_state(neg_formula)
 
-        self._abstract_states.remove(abs_to_close)
-        self._abstract_states.update([abs_pos, abs_neg])
+        self._abstract_states = (self._abstract_states - {abs_to_close}) | {abs_pos, abs_neg}
 
-        def replace_old_values_dst(dct):
-            dct.update({key: dct[key]
+        def replace_old_values_dst(d):
+            d.update({k: {add_elems_to_abs([abs_pos, abs_neg] if in_abs(abs_to_close, _n) else [], _n) for _n in v} for k, v in d.items()})
+            '''dct.update({key: dct[key]
                        .union([abs_pos, abs_neg])
                         for key in dct.keys()
                         if abs_to_close in dct[key]})
+            '''
 
         def replace_old_value(dct):
             # from
@@ -223,33 +223,30 @@ class AbstractStructure(object):
         replace_old_value(self._E_may_over)
 
         replace_old_values_dst(self._NE_may)
-        ne_may_over = self._NE_may_over
-        ne_may_over.update({key:
-                                tuple({(n_cl_opt[0], n_cl_opt[1] if abs_to_close not in n_cl_opt[1] else
-                                tuple(set(n_cl_opt[1]) | {abs_pos, abs_neg})) for n_cl_opt in
-                                       ne_may_over[key]})
-                            for key in ne_may_over.keys()})
+        _ne = self._NE_may_over
+        _ne.update({k: {(op[0], add_elems_to_abs([abs_pos, abs_neg], op[1]) if in_abs(abs_to_close, op[1]) else op[1])
+                        for op in v}
+                    for k, v in _ne.items()})
 
         return None, (abs_pos, abs_neg)
 
-    def split_abstract_state_ex(self, node_to_close, abstract_sons, check_trivial):
-        abstract_state_to_split = node_to_close.get_abstract_label()
+    def split_abstract_state_ex(self, node_to_close, abs_sons, check_trivial):
+        abs_to_split = node_to_close.get_abstract_label()
 
-        res = self.split_abstract_state(node_to_close, abstract_sons, Z3Utils.get_ex_split_formulas, check_trivial)
+        res = self.split_abstract_state(node_to_close, abs_sons, Z3Utils.get_ex_split_formulas, check_trivial)
 
         if res[0] is not None:
             if res[0] is True:
-                self.add_must_hyper(abstract_state_to_split, abstract_sons)
+                self.add_must_hyper(abs_to_split, abs_sons)
             else:
-                [self.add_NE_may(abstract_state_to_split, abstract_son) for abstract_son in abstract_sons]
-            return res[0], abstract_state_to_split
+                [self.add_NE_may(abs_to_split, abs_son) for abs_son in abs_sons]
+            return res[0], abs_to_split
 
         new_abs_has_sons, new_abs_no_sons = res[1]
         # split info
 
-        updated_abstract_sons = abstract_sons if abstract_state_to_split not in abstract_sons else \
-            ([a for a in abstract_sons if a != abstract_state_to_split] + [new_abs_has_sons,
-                                                                           new_abs_no_sons])
+        updated_abstract_sons = set(abs_sons) if abs_to_split not in abs_sons else \
+            (set(abs_sons) - {abs_to_split}) | {new_abs_has_sons, new_abs_no_sons}
 
         self.add_must_hyper(new_abs_has_sons, updated_abstract_sons)
 
@@ -257,32 +254,30 @@ class AbstractStructure(object):
             self.add_NE_may(new_abs_no_sons, abs_son)
 
         if new_abs_no_sons in self._E_may_over.keys():
-            self._E_may_over[new_abs_no_sons] = tuple([set(closers).difference(set(updated_abstract_sons))
-                                                       for closers in self._E_may_over[new_abs_no_sons]])
+            self._E_may_over[new_abs_no_sons] = {remove_elems(updated_abstract_sons, _cl)
+                                                 for _cl in self._E_may_over[new_abs_no_sons]}
         if new_abs_no_sons in self._E_must.keys():
-            self._E_must[new_abs_no_sons] = tuple([set(closers).difference(set(updated_abstract_sons))
-                                                       for closers in self._E_must[new_abs_no_sons]])
+            self._E_must[new_abs_no_sons] = {remove_elems(updated_abstract_sons, _cl)
+                                             for _cl in self._E_must[new_abs_no_sons]}
         return None, (new_abs_has_sons, new_abs_no_sons)
 
-    def split_abstract_state_ax(self, node_to_close, abstract_sons, check_trivial):
-        abstract_state_to_split = node_to_close.get_abstract_label()
-        res = self.split_abstract_state(node_to_close, abstract_sons, Z3Utils.get_ax_split_formulas, check_trivial)
+    def split_abstract_state_ax(self, node_to_close, abs_sons, check_trivial):
+        abs_to_split = node_to_close.get_abstract_label()
+        res = self.split_abstract_state(node_to_close, abs_sons, Z3Utils.get_ax_split_formulas, check_trivial)
 
         if res[0] is not None:
             if res[0] is True:
-                self.add_E_may_over(abstract_state_to_split, abstract_sons)
+                self.add_E_may_over(abs_to_split, abs_sons)
             else:
-                self.add_NE_may_over(abstract_state_to_split, (None, abstract_sons))
-            return res[0], abstract_state_to_split
+                self.add_NE_may_over(abs_to_split, (None, abs_sons))
+            return res[0], abs_to_split
 
         new_abs_sons_closed, new_abs_sons_not_closed = res[1]
 
         # split info
 
-        updated_abstract_sons = tuple(abstract_sons if abstract_state_to_split not in abstract_sons else \
-                                          ([a for a in abstract_sons if a != abstract_state_to_split] + [
-                                              new_abs_sons_closed,
-                                              new_abs_sons_not_closed]))
+        updated_abstract_sons = set(abs_sons) if abs_to_split not in abs_sons else \
+            (set(abs_sons) - {abs_to_split}) | {new_abs_sons_closed, new_abs_sons_not_closed}
 
         self.add_E_may_over(new_abs_sons_closed, updated_abstract_sons)
         self.add_NE_may_over(new_abs_sons_not_closed, (None, updated_abstract_sons))

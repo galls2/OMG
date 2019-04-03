@@ -21,6 +21,32 @@ def profiler(func, params):
     return res
 
 
+def abs_to_int(_abs):
+    return 1 << _abs.get_id()
+
+
+def abstract_states_to_int(abstract_states):
+    return sum([abs_to_int(_abs) for _abs in abstract_states])
+
+
+def subset_abs(small, big):
+    return (small & big) == small
+
+
+def in_abs(_el, abs_set):
+    try:
+        return abs_to_int(_el) & abs_set
+    except:
+        print 'g'
+
+def add_elems_to_abs(_elements, abs_set):
+    return abstract_states_to_int(_elements) | abs_set
+
+
+def remove_elems(_elements, remove_from):
+    return (~abstract_states_to_int(_elements)) & remove_from
+
+
 def z3_val_to_int(z3_val):
     return 1 if z3_val.sexpr() == 'true' else 0
 
