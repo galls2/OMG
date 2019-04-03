@@ -193,7 +193,7 @@ class OmgModelChecker(object):
                 continue
             visited.add(node_to_explore.concrete_label)
 #            logger.debug(str(goal)+':: AV:: NOW EXPLORING ' + node_to_explore.description())
-            logger.debug(str(node))
+          #  logger.debug(str(node))
 
             abstract_state = self._find_abstract_classification_for_node(node_to_explore)
             node_to_explore.set_developed(goal)
@@ -239,21 +239,21 @@ class OmgModelChecker(object):
             abs_state_lead = get_next_to_av_close(abs_states_lead)
             to_close_abstract, to_close_nodes = abs_state_lead
 
-            logger.debug('AV:: Trying to close abstract state of' + to_close_nodes[0].description() + ' :'+str(goal))
+#            logger.debug('AV:: Trying to close abstract state of' + to_close_nodes[0].description() + ' :'+str(goal))
             res = self._abstract_structure.is_EE_closure(to_close_abstract, abs_states)
             if res is True:
-                logger.debug(' Success!')
+ #               logger.debug(' Success!')
                 abs_states_lead.remove(abs_state_lead)
             else:
                 src_to_witness, witness_state = res.conc_src, res.conc_dst
 
-                logger.debug(' Failed! Due to ' + str(src_to_witness) + ' to ' + str(witness_state))
+         #       logger.debug(' Failed! Due to ' + str(src_to_witness) + ' to ' + str(witness_state))
 
                 concretization_result = self._is_concrete_violation(to_close_nodes, witness_state)
                 if concretization_result.exists():
                     witness_concrete_state = concretization_result.dst_conc
                     to_close_node = concretization_result.src_node
-                    logger.debug("CONC")
+         #           logger.debug("CONC")
 
                     if to_close_node.get_successors() is None:
                         node_to_set = to_close_node
@@ -520,10 +520,10 @@ class OmgModelChecker(object):
                                 Z3Utils.get_forall_successors_in_formula, check_trivial, known_reclassification)
 
     def _strengthen_trace(self, src, dst):
-        dests = []
+        dsts = []
         while dst is not src:
-            dests += [dst.concrete_label]
-            self._refine_split_ex(dst.get_parent(), dests, check_trivial=True, known_reclassification=True)
+            dsts += [dst.concrete_label]
+            self._refine_split_ex(dst.get_parent(), dsts, check_trivial=True, known_reclassification=True)
             dst = dst.get_parent()
 
     def _strengthen_subtree(self, src_node, stop_condition):
