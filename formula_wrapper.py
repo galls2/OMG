@@ -23,7 +23,7 @@ class FormulaWrapper(object):
         base_formula, prev_vec = self._z3_formula, self._var_vectors
         cube_substituted = state.formula_wrapper.substitute(prev_vec[v_num], v_num).get_z3()
         inner = And(base_formula, cube_substituted)
-        return FormulaWrapper(inner, prev_vec[:v_num]+prev_vec[v_num+1:], self._input_vectors)
+        return FormulaWrapper(inner, prev_vec[:v_num] + prev_vec[v_num + 1:], self._input_vectors)
 
     def assign_int_vec(self, int_vec, v_num=0):
         base_formula, prev_vec = self._z3_formula, self._var_vectors
@@ -39,7 +39,8 @@ class FormulaWrapper(object):
         substitutions = zip(prev_vec[vec_num], substitute_with)
         new_formula = simplify(substitute(self._z3_formula, *substitutions))
 
-        return FormulaWrapper(new_formula, prev_vec[:vec_num]+[new_vars]+prev_vec[vec_num+1:], self._input_vectors)
+        return FormulaWrapper(new_formula, prev_vec[:vec_num] + [new_vars] + prev_vec[vec_num + 1:],
+                              self._input_vectors)
 
     def substitute_inputs(self, substitute_with, vec_num, new_vars=None):
         if new_vars is None:
@@ -68,8 +69,10 @@ class FormulaWrapper(object):
     def __ne__(self, o):
         return not self == o
 
+
 def flip_q(q):
     return 'A' if q == 'E' else 'E'
+
 
 class QBF(object):
     def __init__(self, q_list, prop_formula):
@@ -77,15 +80,17 @@ class QBF(object):
         self._q_list = q_list
         self._prop = prop_formula
 
-    def flip_q(self):
-        self._q_list = [(flip_q(q), v) for (q, v) in self._q_list]
-        return self
-
     def connect(self):
-        return foldr(lambda (q,v), f: Exists(v, f) if q == 'E' else ForAll(v, f), self._prop, self._q_list)
+        return foldr(lambda (_q, _v), f: (Exists if _q == 'E' else ForAll)(_v, f), self._prop, self._q_list)
+
+    def negate(self):
+        new_q_list = [(chr(134 - ord(_q)), _v) for (_q, _v) in self._q_list]
+        return QBF(new_q_list, simplify(Not(self._prop)))
+
 
 if __name__ == '__main__':
-    x = [Bool('x'+str(i)) for i in range(5)]
-    q = QBF([('A' if i%2 == 0 else 'E', x[i]) for i in range(5)], And(*x))
+    x = [Bool('x' + str(i)) for i in range(5)]
+    q = QBF([('A' if i % 2 == 0 else 'E', x[i]) for i in range(5)], And(*x))
     print q.connect()
-    print q.flip_q().connect()
+    print q.negate().connect()
+    print q.negate().negate().connect()
