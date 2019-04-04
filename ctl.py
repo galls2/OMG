@@ -10,14 +10,14 @@ def _par(text):
 def _cut_from_end(text, to_cut):
     if text[-1] not in to_cut:
         return text
-    cut_until = next(i for i in range(len(text)) if text[len(text) - 1 - i] not in to_cut)
+    cut_until = next(i for i in xrange(len(text)) if text[len(text) - 1 - i] not in to_cut)
     return text[:-1 * cut_until]
 
 
 def _remove_spaces_from_edges(text):
     text = text.replace('\n', '').replace(';', '')
     try:
-        text = text[next(i for i in range(len(text)) if text[i] != ' '):]
+        text = text[next(i for i in xrange(len(text)) if text[i] != ' '):]
         text = _cut_from_end(text, [' '])
     except Exception as e:
         logger.critical('Problem in CTL parsing of ' + text)
@@ -43,7 +43,7 @@ def is_balanced_brackets(text):
 def _accumulate(list_num):
     res = []
     addition = 0
-    for i in range(len(list_num)):
+    for i in xrange(len(list_num)):
         addition += list_num[i]
         res.append(addition)
     return res
@@ -60,15 +60,15 @@ def _split_components(f):
     if not is_balanced:
         assert is_balanced
 
-    lsplits = [i + 1 for i in range(len(counts) - 1) if counts[i] == 0 and counts[i + 1] != 0]
-    rsplits = [i + 2 for i in range(len(counts) - 1) if counts[i] != 0 and counts[i + 1] == 0]
+    lsplits = [i + 1 for i in xrange(len(counts) - 1) if counts[i] == 0 and counts[i + 1] != 0]
+    rsplits = [i + 2 for i in xrange(len(counts) - 1) if counts[i] != 0 and counts[i + 1] == 0]
     splits = [0] + sorted(lsplits + rsplits) + [len(counts)]
 
-    cuts = [f[splits[i]:splits[i + 1]] for i in range(len(splits) - 1)]
+    cuts = [f[splits[i]:splits[i + 1]] for i in xrange(len(splits) - 1)]
     cuts_no_blanks = [c for c in cuts if c != '' and not all(ch == ' ' for ch in c)]
 
     cuts_split = []
-    for i in range(len(cuts_no_blanks)):
+    for i in xrange(len(cuts_no_blanks)):
         if cuts_no_blanks[i][0] != '(':
             cuts_split += [c for c in cuts_no_blanks[i].split(' ') if c != '']
         else:
@@ -133,9 +133,9 @@ class CtlFormula(object):
                 o.get_operands()):
             return False
 
-        for i in range(len(self.get_operands())):
-            if self.get_operands()[i] != o.get_operands()[i]:
-                return False
+        n_ops = len(self._operands)
+        if any([self.get_operands()[i] != o.get_operands()[i] for i in xrange(n_ops)]):
+            return False
 
         return True
 
@@ -264,7 +264,7 @@ class CtlParser(object):
         return CtlFormula(main_operator, parsed_operands)
 
     def split_by_operator(self, parts, operator):
-        operator_locations = [i for i in range(len(parts)) if parts[i] == operator]
+        operator_locations = [i for i in xrange(len(parts)) if parts[i] == operator]
         if operator_locations:
             and_location = operator_locations[0]
             first_operand = self.parse_math_format(' '.join(parts[:and_location]))
@@ -302,7 +302,7 @@ class CtlParser(object):
         if input_formula[0] in ['A', 'E'] and len(parts[0]) == 1 and len(parts) > 1:
             path_quantifier = input_formula[0]
             try:
-                temp_op_index = next(i for i in range(len(parts)) if
+                temp_op_index = next(i for i in xrange(len(parts)) if
                                      (path_quantifier + parts[i]) in CtlFormula.binary_temporal_operators)
                 temporal_operator = parts[temp_op_index].replace('R', 'V')
             except Exception as e:
@@ -365,7 +365,7 @@ class CtlFileParser(object):
     def _parse_ctl_chunk(self, chunk):
         chunk = filter(lambda line: line not in ['\n', '', ' '], chunk)
         try:
-            first_line_not_header = next(i for i in range(len(chunk)) if not chunk[i].startswith('#'))
+            first_line_not_header = next(i for i in xrange(len(chunk)) if not chunk[i].startswith('#'))
             header_part = chunk[:first_line_not_header]
             raw_formulas = chunk[first_line_not_header:]
 
@@ -374,12 +374,12 @@ class CtlFileParser(object):
             raw_formulas = [raw_formula for raw_formula in raw_formulas
                             if raw_formula.replace('\n', '').replace(' ', '').replace('\t', '') != '']
 
-            f_indexes = [0] + [i + 1 for i in range(len(raw_formulas)) if
+            f_indexes = [0] + [i + 1 for i in xrange(len(raw_formulas)) if
                                is_balanced_brackets(' '.join(raw_formulas[:(i + 1)])) and self._legal_line_ending(
                                    raw_formulas[i])]
 
             ctl_formulas_borders = [(f_indexes[i], f_indexes[i + 1] if i != len(f_indexes) - 1 else len(raw_formulas))
-                                    for i in range(len(f_indexes))]
+                                    for i in xrange(len(f_indexes))]
             raw_ctl_formulas = [raw_formulas[start: end] for (start, end) in ctl_formulas_borders if start != end]
 
             single_line_raw_formulas = [' '.join(multiline).replace('==', ' == ') for multiline in raw_ctl_formulas]
@@ -396,12 +396,12 @@ class CtlFileParser(object):
             lines = ctl_file.readlines()
             lines = filter(lambda line: line not in ['', '\n'], lines)
             start_indexes = ([0] if lines[0].startswith('#') else []) + \
-                            [i for i in range(1, len(lines)) if
+                            [i for i in xrange(1, len(lines)) if
                              lines[i].startswith('#') and
                              not lines[i - 1].startswith('#')]
 
             chunk_borders = [(start_indexes[i], start_indexes[i + 1] if i != len(start_indexes) - 1 else len(lines))
-                             for i in range(len(start_indexes))]
+                             for i in xrange(len(start_indexes))]
             chunks = [lines[start: end] for (start, end) in chunk_borders]
 
             return [self._parse_ctl_chunk(chunk) for chunk in chunks]

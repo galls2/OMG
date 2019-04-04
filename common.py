@@ -1,4 +1,5 @@
 import cProfile, pstats, StringIO
+import functools
 import logging
 import time
 
@@ -60,7 +61,8 @@ def int_vec_to_z3(int_vec):
 
 
 def int_list_to_cube(int_list, vars):
-    return And(*[vars[i] if int_list[i] == 1 else Not(vars[i]) for i in range(len(int_list))])
+    l = len(int_list)
+    return And(*[vars[i] if int_list[i] == 1 else Not(vars[i]) for i in xrange(l)])
 
 
 class ConcretizationResult(object):
@@ -85,3 +87,6 @@ def time_me_c(measuree, args):
     res = measuree(*args)
     end = time.time()
     return end - start, res
+
+
+foldr = lambda func, acc, xs: functools.reduce(lambda x, y: func(y, x), xs[::-1], acc)

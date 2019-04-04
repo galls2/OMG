@@ -127,24 +127,24 @@ class PythonAigParser(AigParser):
         in_vars, next_in_vars, next_output_vars, next_state_vars, prev_output_vars, prev_state_vars = self._get_var_lists()
 
         ltr_z3_no_sub = simplify(And(*[next_state_vars[_l] == formulas[next_state_lits[_l]] for _l in
-                                       range(self._L)]))  # in_lits,prev_state_lits->nextstate_vars
+                                       xrange(self._L)]))  # in_lits,prev_state_lits->nextstate_vars
         outputs_z3_no_sub = [simplify(next_output_vars[_o] == formulas[out_lits[_o]]) for _o in
-                             range(self._O)]  # in_lits,prev_state_lits->nextoutput_vars
+                             xrange(self._O)]  # in_lits,prev_state_lits->nextoutput_vars
 
         current_in_vars = [Bool(str(_i)) for _i in in_lits]
         curr_prev_latch_vars = [Bool(str(_l)) for _l in prev_state_lits]
 
         outputs_z3_next = [substitute(outputs_z3_no_sub[_o], zip(current_in_vars + curr_prev_latch_vars, next_in_vars + next_state_vars)) for _o
-                      in range(self._O)]
+                      in xrange(self._O)]
         outputs_z3_prev = [substitute(outputs_z3_no_sub[_o],
                                       zip(current_in_vars + curr_prev_latch_vars + [next_output_vars[_o]], in_vars + prev_state_vars+[prev_output_vars[_o]]))
                            for _o
-                           in range(self._O)]
+                           in xrange(self._O)]
         ltr_no_prev_output_z3 = substitute(ltr_z3_no_sub, zip(current_in_vars + curr_prev_latch_vars, in_vars + prev_state_vars))
         ltr_z3 = And(ltr_no_prev_output_z3, *outputs_z3_prev)
 
         output_formulas = [FormulaWrapper(outputs_z3_next[_o], [next_state_vars, [next_output_vars[_o]]], [next_in_vars]) for _o in
-                           range(self._O)]
+                           xrange(self._O)]
 
         prev_var_vector = prev_state_vars + prev_output_vars
         next_var_vector = next_state_vars + next_output_vars
@@ -168,17 +168,17 @@ class PythonAigParser(AigParser):
 
     def _get_var_lists(self):
         max_var = 2 * self._M + 3
-        in_vars = [Bool(str(max_var + _i)) for _i in range(self._I)]
+        in_vars = [Bool(str(max_var + _i)) for _i in xrange(self._I)]
         max_var += self._I
-        next_in_vars = [Bool(str(max_var + _i)) for _i in range(self._I)]
+        next_in_vars = [Bool(str(max_var + _i)) for _i in xrange(self._I)]
         max_var += self._I
-        prev_state_vars = [Bool(str(max_var + _pl)) for _pl in range(self._L)]
+        prev_state_vars = [Bool(str(max_var + _pl)) for _pl in xrange(self._L)]
         max_var += self._L
-        next_state_vars = [Bool(str(max_var + _nl)) for _nl in range(self._L)]
+        next_state_vars = [Bool(str(max_var + _nl)) for _nl in xrange(self._L)]
         max_var += self._L
-        prev_output_vars = [Bool(str(max_var + i)) for i in range(self._O)]
+        prev_output_vars = [Bool(str(max_var + i)) for i in xrange(self._O)]
         max_var += self._O
-        next_output_vars = [Bool(str(max_var + i)) for i in range(self._O)]
+        next_output_vars = [Bool(str(max_var + i)) for i in xrange(self._O)]
         max_var += self._O
         return in_vars, next_in_vars, next_output_vars, next_state_vars, prev_output_vars, prev_state_vars
 
@@ -201,13 +201,13 @@ class PythonAigParser(AigParser):
         formulas = {lit: Bool(str(lit)) for lit in in_lits + prev_state_lits}
         formulas[0] = BoolVal(False)
         formulas[1] = BoolVal(True)
-        first_and_line_idx = next((i for i in range(len(aag_lines)) if
+        first_and_line_idx = next((i for i in xrange(len(aag_lines)) if
                                   len(aag_lines[i].split()) == 3 and int(aag_lines[i].split()[0]) != int(
                                       aag_lines[i].split()[2]) and int(aag_lines[i].split()[2]) != 1), len(aag_lines))
         aag_from_and = aag_lines[first_and_line_idx:]
         first_and_lit = int(aag_from_and[0].split()[0]) if aag_from_and else None
-        for lit_to_calc in next_state_lits + out_lits:
-            self._dfs(formulas, lit_to_calc, aag_from_and, first_and_lit)
+
+        [self._dfs(formulas, lit_to_calc, aag_from_and, first_and_lit) for lit_to_calc in next_state_lits + out_lits]
         return formulas
 
     def get_ap_mapping(self):
@@ -273,7 +273,7 @@ class AvyAigParser(AigParser):
             return str(idx).zfill(len(str(O)))
 
         bad_file_names = ['.'.join(self._aig_path.split('.')[:-1]) + 'o' + get_file_num_name(i, self._O) + '.aig'
-                          for i in range(self._O)]
+                          for i in xrange(self._O)]
         ltr_aig_path = bad_file_names[0]
 
         ltr_metadata, ltr_dimacs = _get_cnf(ltr_aig_path, 'Tr')

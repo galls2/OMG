@@ -1,6 +1,6 @@
 from z3 import *
 
-from common import int_vec_to_z3
+from common import int_vec_to_z3, foldr
 
 
 class FormulaWrapper(object):
@@ -68,3 +68,24 @@ class FormulaWrapper(object):
     def __ne__(self, o):
         return not self == o
 
+def flip_q(q):
+    return 'A' if q == 'E' else 'E'
+
+class QBF(object):
+    def __init__(self, q_list, prop_formula):
+        super(QBF, self).__init__()
+        self._q_list = q_list
+        self._prop = prop_formula
+
+    def flip_q(self):
+        self._q_list = [(flip_q(q), v) for (q, v) in self._q_list]
+        return self
+
+    def connect(self):
+        return foldr(lambda (q,v), f: Exists(v, f) if q == 'E' else ForAll(v, f), self._prop, self._q_list)
+
+if __name__ == '__main__':
+    x = [Bool('x'+str(i)) for i in range(5)]
+    q = QBF([('A' if i%2 == 0 else 'E', x[i]) for i in range(5)], And(*x))
+    print q.connect()
+    print q.flip_q().connect()

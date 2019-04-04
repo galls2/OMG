@@ -189,9 +189,10 @@ class Z3Utils(object):
         variables = tr_from_concs[0].get_var_vectors()[0]
         abs_formula = abstract_witness.get_descriptive_formula().substitute(variables, 0, variables).substitute_inputs(tr.get_input_vectors()[1], 0).get_z3()
 
-        flags = [Bool('f' + str(i)) for i in range(len(tr_from_concs))]
+        n_flags = len(tr_from_concs)
+        flags = [Bool('f' + str(i)) for i in xrange(n_flags)]
 
-        tr_flagged = [Implies(flags[i], tr_from_concs[i].get_z3()) for i in range(len(tr_from_concs))]
+        tr_flagged = [Implies(flags[i], tr_from_concs[i].get_z3()) for i in xrange(n_flags)]
         all_tr_flagged = And(*tr_flagged)
 
         f = And(all_tr_flagged, abs_formula)
@@ -200,7 +201,7 @@ class Z3Utils(object):
         s.add(f)
         s.push()
 
-        for i in range(len(flags)):
+        for i in xrange(n_flags):
             flag = flags[i]
             sat_res = s.check(flag)
             if sat_res == sat:
@@ -275,8 +276,8 @@ class Z3Utils(object):
     '''
     @classmethod
     def combine_ltr_with_bad_formulas(cls, ltr_formula, output_formulas, max_var_ltr):
-        prev_output_vars = [Bool(str(max_var_ltr + i)) for i in range(len(output_formulas))]
-        next_output_vars = [Bool(str(max_var_ltr + len(output_formulas) + i)) for i in range(len(output_formulas))]
+        prev_output_vars = [Bool(str(max_var_ltr + i)) for i in xrange(len(output_formulas))]
+        next_output_vars = [Bool(str(max_var_ltr + len(output_formulas) + i)) for i in xrange(len(output_formulas))]
 
         prev_latch_vars, next_latch_vars = ltr_formula.get_var_vectors()
 
@@ -291,7 +292,7 @@ class Z3Utils(object):
                                               .substitute([next_output_vars[i]], 1, [next_output_vars[i]])
                                               .substitute(next_latch_vars, 0, next_latch_vars)
                                               .get_z3()
-                                          for i in range(len(output_formulas))]
+                                          for i in xrange(len(output_formulas))]
 
         tr_formula = And(ltr_formula.get_z3(), *substituted_output_z3_formulas)
 

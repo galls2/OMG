@@ -91,7 +91,7 @@ class OmgBuilder(object):
         return OmgModelChecker(self._kripke, self._brother_unification, self._trivial_split)
 
 
-class UnificationPart(object):
+class UnifPart(object):
     def __init__(self, cl_node, cn_nodes):
         self.cl_node = cl_node
         self.cn_nodes = cn_nodes
@@ -323,8 +323,8 @@ class OmgModelChecker(object):
                                                   to_return=True)  # logger.debug('EV:: Found finite trace from ' + node.description() + ' to ' + node_to_explore.description())
             else:
                 children_nodes = node_to_explore.unwind_further()
-                for child_node in children_nodes:
-                    to_visit[child_node] = child_node.unwinding_priority()
+                f_set_prio = to_visit.__setitem__
+                [f_set_prio(child_node, child_node.unwinding_priority()) for child_node in children_nodes]
 
             inductive_res = self._check_inductive_ev(is_strengthen, node, node_to_explore, spec)
             if inductive_res:
@@ -541,7 +541,7 @@ class OmgModelChecker(object):
         cn_to_cl = {tup[1]: tup[0].get_classification_node() for tup in abs_states_with_nodes}
         depths = {cl_node.get_depth() for cl_node in cl_nodes}
         with_depth = {depth:  # d-> {(cl_node, {conc_nodes})}
-                          tuple([UnificationPart(cl, [cn for cn in cn_to_cl.keys() if cn_to_cl[cn] == cl]) for cl in
+                          tuple([UnifPart(cl, [cn for cn in cn_to_cl.keys() if cn_to_cl[cn] == cl]) for cl in
                                  cl_nodes if cl.get_depth() == depth]) for depth in depths}
 
         to_return = []
@@ -581,14 +581,9 @@ class OmgModelChecker(object):
                                                                                                              u_part)])
                           for u_part in bottom_layer}
 
-        def is_col_of_size(col, _len):
-            return len(col) == _len
-
-        def unify(ufs):
-            return UnificationPart(ufs[0].cl_node.get_parent(), [cn_node for uf in ufs for cn_node in uf.cn_nodes])
-
         unif_brothers = [list(tup_val) for tup_val in parent_mapping.values()]
-        unchanged = [l[0] for l in unif_brothers if is_col_of_size(l, 1)]
-        to_unify = [unify(u_part) for u_part in unif_brothers if is_col_of_size(u_part, 2)]
+        unchanged = [l[0] for l in unif_brothers if len(l) ==  1]
+        to_unify = [UnifPart(u_part[0].cl_node.get_parent(), [cn_node for uf in u_part for cn_node in uf.cn_nodes])
+                    for u_part in unif_brothers if len(u_part) == 2]
 
         return unchanged, to_unify

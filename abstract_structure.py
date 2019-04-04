@@ -250,8 +250,7 @@ class AbstractStructure(object):
 
         self.add_must_hyper(new_abs_has_sons, updated_abstract_sons)
 
-        for abs_son in updated_abstract_sons:
-            self.add_NE_may(new_abs_no_sons, abs_son)
+        [self.add_NE_may(new_abs_no_sons, abs_son) for abs_son in updated_abstract_sons]
 
         if new_abs_no_sons in self._E_may_over.keys():
             self._E_may_over[new_abs_no_sons] = {remove_elems(updated_abstract_sons, _cl)

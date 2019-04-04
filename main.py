@@ -40,7 +40,7 @@ def parse_input(src=None):
 
 def check_files(aig_paths, ctl_paths):
     logging.getLogger('OMG').info('Run configurations: ' + str(DEFAULT_FLAGS))
-    for i in range(len(aig_paths)):
+    for i in xrange(len(aig_paths)):
         aig_file_path = aig_paths[i]
         ctl_formula_path = ctl_paths[i]
 
@@ -78,7 +78,7 @@ def model_checking(parsed_args):
         return functools.reduce(lambda x, y: x | y,
                                 [set(ctl_formula.get_aps()) for ctl_formula in _chunk[1:]])
 
-    ap_chunks = {i: chunk_aps(ctl_chunks[i]) for i in range(len(ctl_chunks))}
+    ap_chunks = {i: chunk_aps(ctl_chunks[i]) for i in xrange(len(ctl_chunks))}
 
     num_specs = sum([len(__chunk[1:]) for __chunk in ctl_chunks])
     timeout = int(parsed_args.timeout)
@@ -96,7 +96,7 @@ def model_checking(parsed_args):
                     .set_trivial_split_elimination(parsed_args.trivial_split_elimination) \
                     .build()
 
-            for i in range(len(ctl_chunks)):
+            for i in xrange(len(ctl_chunks)):
                 chunk = ctl_chunks[i]
 
                 if few_aps:
@@ -224,8 +224,8 @@ def regression_tests():
 if __name__ == '__main__':
     create_logger()
 
-    test_specific_tests(['spinner4'])
+#    test_specific_tests(['spinner4'])
 
- #   regression_tests()
+    regression_tests()
 #    model_checking(parse_input())
   #  test_all_iimc()
