@@ -70,10 +70,6 @@ class FormulaWrapper(object):
         return not self == o
 
 
-def flip_q(q):
-    return 'A' if q == 'E' else 'E'
-
-
 class QBF(object):
     def __init__(self, q_list, prop_formula):
         super(QBF, self).__init__()
