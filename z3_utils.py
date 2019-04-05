@@ -3,18 +3,12 @@ import logging
 
 from z3 import *
 
-from common import z3_val_to_int
+from common import z3_val_to_int, EEClosureViolation
 from state import State
-from formula_wrapper import FormulaWrapper
+from formula_wrapper import FormulaWrapper, QBF
 from var_manager import VarManager
 
 logger = logging.getLogger('OMG')
-
-
-class EEClosureViolation(object):
-    def __init__(self, conc_src, conc_dst):
-        self.conc_src = conc_src
-        self.conc_dst = conc_dst
 
 
 class AstRefKey:
@@ -62,8 +56,6 @@ def get_states(model, variables, kripke):
 
 
 class Z3Utils(object):
-    copies_counter = 0
-
     def __init__(self):
         super(Z3Utils, self).__init__()
 
@@ -79,8 +71,9 @@ class Z3Utils(object):
         abs_targets_sub = [target.get_descriptive_formula()
                                .substitute_inputs(next_input_vector, 0)
                                .substitute(new_vars, 0) for target in abs_targets]
-        abs_or = Or(*[_t.get_z3() for _t in abs_targets_sub])
-        split_by_formula_tag = FormulaWrapper(abs_or, [new_vars], [next_input_vector])
+        abs_or = Or(*[_t.get_qbf().get_prop() for _t in abs_targets_sub])
+        new_q_list = [_v for _t in abs_targets_sub for _v in _t.get_qbf().get_q_list()]
+        split_by_formula_tag = FormulaWrapper(QBF(abs_or, new_q_list), [new_vars], [next_input_vector])
 
         transitions_has_sons = tr.substitute(new_vars, 1, new_vars)  # R(u,v) [v<-v']
         return split_by_formula_tag, transitions_has_sons
@@ -88,26 +81,26 @@ class Z3Utils(object):
     '''
     Returns Ev'[TR(v,v') & OR(targets(v'))]
     '''
+
     @classmethod
     def get_exists_successors_in_formula(cls, abstract_targets, transitions):
         kripke = abstract_targets[0].get_kripke()
         in_vec = transitions.get_input_vectors()[0]
 
-        split_by_formula_tag, transitions_has_sons = cls._get_components_in_quantified(abstract_targets, transitions)
-        prev_vars, new_vars = transitions_has_sons.get_var_vectors()
+        split_by, tr = cls._get_components_in_quantified(abstract_targets, transitions)
+        prev_vars, new_vars = tr.get_var_vectors()
         qe_policy = kripke.get_qe_policy()
 
-        inner = And(transitions_has_sons.get_z3(), split_by_formula_tag.get_z3())
-        exists_formula = cls.apply_qe(simplify(Exists(new_vars+in_vec, inner)), qe_policy)
-     #   exists_formula = cls.apply_qe(simplify(Exists(new_vars, inner)), qe_policy)
+        inner = And(tr.get_qbf().get_prop(), split_by.get_qbf().get_prop())
+        q_list = [('E', new_vars + in_vec)] + split_by.get_qbf().get_q_list() + tr.get_qbf().get_q_list()
+     #   exists_formula = cls.apply_qe(simplify(Exists(new_vars + in_vec, inner)), qe_policy)
 
-       # legal_source = kripke.get_output_formula().substitute_inputs(in_vec, 0).substitute(prev_vars, 0)
-       # return FormulaWrapper(And(legal_source.get_z3(), exists_formula), [prev_vars], [in_vec])
-        return FormulaWrapper(exists_formula, [prev_vars], [in_vec])
+        return FormulaWrapper(QBF(inner, q_list), [prev_vars], [in_vec])
 
     '''
     Returns Av'[TR(v,v') -> OR(targets(v'))]
     '''
+
     @classmethod
     def get_forall_successors_in_formula(cls, abstract_targets, transitions):
         kripke = abstract_targets[0].get_kripke()
@@ -117,11 +110,11 @@ class Z3Utils(object):
         qe_policy = kripke.get_qe_policy()
 
         inner = Implies(transitions_has_sons.get_z3(), split_by_formula_tag.get_z3())
-        forall_formula = cls.apply_qe(simplify(ForAll(new_vars+in_vec, inner)), qe_policy)
+        forall_formula = cls.apply_qe(simplify(ForAll(new_vars + in_vec, inner)), qe_policy)
 
- #       legal_source = kripke.get_output_formula().substitute_inputs(in_vec, 0).substitute(prev_vars, 0)
+        #       legal_source = kripke.get_output_formula().substitute_inputs(in_vec, 0).substitute(prev_vars, 0)
 
-#        return FormulaWrapper(And(legal_source.get_z3(), forall_formula), [prev_vars], [in_vec])
+        #        return FormulaWrapper(And(legal_source.get_z3(), forall_formula), [prev_vars], [in_vec])
         return FormulaWrapper(forall_formula, [prev_vars], [in_vec])
 
     @classmethod
@@ -187,7 +180,8 @@ class Z3Utils(object):
         tr_from_concs = [sub_src(tr, node) for node in nodes_from]
 
         variables = tr_from_concs[0].get_var_vectors()[0]
-        abs_formula = abstract_witness.get_descriptive_formula().substitute(variables, 0, variables).substitute_inputs(tr.get_input_vectors()[1], 0).get_z3()
+        abs_formula = abstract_witness.get_descriptive_formula().substitute(variables, 0, variables).substitute_inputs(
+            tr.get_input_vectors()[1], 0).get_z3()
 
         n_flags = len(tr_from_concs)
         flags = [Bool('f' + str(i)) for i in xrange(n_flags)]
@@ -216,8 +210,9 @@ class Z3Utils(object):
         src_vars, dst_vars = transitions.get_var_vectors()
         input_vars, input_tag_vars = transitions.get_input_vectors()
         src = to_close.get_descriptive_formula().substitute(src_vars, 0).substitute_inputs(input_vars, 0).get_z3()
-        dst_formulas = [closer.get_descriptive_formula().substitute(dst_vars, 0).substitute_inputs(input_tag_vars, 0).get_z3()
-                        for closer in close_with]
+        dst_formulas = [
+            closer.get_descriptive_formula().substitute(dst_vars, 0).substitute_inputs(input_tag_vars, 0).get_z3()
+            for closer in close_with]
         dst = Not(Or(*dst_formulas))
 
         closure_formula = And(src, ForAll(dst_vars, Implies(transitions.get_z3(), dst)))
@@ -241,8 +236,9 @@ class Z3Utils(object):
 
         src_wrapper = to_close.get_descriptive_formula().substitute(src_vars, 0).substitute_inputs(input_vars, 0)
         src = src_wrapper.get_z3()
-        dst_formulas = [closer.get_descriptive_formula().substitute(dst_vars, 0).substitute_inputs(input_tag_vars, 0).get_z3()
-                        for closer in close_with]
+        dst_formulas = [
+            closer.get_descriptive_formula().substitute(dst_vars, 0).substitute_inputs(input_tag_vars, 0).get_z3()
+            for closer in close_with]
         dst = Not(Or(*dst_formulas))
 
         closure_formula = simplify(And(src, transitions.get_z3(), dst))

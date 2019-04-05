@@ -4,7 +4,7 @@ import re
 
 from z3 import Bool, Not, And, simplify, Or, substitute, BoolVal
 
-from formula_wrapper import FormulaWrapper
+from formula_wrapper import FormulaWrapper, QBF
 from state import State
 from z3_utils import Z3Utils
 
@@ -52,10 +52,10 @@ def main_connective(f, txt):
 
 
 def get_initial_states(i_latches, output_formulas, kripke, tr):
-    def get_outputs_for_latch_values(l_vals):
+    def get_outputs_for_latch_values(_latch_values):
         return itertools.product(*[out_val_list \
                                    for out_formula in output_formulas
-                                   for out_val_list in Z3Utils.all_sat(out_formula.assign_int_vec(l_vals))])
+                                   for out_val_list in Z3Utils.all_sat(out_formula.assign_int_vec(_latch_values))])
 
     initial_states = (State.from_int_list(list(i_latch) + list(comb), tr.get_var_vectors()[0], kripke)
                       for i_latch in i_latches
@@ -81,7 +81,6 @@ class PythonAigParser(AigParser):
         out_path = self._aig_path.split('.')[0] + '.aag'
         cmd = '{aigtoaig} -a {inpath} > {outpath}'.format(aigtoaig=AIG_TO_AAG_EXE_PATH, inpath=self._aig_path,
                                                           outpath=out_path)
-        #   print cmd
         os.system(cmd)
         return out_path
 
@@ -134,36 +133,36 @@ class PythonAigParser(AigParser):
         current_in_vars = [Bool(str(_i)) for _i in in_lits]
         curr_prev_latch_vars = [Bool(str(_l)) for _l in prev_state_lits]
 
-        outputs_z3_next = [substitute(outputs_z3_no_sub[_o], zip(current_in_vars + curr_prev_latch_vars, next_in_vars + next_state_vars)) for _o
-                      in xrange(self._O)]
+        outputs_z3_next = [substitute(outputs_z3_no_sub[_o],
+                                      zip(current_in_vars + curr_prev_latch_vars, next_in_vars + next_state_vars)) for
+                           _o
+                           in xrange(self._O)]
         outputs_z3_prev = [substitute(outputs_z3_no_sub[_o],
-                                      zip(current_in_vars + curr_prev_latch_vars + [next_output_vars[_o]], in_vars + prev_state_vars+[prev_output_vars[_o]]))
+                                      zip(current_in_vars + curr_prev_latch_vars + [next_output_vars[_o]],
+                                          in_vars + prev_state_vars + [prev_output_vars[_o]]))
                            for _o
                            in xrange(self._O)]
-        ltr_no_prev_output_z3 = substitute(ltr_z3_no_sub, zip(current_in_vars + curr_prev_latch_vars, in_vars + prev_state_vars))
+        ltr_no_prev_output_z3 = substitute(ltr_z3_no_sub,
+                                           zip(current_in_vars + curr_prev_latch_vars, in_vars + prev_state_vars))
         ltr_z3 = And(ltr_no_prev_output_z3, *outputs_z3_prev)
 
-        output_formulas = [FormulaWrapper(outputs_z3_next[_o], [next_state_vars, [next_output_vars[_o]]], [next_in_vars]) for _o in
-                           xrange(self._O)]
+        output_formulas = [
+            FormulaWrapper(QBF(outputs_z3_next[_o]), [next_state_vars, [next_output_vars[_o]]], [next_in_vars]) for _o in
+            xrange(self._O)]
 
         prev_var_vector = prev_state_vars + prev_output_vars
         next_var_vector = next_state_vars + next_output_vars
         var_vectors = [prev_var_vector, next_var_vector]
 
         inner_tr = And(ltr_z3, *outputs_z3_next)
-        '''
-        if in_vars:
-            quantified_input = Z3Utils.apply_qe(And(Exists(in_vars, ltr_z3), Exists(in_vars, And(*outputs_z3_next))),
-                                                qe_policy)
-        else:
-            quantified_input = And(*[f for f in [ltr_z3] + outputs_z3_next])
-        '''
 
-        tr = FormulaWrapper(inner_tr, var_vectors, [in_vars, next_in_vars])
+        qbf_tr = QBF(inner_tr)
+        tr = FormulaWrapper(qbf_tr, var_vectors, [in_vars, next_in_vars])
 
         initial_states = get_initial_states(self._init_latch_values, output_formulas, kripke, tr)
 
-        output_formula_wrapper = FormulaWrapper(And(*outputs_z3_prev), [prev_var_vector], [in_vars])
+        qbf_outputs = QBF(And(*outputs_z3_prev))
+        output_formula_wrapper = FormulaWrapper(qbf_outputs, [prev_var_vector], [in_vars])
         return tr, initial_states, output_formula_wrapper
 
     def _get_var_lists(self):
@@ -202,8 +201,8 @@ class PythonAigParser(AigParser):
         formulas[0] = BoolVal(False)
         formulas[1] = BoolVal(True)
         first_and_line_idx = next((i for i in xrange(len(aag_lines)) if
-                                  len(aag_lines[i].split()) == 3 and int(aag_lines[i].split()[0]) != int(
-                                      aag_lines[i].split()[2]) and int(aag_lines[i].split()[2]) != 1), len(aag_lines))
+                                   len(aag_lines[i].split()) == 3 and int(aag_lines[i].split()[0]) != int(
+                                       aag_lines[i].split()[2]) and int(aag_lines[i].split()[2]) != 1), len(aag_lines))
         aag_from_and = aag_lines[first_and_line_idx:]
         first_and_lit = int(aag_from_and[0].split()[0]) if aag_from_and else None
 
@@ -223,6 +222,7 @@ class PythonAigParser(AigParser):
         #  self._ap_mapping = {' '.join(line.split(' ')[1:]): line.split()[0] for line in aps}
         r = {ap: next(ap_line.split()[0] for ap_line in ap_lines if ap_line.split()[1] == ap) for ap in aps}
         self._ap_mapping = r
+
 
 '''
 

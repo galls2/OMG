@@ -8,6 +8,9 @@ from z3 import BoolVal, Not, And
 logger = logging.getLogger('OMG')
 
 
+# -----------------------------------------------------------------------------------------------------
+# PROFILING
+# -----------------------------------------------------------------------------------------------------
 def profiler(func, params):
     pr = cProfile.Profile()
     pr.enable()
@@ -20,58 +23,6 @@ def profiler(func, params):
     ps.print_callers(1.0, '*')
     ps.print_callees()
     return res
-
-
-def abs_to_int(_abs):
-    return 1 << _abs.get_id()
-
-
-def abstract_states_to_int(abstract_states):
-    return sum([abs_to_int(_abs) for _abs in abstract_states])
-
-
-def subset_abs(small, big):
-    return (small & big) == small
-
-
-def in_abs(_el, abs_set):
-    try:
-        return abs_to_int(_el) & abs_set
-    except:
-        print 'g'
-
-def add_elems_to_abs(_elements, abs_set):
-    return abstract_states_to_int(_elements) | abs_set
-
-
-def remove_elems(_elements, remove_from):
-    return (~abstract_states_to_int(_elements)) & remove_from
-
-
-def z3_val_to_int(z3_val):
-    return 1 if z3_val.sexpr() == 'true' else 0
-
-
-def z3_val_to_bool(z3_val):
-    return True if z3_val.sexpr() == 'true' else False
-
-
-def int_vec_to_z3(int_vec):
-    return [BoolVal(True) if val == 1 else BoolVal(False) for val in int_vec]
-
-
-def int_list_to_cube(int_list, vars):
-    l = len(int_list)
-    return And(*[vars[i] if int_list[i] == 1 else Not(vars[i]) for i in xrange(l)])
-
-
-class ConcretizationResult(object):
-    def __init__(self, src=None, dst=None):
-        self.src_node = src
-        self.dst_conc = dst
-
-    def exists(self):
-        return not (self.src_node is None and self.dst_conc is None)
 
 
 def time_me(measuree, args, message):
@@ -88,5 +39,75 @@ def time_me_c(measuree, args):
     end = time.time()
     return end - start, res
 
+
+# -----------------------------------------------------------------------------------------------------
+# ABSTRACT STATES TO INTS
+# -----------------------------------------------------------------------------------------------------
+def abs_to_int(_abs):
+    return 1 << _abs.get_id()
+
+
+def abstract_states_to_int(abstract_states):
+    return sum([abs_to_int(_abs) for _abs in abstract_states])
+
+
+def subset_abs(small, big):
+    return (small & big) == small
+
+
+def in_abs(_el, abs_set):
+    return abs_to_int(_el) & abs_set
+
+
+def add_elems_to_abs(_elements, abs_set):
+    return abstract_states_to_int(_elements) | abs_set
+
+
+def remove_elems(_elements, remove_from):
+    return (~abstract_states_to_int(_elements)) & remove_from
+
+
+# -----------------------------------------------------------------------------------------------------
+# Z3 VALUE CONVERSIONS
+# -----------------------------------------------------------------------------------------------------
+def z3_val_to_int(z3_val):
+    return 1 if z3_val.sexpr() == 'true' else 0
+
+
+def z3_val_to_bool(z3_val):
+    return True if z3_val.sexpr() == 'true' else False
+
+
+def int_vec_to_z3(int_vec):
+    return [BoolVal(True) if val == 1 else BoolVal(False) for val in int_vec]
+
+
+def int_list_to_cube(int_list, _vars):
+    _l = len(int_list)
+    return And(*[_vars[i] if int_list[i] == 1 else Not(_vars[i]) for i in xrange(_l)])
+
+
+# -----------------------------------------------------------------------------------------------------
+# AUXILIARY CLASSES
+# -----------------------------------------------------------------------------------------------------
+
+class ConcretizationResult(object):
+    def __init__(self, src=None, dst=None):
+        self.src_node = src
+        self.dst_conc = dst
+
+    def exists(self):
+        return not (self.src_node is None and self.dst_conc is None)
+
+
+class EEClosureViolation(object):
+    def __init__(self, conc_src, conc_dst):
+        self.conc_src = conc_src
+        self.conc_dst = conc_dst
+
+
+# -----------------------------------------------------------------------------------------------------
+# FUNCTIONAL PROGRAMMING
+# -----------------------------------------------------------------------------------------------------
 
 foldr = lambda func, acc, xs: functools.reduce(lambda x, y: func(y, x), xs[::-1], acc)

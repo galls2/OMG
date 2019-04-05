@@ -1,3 +1,4 @@
+"""
 from z3 import *
 
 from formula_wrapper import FormulaWrapper
@@ -26,9 +27,9 @@ class CnfParser( object):
         super(CnfParser, self).__init__()
         self._num_regs = num_regs
         self._qe_policy = qe_policy
-    '''
-      dimacs is a list of lines, each line is a clause
-    '''
+    
+    #  dimacs is a list of lines, each line is a clause
+    
 
     def parse_metadata_tr(self, tr_metadata):
         PREFIXES = ['CURRENT', 'NEXT']
@@ -69,3 +70,4 @@ class CnfParser( object):
         after_qe = Z3Utils.apply_qe(quantifier_over_aux, self._qe_policy)
     #    print 'lalalala'
         return FormulaWrapper(after_qe, var_vectors)
+"""

@@ -1,22 +1,10 @@
 import functools
 
-'''
-Due to the fact that we agreed that for all proper subformulas of the original specification, we must keep the 
-invariant that when finished check s|=f, it follows that either [s] |= f or [s] |= ~f, we do not make a STATE class. 
-'''
 
-'''
-Moreover, as of the fact that we have to recognize loops, we remain with a tree form. 
-'''
-
-
-def print_tree(node, successors_function, printer_function, depth=0):
-    ret = "\t" * depth + printer_function(node) + "\n"
-    succ = successors_function(node)
-    if succ is None:
-        succ = []
-    for child in succ:
-        ret += print_tree(child, successors_function, printer_function, depth + 1)
+def print_tree(node, succ_func, print_func, depth=0):
+    header = "\t" * depth + print_func(node) + "\n"
+    _s = succ_func(node)
+    ret = ' '.join([header]+[print_tree(_c, succ_func, print_func, depth + 1) for _c in _s] if _s else [])
     return ret
 
 
@@ -147,12 +135,12 @@ class UnwindingTree(object):
         return self < other
 
     def description(self):
-        return str(self.concrete_label)+','+str(self.depth)
+        return '{}, {}'.format(self.concrete_label, self.depth)
 
     def __str__(self):
         return print_tree(self, lambda node: [] if node.get_successors() is None else node.get_successors(),
                           lambda node: str(node.concrete_label) if len(node._get_developed()) > 0
-                          else '#'+str(node.concrete_label))+'#'
+                          else '#{}#'.format(node.concrete_label))
 
     def unwinding_priority(self):
         return 0 if self.URGENT else self.depth+1

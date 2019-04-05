@@ -180,7 +180,7 @@ class AbstractStructure(object):
         base_formula, quantified_part, vars, input_vector = \
             formula_getter(abs_to_close, abstract_sons, kripke.get_tr_formula())
 
-        if self._trivial_split and check_trivial_split:
+        if self._trivial_split and check_trivial_split: #######HERE AND Z3UTILS
             s = Solver()
             s.add(base_formula)
             y_flag, n_flag = Bool('Y'), Bool('N')

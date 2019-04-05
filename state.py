@@ -1,8 +1,12 @@
+import logging
+
 from z3 import Solver, And, sat, Not
 
 from common import int_list_to_cube
-from formula_wrapper import FormulaWrapper
+from formula_wrapper import FormulaWrapper, QBF
 from common import z3_val_to_bool
+
+logger = logging.getLogger('OMG')
 
 
 class State(object):
@@ -45,9 +49,13 @@ class State(object):
         AP = self.kripke.get_aps()
         _, model = self.formula_wrapper.sat_get_model()
 
-        f = And(self.kripke.get_output_formula().get_z3(), *[self.ap_lit_by_model(model, ap) for ap in AP])
-        self.bis0 = FormulaWrapper(f, self.formula_wrapper.get_var_vectors(), [self.kripke.get_input_var_vector()])
-        return self.bis0
+        state_formula = self.kripke.get_output_formula().get_qbf()
+        logger.debug('ASSERTING IN STATE.PY')
+        assert len(state_formula.get_q_list()) == 0 # DEBUGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG
+        prop = And(state_formula.connect(), *[self.ap_lit_by_model(model, ap) for ap in AP])
+        bis0 = FormulaWrapper(QBF(prop), self.formula_wrapper.get_var_vectors(), [self.kripke.get_input_var_vector()])
+        self.bis0 = bis0
+        return bis0
 
     def get_sat_aps(self):
         return [ap for ap in self.get_all_aps() if self.is_labeled_with(ap)]
@@ -58,5 +66,6 @@ class State(object):
     @staticmethod
     def from_int_list(int_list, _vars, kripke):
         cube = int_list_to_cube(int_list, _vars)
-        f_wrap = FormulaWrapper(cube, [_vars], [kripke.get_input_var_vector()])
+        qbf = QBF(cube)
+        f_wrap = FormulaWrapper(qbf, [_vars], [kripke.get_input_var_vector()])
         return State(f_wrap, kripke)
