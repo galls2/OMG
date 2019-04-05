@@ -105,22 +105,24 @@ class Z3Utils(object):
     def get_forall_successors_in_formula(cls, abstract_targets, transitions):
         kripke = abstract_targets[0].get_kripke()
         in_vec = transitions.get_input_vectors()[0]
-        split_by_formula_tag, transitions_has_sons = cls._get_components_in_quantified(abstract_targets, transitions)
-        prev_vars, new_vars = transitions_has_sons.get_var_vectors()
+        split_by, tr = cls._get_components_in_quantified(abstract_targets, transitions)
+        prev_vars, new_vars = tr.get_var_vectors()
         qe_policy = kripke.get_qe_policy()
 
-        inner = Implies(transitions_has_sons.get_z3(), split_by_formula_tag.get_z3())
-        forall_formula = cls.apply_qe(simplify(ForAll(new_vars + in_vec, inner)), qe_policy)
+        neg_tr = tr.negate()
+        inner = Or(neg_tr.get_qbf().get_prop(), split_by.get_qbf().get_prop())
+       # forall_formula = cls.apply_qe(simplify(ForAll(new_vars + in_vec, innektr)), qe_policy)
+        q_list = [('A', new_vars + in_vec)] + split_by.get_qbf().get_q_list() + neg_tr.get_qbf().get_q_list()
 
         #       legal_source = kripke.get_output_formula().substitute_inputs(in_vec, 0).substitute(prev_vars, 0)
 
         #        return FormulaWrapper(And(legal_source.get_z3(), forall_formula), [prev_vars], [in_vec])
-        return FormulaWrapper(forall_formula, [prev_vars], [in_vec])
+        return FormulaWrapper(QBF(inner, q_list), [prev_vars], [in_vec])
 
     @classmethod
     def get_split_formula(cls, to_split, split_by, transitions, quantified_part_getter):
         input_vars = transitions.get_input_vectors()[0]
-        formula_to_split = to_split.get_descriptive_formula().substitute_inputs(transitions.get_input_vectors()[0], 0)
+        formula_to_split = to_split.get_descriptive_formula().substitute_inputs(input_vars, 0)
         quantifier_wrapper_pos = quantified_part_getter(split_by, transitions)
         quantified_formula = quantifier_wrapper_pos.get_z3()
         # pos_quantifier = simplify(And(formula_to_split_pos.get_z3_formula(), quantified_formula))  # A(v) & Qv'[phi(v,v')]
@@ -132,8 +134,8 @@ class Z3Utils(object):
 
         v_vars = to_split.get_descriptive_formula().get_var_vectors()[0]
         # return FormulaWrapper(pos_quantifier, [v_vars]), FormulaWrapper(neg_quantifier, [v_vars])
-        return formula_to_split.get_z3(), quantified_formula, v_vars, transitions.get_input_vectors()[0]
-
+        return formula_to_split.get_z3(), quantified_formula, v_vars, input_vars
+# pos, neg, (common, pos_q, neg_q)
     @classmethod
     def get_ex_split_formulas(cls, to_split, split_by, transitions):
         return cls.get_split_formula(to_split, split_by, transitions, cls.get_exists_successors_in_formula)
