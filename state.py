@@ -16,13 +16,13 @@ class State(object):
         self.bis0 = None
 
     def __eq__(self, o):
-        return self.formula_wrapper.get_z3().eq(o.formula_wrapper.get_z3())
+        return self.formula_wrapper.get_qbf() == o.formula_wrapper.get_qbf()
 
     def __ne__(self, o):
         return not self == o
 
     def __str__(self):
-        return str([1 if Solver().check(And(self.formula_wrapper.get_z3(), v)) == sat else 0
+        return str([1 if Solver().check(And(self.formula_wrapper.get_qbf().get_prop(), v)) == sat else 0
                     for v in self.formula_wrapper.get_var_vectors()[0]])
 
     def var_for_ap(self, ap):
@@ -50,8 +50,6 @@ class State(object):
         _, model = self.formula_wrapper.sat_get_model()
 
         state_formula = self.kripke.get_output_formula().get_qbf()
-        logger.debug('ASSERTING IN STATE.PY')
-        assert len(state_formula.get_q_list()) == 0 # DEBUGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG
         prop = And(state_formula.connect(), *[self.ap_lit_by_model(model, ap) for ap in AP])
         bis0 = FormulaWrapper(QBF(prop), self.formula_wrapper.get_var_vectors(), [self.kripke.get_input_var_vector()])
         self.bis0 = bis0

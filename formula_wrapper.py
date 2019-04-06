@@ -43,7 +43,7 @@ class FormulaWrapper(object):
     def assign_state(self, state, v_num=0):
         base_formula = self._qbf.get_prop()
         prev_vec = self._var_vectors
-        cube_substituted = state.formula_wrapper.substitute(prev_vec[v_num], v_num).get_z3()
+        cube_substituted = state.formula_wrapper.substitute(prev_vec[v_num], v_num).get_qbf().get_prop()
         inner = And(base_formula, cube_substituted)
         assigned_qbf = QBF(inner, self._qbf.get_q_list())
         return FormulaWrapper(assigned_qbf, prev_vec[:v_num] + prev_vec[v_num + 1:], self._input_vectors)
@@ -77,6 +77,9 @@ class FormulaWrapper(object):
     def __ne__(self, o):
         return not self == o
 
+    def negate(self):
+        return FormulaWrapper(self._qbf.negate(), self._var_vectors, self._input_vectors)
+
 
 class QBF(object):
     def __init__(self, prop_formula, q_list=None):
@@ -97,7 +100,8 @@ class QBF(object):
 
     def negate(self):
         new_q_list = [(chr(134 - ord(_q)), _v) for (_q, _v) in self._q_list]
-        return QBF(simplify(Not(self._prop)), new_q_list)
+        is_not = self._prop.decl().name() == 'not'
+        return QBF(self._prop.children()[0] if is_not else Not(self._prop), new_q_list)
 
     def __eq__(self, o):
         return self._prop.eq(o.get_prop()) and self._q_list == o.get_q_list()
@@ -106,7 +110,7 @@ class QBF(object):
         return not self == o
 
     def __hash__(self):
-        hash((hash(self._prop), hash(self._q_list)))
+        return hash((hash(self._prop), hash(tuple(self._q_list))))
 
 if __name__ == '__main__':
     x = [Bool('x' + str(i)) for i in range(5)]

@@ -156,7 +156,7 @@ class Z3Utils(object):
     def all_sat(cls, formula_wrap):
         s = Solver()
         assignments = []
-        s.add(formula_wrap.get_z3())
+        s.add(formula_wrap.get_qbf().connect())
 
         all_vars = [_v for v_list in formula_wrap.get_var_vectors() for _v in v_list]
         while s.check() == sat:
@@ -197,14 +197,16 @@ class Z3Utils(object):
         flags = [Bool('f' + str(i)) for i in xrange(n_flags)]
 
         tr_flagged = [Or(Not(flags[i]), tr_from_concs[i].get_qbf().get_prop()) for i in xrange(n_flags)]
-        all_tr_flagged = And(*tr_flagged)
+        all_tr_flagged = simplify(And(*tr_flagged))
 
-        f_inner = And(all_tr_flagged, abs_formula.get_qbf().get_prop())
+        f_inner = simplify(And(all_tr_flagged, abs_formula.get_qbf().get_prop()))
         f_qbf = QBF(f_inner, abs_formula.get_qbf().get_q_list())
-        f = FormulaWrapper(f_qbf, [dst_vars], abs_formula.get_input_vector()+[in_tag])
+        f = FormulaWrapper(f_qbf, [dst_vars], tr.get_input_vectors())
 
-        s = Z3QbfSolver().incremental_solve_flags(f, flags, sat)
-        return False
+        i, model = Z3QbfSolver().incremental_solve_flags(f, flags, sat)
+        if i is False:
+            return False
+        return nodes_from[i], next(get_states(model, dst_vars, kripke))
 
     @classmethod
     def is_AE_closed(cls, to_close, close_with):
@@ -223,11 +225,11 @@ class Z3Utils(object):
                 .get_qbf()
                 .negate()
             for closer in close_with]
-        dst = QBF(And(*[_d.get_prop() for _d in dst_formulas]), [_v for _t in dst_formulas for _v in _t.get_q_list()]))
+        dst = QBF(And(*[_d.get_prop() for _d in dst_formulas]), [_v for _t in dst_formulas for _v in _t.get_q_list()])
 
         tr_qbf = transitions.get_qbf()
         inner_prop = simplify(And(src_qbf.get_prop(), Or(Not(tr_qbf.get_prop()), dst.get_prop())))
-        query = QBF(inner_prop, src_qbf.get_q_list()+[('A', dst_vars)]+ tr.get_q_list()+dst.get_q_list())
+        query = QBF(inner_prop, src_qbf.get_q_list()+[('A', dst_vars)]+ tr_qbf.get_q_list()+dst.get_q_list())
 
         solver = Z3QbfSolver()
         res, model = solver.solve(query.connect())
@@ -254,26 +256,24 @@ class Z3Utils(object):
                 .get_qbf()
                 .negate()
             for closer in close_with]
-        dst = QBF(And(*[_d.get_prop() for _d in dst_formulas]), [_v for _t in dst_formulas for _v in _t.get_q_list()]))
+        dst = QBF(And(*[_d.get_prop() for _d in dst_formulas]), [_v for _t in dst_formulas for _v in _t.get_q_list()])
 
         tr_qbf = transitions.get_qbf()
-        inner_prop = simplify(And(src_qbf.get_prop(), tr.get_prop(), dst.get_prop()))
-        query = QBF(inner_prop, src_qbf.get_q_list()+tr.get_q_list()+dst.get_q_list())
+        inner_prop = simplify(And(src_qbf.get_prop(), tr_qbf.get_prop(), dst.get_prop()))
+        query = QBF(inner_prop, src_qbf.get_q_list()+tr_qbf.get_q_list()+dst.get_q_list())
         #   logger.debug('Check start')
-        solver = Z3QbfSolverS()
+        solver = Z3QbfSolver()
         res, model = solver.solve(query.connect())
         #  logger.debug('check end.')
         if res == unsat:
             return True
 
-        '''
         for s in get_states(model, src_vars, kripke):
             f = to_close.get_descriptive_formula().assign_state(s).is_sat()
             if not f:
                 print 'agag'
                 to_close.get_classification_node()._classifier.classify(s)
                 f = to_close.get_descriptive_formula().assign_state(s).is_sat()
-        '''
         return EEClosureViolation(next(get_states(model, src_vars, kripke)), next(get_states(model, dst_vars, kripke)))
 
     @classmethod

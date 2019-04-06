@@ -214,18 +214,18 @@ def test_all_iimc():
 
 
 def regression_tests():
-    test_propositional()
-    test_nexts()
-    test_AV()
-    test_EV()
+    #test_propositional()
+    #test_nexts()
+   # test_AV()
+    #test_EV()
     test_iimc()
 
 
 if __name__ == '__main__':
     create_logger()
 
-#    test_specific_tests(['spinner4'])
+    test_specific_tests(['debug'])
 
-    regression_tests()
+#    regression_tests()
 #    model_checking(parse_input())
   #  test_all_iimc()

@@ -7,7 +7,7 @@ class QbfSolver(object):
     def incremental_solve(self, formulas, stop_res):
         raise NotImplementedError
 
-     def incremental_solve_flags(self, formula, flags, stop_res):
+    def incremental_solve_flags(self, formula, flags, stop_res):
         return self.incremental_solve([formula.and_flag(flag) for flag in flags], stop_res)
 
 
@@ -35,7 +35,7 @@ class Z3QbfSolver(QbfSolver):
     def incremental_solve(self, formulas, stop_res):
         s = Solver()
         for i in range(len(formulas)):
-            res = s.check(formulas[i])
+            res = s.check(formulas[i].get_qbf().connect())
             if res == stop_res:
                 return i, (s.model() if res == sat else False)
         return False, False
