@@ -1,7 +1,8 @@
 import logging
 
 from common import abstract_states_to_int, subset_abs, in_abs, add_elems_to_abs, remove_elems
-from formula_wrapper import FormulaWrapper, unsat
+from formula_wrapper import FormulaWrapper, unsat, QBF
+from qbf_solver import DepQbfSimpleSolver, Z3QbfSolver
 from var_manager import VarManager
 from z3_utils import Z3Utils, Solver, And, Not, Bool, Implies
 
@@ -177,22 +178,25 @@ class AbstractStructure(object):
     def split_abstract_state(self, node_to_close, abstract_sons, formula_getter, check_trivial_split):
         kripke = self.kripke
         abs_to_close = node_to_close.get_abstract_label()
-        base_formula, quantified_part, vars, input_vector = \
+        pos_formula, neg_formula, (base, pos_op) = \
             formula_getter(abs_to_close, abstract_sons, kripke.get_tr_formula())
 
-        if self._trivial_split and check_trivial_split: #######HERE AND Z3UTILS
-            s = Solver()
-            s.add(base_formula)
-            y_flag, n_flag = Bool('Y'), Bool('N')
-            s.add(Implies(y_flag, quantified_part))
-            s.add(Implies(n_flag, Not(quantified_part)))
-            if s.check(y_flag) == unsat:
-                return False, abs_to_close
-            if s.check(n_flag) == unsat:
-                return True, abs_to_close
-
-        pos_formula = FormulaWrapper(And(base_formula, quantified_part), [vars], [input_vector])
-        neg_formula = FormulaWrapper(And(base_formula, Not(quantified_part)), [vars], [input_vector])
+        if self._trivial_split and check_trivial_split:  #######HERE AND Z3UTILS
+            solver = Z3QbfSolver()
+            flags = {f_name: Bool(f_name) for f_name in ['Y', 'N']}
+            neg_op = pos_op.negate()
+            inner = And(base.get_qbf().get_prop(),
+                        Or(Not(flags['Y']), pos_op.get_qbf().get_prop()),
+                        Or(Not(flags['N']), neg_op.get_qbf().get_prop()))
+            q_list = base.get_qbf().get_q_list() + pos_op.get_qbf().get_q_list()
+            f = FormulaWrapper(QBF(inner, q_list), pos_formula.get_var_vectors(), pos_formula.get_input_vectors())
+            res = solver.incremental_solve_flags(f, flags, stop_res=unsat)
+            if res:
+                idx_empty, _ = res
+                if idx_empty == 0:
+                    return False, abs_to_close
+                if idx_empty == 1:
+                    return True, abs_to_close
 
         def create_abs_state(formula):
             return AbstractState(abs_to_close.atomic_labels, kripke, formula) \
@@ -204,7 +208,9 @@ class AbstractStructure(object):
         self._abstract_states = (self._abstract_states - {abs_to_close}) | {abs_pos, abs_neg}
 
         def replace_old_values_dst(d):
-            d.update({k: {add_elems_to_abs([abs_pos, abs_neg] if in_abs(abs_to_close, _n) else [], _n) for _n in v} for k, v in d.items()})
+            d.update(
+                {k: {add_elems_to_abs([abs_pos, abs_neg] if in_abs(abs_to_close, _n) else [], _n) for _n in v} for k, v
+                 in d.items()})
             '''dct.update({key: dct[key]
                        .union([abs_pos, abs_neg])
                         for key in dct.keys()

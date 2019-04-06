@@ -56,6 +56,10 @@ class FormulaWrapper(object):
         assigned_qbf = QBF(assigned_formula, self._qbf.get_q_list())
         return FormulaWrapper(assigned_qbf, prev_vec[:v_num] + prev_vec[v_num + 1:], self._input_vectors)
 
+    def and_flag(self, flag):
+        new_qbf = QBF(And(self._qbf.get_prop(), flag), self._qbf.get_q_list())
+        return FormulaWrapper(new_qbf, self._var_vectors, self._input_vectors)
+
     def is_sat(self):
         s = Solver()
         return s.check(self._qbf.connect()) == sat

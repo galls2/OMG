@@ -4,6 +4,7 @@ import logging
 from z3 import *
 
 from common import z3_val_to_int, EEClosureViolation
+from qbf_solver import Z3QbfSolver
 from state import State
 from formula_wrapper import FormulaWrapper, QBF
 from var_manager import VarManager
@@ -65,17 +66,18 @@ class Z3Utils(object):
     '''
     @classmethod
     def _get_components_in_quantified(cls, abs_targets, tr):
-        next_input_vector = tr.get_input_vectors()[1]
-        new_vars = VarManager.duplicate_vars(tr.get_var_vectors()[0])
+        tag_input_vector = tr.get_input_vectors()[1]
+        new_state_vars = VarManager.duplicate_vars(tr.get_var_vectors()[0])
+        new_in_vec = VarManager.duplicate_vars(tag_input_vector)
 
         abs_targets_sub = [target.get_descriptive_formula()
-                               .substitute_inputs(next_input_vector, 0)
-                               .substitute(new_vars, 0) for target in abs_targets]
+                               .substitute_inputs(new_in_vec, 0)
+                               .substitute(new_state_vars, 0) for target in abs_targets]
         abs_or = Or(*[_t.get_qbf().get_prop() for _t in abs_targets_sub])
         new_q_list = [_v for _t in abs_targets_sub for _v in _t.get_qbf().get_q_list()]
-        split_by_formula_tag = FormulaWrapper(QBF(abs_or, new_q_list), [new_vars], [next_input_vector])
+        split_by_formula_tag = FormulaWrapper(QBF(abs_or, new_q_list), [new_state_vars], [new_in_vec])
 
-        transitions_has_sons = tr.substitute(new_vars, 1, new_vars)  # R(u,v) [v<-v']
+        transitions_has_sons = tr.substitute(new_state_vars, 1).substitute_inputs(new_in_vec, 0)  # R(u,v) [v<-v']
         return split_by_formula_tag, transitions_has_sons
 
     '''
@@ -85,14 +87,14 @@ class Z3Utils(object):
     @classmethod
     def get_exists_successors_in_formula(cls, abstract_targets, transitions):
         kripke = abstract_targets[0].get_kripke()
-        in_vec = transitions.get_input_vectors()[0]
+        qe_policy = kripke.get_qe_policy()
 
         split_by, tr = cls._get_components_in_quantified(abstract_targets, transitions)
         prev_vars, new_vars = tr.get_var_vectors()
-        qe_policy = kripke.get_qe_policy()
+        in_vec, quantified_input = tr.get_input_vectors()
 
         inner = And(tr.get_qbf().get_prop(), split_by.get_qbf().get_prop())
-        q_list = [('E', new_vars + in_vec)] + split_by.get_qbf().get_q_list() + tr.get_qbf().get_q_list()
+        q_list = [('E', new_vars + quantified_input)] + split_by.get_qbf().get_q_list() + tr.get_qbf().get_q_list()
      #   exists_formula = cls.apply_qe(simplify(Exists(new_vars + in_vec, inner)), qe_policy)
 
         return FormulaWrapper(QBF(inner, q_list), [prev_vars], [in_vec])
@@ -104,38 +106,44 @@ class Z3Utils(object):
     @classmethod
     def get_forall_successors_in_formula(cls, abstract_targets, transitions):
         kripke = abstract_targets[0].get_kripke()
-        in_vec = transitions.get_input_vectors()[0]
+        qe_policy = kripke.get_qe_policy()
+
         split_by, tr = cls._get_components_in_quantified(abstract_targets, transitions)
         prev_vars, new_vars = tr.get_var_vectors()
-        qe_policy = kripke.get_qe_policy()
+        in_vec, quantified_input = transitions.get_input_vectors()
 
         neg_tr = tr.negate()
         inner = Or(neg_tr.get_qbf().get_prop(), split_by.get_qbf().get_prop())
        # forall_formula = cls.apply_qe(simplify(ForAll(new_vars + in_vec, innektr)), qe_policy)
-        q_list = [('A', new_vars + in_vec)] + split_by.get_qbf().get_q_list() + neg_tr.get_qbf().get_q_list()
+        q_list = [('A', new_vars + quantified_input)] + split_by.get_qbf().get_q_list() + neg_tr.get_qbf().get_q_list()
 
-        #       legal_source = kripke.get_output_formula().substitute_inputs(in_vec, 0).substitute(prev_vars, 0)
-
-        #        return FormulaWrapper(And(legal_source.get_z3(), forall_formula), [prev_vars], [in_vec])
         return FormulaWrapper(QBF(inner, q_list), [prev_vars], [in_vec])
 
     @classmethod
     def get_split_formula(cls, to_split, split_by, transitions, quantified_part_getter):
         input_vars = transitions.get_input_vectors()[0]
-        formula_to_split = to_split.get_descriptive_formula().substitute_inputs(input_vars, 0)
-        quantifier_wrapper_pos = quantified_part_getter(split_by, transitions)
-        quantified_formula = quantifier_wrapper_pos.get_z3()
-        # pos_quantifier = simplify(And(formula_to_split_pos.get_z3_formula(), quantified_formula))  # A(v) & Qv'[phi(v,v')]
 
-        #    formula_to_split_neg = to_split.get_descriptive_formula()
-        #   quantifier_wrapper_neg = quantified_part_getter(split_by, transitions)
-        #   negated_quantified_formula = Not(quantifier_wrapper_neg.get_z3_formula())
-        #   neg_quantifier = simplify( And(formula_to_split_neg.get_z3_formula(), negated_quantified_formula))  # A(v) & ~Qv'[phi(v,v')]
+        pos_input = VarManager.duplicate_vars(input_vars)
+        q_part_pos = quantified_part_getter(split_by, transitions)
+        pos_state_vars = q_part_pos.get_var_vectors()[0]
+        to_split_pos = to_split.get_descriptive_formula().substitute(pos_state_vars, 0).substitute_inputs(pos_input, 0)
+        inner_pos = And(to_split_pos.get_qbf().get_prop(), q_part_pos.get_qbf().get_prop())
+        q_list_pos = to_split_pos.get_qbf().get_q_list() + q_part_pos.get_qbf().get_q_list()
+        pos_qbf = QBF(inner_pos, q_list_pos)
+        pos = FormulaWrapper(pos_qbf, [pos_state_vars], [pos_input])
 
-        v_vars = to_split.get_descriptive_formula().get_var_vectors()[0]
-        # return FormulaWrapper(pos_quantifier, [v_vars]), FormulaWrapper(neg_quantifier, [v_vars])
-        return formula_to_split.get_z3(), quantified_formula, v_vars, input_vars
-# pos, neg, (common, pos_q, neg_q)
+        neg_input = VarManager.duplicate_vars(input_vars)
+        unnegated_q_part = quantified_part_getter(split_by, transitions)
+        q_part_neg = unnegated_q_part.negate()
+        neg_state_vars = q_part_neg.get_var_vectors()[0]
+        to_split_neg = to_split.get_descriptive_formula().substitute(neg_state_vars, 0).substitute_inputs(neg_input, 0)
+        inner_neg = And(to_split_neg.get_qbf().get_prop(), q_part_neg.get_qbf().get_prop())
+        q_list_neg = to_split_neg.get_qbf().get_q_list() + q_part_neg.get_qbf().get_q_list()
+        neg_qbf = QBF(inner_neg, q_list_neg)
+        neg = FormulaWrapper(neg_qbf, [neg_state_vars], [neg_input])
+
+        return pos, neg, (to_split_pos, q_list_pos)
+
     @classmethod
     def get_ex_split_formulas(cls, to_split, split_by, transitions):
         return cls.get_split_formula(to_split, split_by, transitions, cls.get_exists_successors_in_formula)
@@ -168,8 +176,8 @@ class Z3Utils(object):
     def get_all_successors(cls, tr, state):
         assigned_tr = tr.assign_state(state)
         next_assignments = cls.all_sat(assigned_tr)
-        vars = state.formula_wrapper.get_var_vectors()[0]
-        return [State.from_int_list(cube, vars, state.kripke) for cube in next_assignments]
+        _vars = state.formula_wrapper.get_var_vectors()[0]
+        return [State.from_int_list(cube, _vars, state.kripke) for cube in next_assignments]
 
     @classmethod
     def concrete_transition_to_abstract(cls, nodes_from, abstract_witness):
@@ -181,28 +189,21 @@ class Z3Utils(object):
 
         tr_from_concs = [sub_src(tr, node) for node in nodes_from]
 
-        variables = tr_from_concs[0].get_var_vectors()[0]
-        abs_formula = abstract_witness.get_descriptive_formula().substitute(variables, 0, variables).substitute_inputs(
-            tr.get_input_vectors()[1], 0).get_z3()
+        dst_vars = tr_from_concs[0].get_var_vectors()[0]
+        in_tag = tr.get_input_vectors()[1]
+        abs_formula = abstract_witness.get_descriptive_formula().substitute(dst_vars, 0).substitute_inputs(in_tag, 0)
 
         n_flags = len(tr_from_concs)
         flags = [Bool('f' + str(i)) for i in xrange(n_flags)]
 
-        tr_flagged = [Implies(flags[i], tr_from_concs[i].get_z3()) for i in xrange(n_flags)]
+        tr_flagged = [Or(Not(flags[i]), tr_from_concs[i].get_qbf().get_prop()) for i in xrange(n_flags)]
         all_tr_flagged = And(*tr_flagged)
 
-        f = And(all_tr_flagged, abs_formula)
+        f_inner = And(all_tr_flagged, abs_formula.get_qbf().get_prop())
+        f_qbf = QBF(f_inner, abs_formula.get_qbf().get_q_list())
+        f = FormulaWrapper(f_qbf, [dst_vars], abs_formula.get_input_vector()+[in_tag])
 
-        s = Solver()
-        s.add(f)
-        s.push()
-
-        for i in xrange(n_flags):
-            flag = flags[i]
-            sat_res = s.check(flag)
-            if sat_res == sat:
-                model = s.model()
-                return nodes_from[i], next(get_states(model, variables, kripke))
+        s = Z3QbfSolver().incremental_solve_flags(f, flags, sat)
         return False
 
     @classmethod
@@ -211,21 +212,29 @@ class Z3Utils(object):
         transitions = kripke.get_tr_formula()
         src_vars, dst_vars = transitions.get_var_vectors()
         input_vars, input_tag_vars = transitions.get_input_vectors()
-        src = to_close.get_descriptive_formula().substitute(src_vars, 0).substitute_inputs(input_vars, 0).get_z3()
+
+        src_wrapper = to_close.get_descriptive_formula().substitute(src_vars, 0).substitute_inputs(input_vars, 0)
+        src_qbf = src_wrapper.get_qbf()
+
         dst_formulas = [
-            closer.get_descriptive_formula().substitute(dst_vars, 0).substitute_inputs(input_tag_vars, 0).get_z3()
+            closer.get_descriptive_formula()
+                .substitute(dst_vars, 0)
+                .substitute_inputs(input_tag_vars, 0)
+                .get_qbf()
+                .negate()
             for closer in close_with]
-        dst = Not(Or(*dst_formulas))
+        dst = QBF(And(*[_d.get_prop() for _d in dst_formulas]), [_v for _t in dst_formulas for _v in _t.get_q_list()]))
 
-        closure_formula = And(src, ForAll(dst_vars, Implies(transitions.get_z3(), dst)))
+        tr_qbf = transitions.get_qbf()
+        inner_prop = simplify(And(src_qbf.get_prop(), Or(Not(tr_qbf.get_prop()), dst.get_prop())))
+        query = QBF(inner_prop, src_qbf.get_q_list()+[('A', dst_vars)]+ tr.get_q_list()+dst.get_q_list())
 
-        s = Solver()
-        res = s.check(closure_formula)
-
+        solver = Z3QbfSolver()
+        res, model = solver.solve(query.connect())
+        #  logger.debug('check end.')
         if res == unsat:
             return True
 
-        model = s.model()
         ass = next(get_states(model, src_vars, kripke))
         return ass
 
@@ -237,21 +246,27 @@ class Z3Utils(object):
         input_vars, input_tag_vars = transitions.get_input_vectors()
 
         src_wrapper = to_close.get_descriptive_formula().substitute(src_vars, 0).substitute_inputs(input_vars, 0)
-        src = src_wrapper.get_z3()
+        src_qbf = src_wrapper.get_qbf()
         dst_formulas = [
-            closer.get_descriptive_formula().substitute(dst_vars, 0).substitute_inputs(input_tag_vars, 0).get_z3()
+            closer.get_descriptive_formula()
+                .substitute(dst_vars, 0)
+                .substitute_inputs(input_tag_vars, 0)
+                .get_qbf()
+                .negate()
             for closer in close_with]
-        dst = Not(Or(*dst_formulas))
+        dst = QBF(And(*[_d.get_prop() for _d in dst_formulas]), [_v for _t in dst_formulas for _v in _t.get_q_list()]))
 
-        closure_formula = simplify(And(src, transitions.get_z3(), dst))
+        tr_qbf = transitions.get_qbf()
+        inner_prop = simplify(And(src_qbf.get_prop(), tr.get_prop(), dst.get_prop()))
+        query = QBF(inner_prop, src_qbf.get_q_list()+tr.get_q_list()+dst.get_q_list())
         #   logger.debug('Check start')
-        s = Solver()
-        res = s.check(closure_formula)
+        solver = Z3QbfSolverS()
+        res, model = solver.solve(query.connect())
         #  logger.debug('check end.')
         if res == unsat:
             return True
 
-        model = s.model()
+
         #  logger.debug(str(model))
         '''
         for s in get_states(model, src_vars, kripke):
