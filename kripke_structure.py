@@ -76,8 +76,11 @@ class AigKripkeStructure(KripkeStructure):
             print str(s) + '-> ' + ','.join([str(dst) for dst in edges[s]])
 
 
-        G = nx.Graph()
-        G.add_nodes_from(edges.keys())
+        G = nx.DiGraph()
+        for state in edges.keys():
+            G.add_node(state, name=str(state))
         G.add_edges_from([(v, u) for v in edges.keys() for u in edges[v]])
 
         nx.draw(G)
+        nx.draw_networkx_labels(G, pos = nx.shell_layout(G))
+        plt.savefig('fig.png')

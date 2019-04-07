@@ -5,6 +5,7 @@ from formula_wrapper import FormulaWrapper, unsat, QBF
 from qbf_solver import DepQbfSimpleSolver, Z3QbfSolver
 from var_manager import VarManager
 from z3_utils import Z3Utils, Solver, And, Not, Bool, Implies
+from z3 import *
 
 logger = logging.getLogger('OMG')
 
@@ -183,6 +184,15 @@ class AbstractStructure(object):
 
         if self._trivial_split and check_trivial_split:  #######HERE AND Z3UTILS
             solver = Z3QbfSolver()
+            res, _ = solver.solve(pos_formula.get_qbf().connect())
+            if res == unsat:
+                logger.debug('TSE applied!')
+                return False, abs_to_close
+            res, _ = solver.solve(neg_formula.get_qbf().connect())
+            if res == unsat:
+                logger.debug('TSE applied!')
+                return True, abs_to_close
+            '''
             flags = {f_name: Bool(f_name) for f_name in ['Y', 'N']}
             neg_op = pos_op.negate()
             inner = And(base.get_qbf().get_prop(),
@@ -190,13 +200,16 @@ class AbstractStructure(object):
                         Or(Not(flags['N']), neg_op.get_qbf().get_prop()))
             q_list = base.get_qbf().get_q_list() + pos_op.get_qbf().get_q_list()
             f = FormulaWrapper(QBF(inner, q_list), pos_formula.get_var_vectors(), pos_formula.get_input_vectors())
-            res = solver.incremental_solve_flags(f, flags, stop_res=unsat)
+            res = solver.incremental_solve_flags(f, flags.values(), stop_res=unsat)
             if res:
                 idx_empty, _ = res
-                if idx_empty == 0:
+                if idx_empty is 0:
+                    logger.debug('TSE applied!')
                     return False, abs_to_close
-                if idx_empty == 1:
+                if idx_empty is 1:
+                    logger.debug('TSE applied!')
                     return True, abs_to_close
+            '''
 
         def create_abs_state(formula):
             return AbstractState(abs_to_close.atomic_labels, kripke, formula) \

@@ -1,6 +1,7 @@
 from z3 import *
 
 from common import int_vec_to_z3, foldr
+from var_manager import VarManager
 
 
 class FormulaWrapper(object):
@@ -80,6 +81,16 @@ class FormulaWrapper(object):
     def negate(self):
         return FormulaWrapper(self._qbf.negate(), self._var_vectors, self._input_vectors)
 
+    def renew_quantifiers(self):
+        new_qbf = self._qbf.renew_quantifiers()
+        return FormulaWrapper(new_qbf, self._var_vectors, self._input_vectors)
+
+    def well_named(self):
+        q_list = self._qbf.get_q_list()
+        n_vecs = len(q_list)
+
+        return all([q_list[i] != q_list[j] for i in range(n_vecs) for j in range(n_vecs) if i < j])
+
 
 class QBF(object):
     def __init__(self, prop_formula, q_list=None):
@@ -103,6 +114,19 @@ class QBF(object):
         is_not = self._prop.decl().name() == 'not'
         return QBF(self._prop.children()[0] if is_not else Not(self._prop), new_q_list)
 
+    def renew_quantifiers(self):
+        n_q_vecs = len(self._q_list)
+        if n_q_vecs == 0:
+            return self
+        vec_len = len(self._q_list[0][1])
+        new_quantified_vectors = [VarManager.duplicate_vars(q_vars) for (_, q_vars) in self._q_list]
+        new_q_list = [(self._q_list[_i][0], new_quantified_vectors[_i]) for _i in range(n_q_vecs)]
+        substitutions = [(self._q_list[_i][1][_j], new_q_list[_i][1][_j]) for _i in range(n_q_vecs) for _j in range(vec_len)]
+        new_prop = substitute(self._prop, *substitutions)
+        return QBF(new_prop, new_q_list)
+
+
+
     def __eq__(self, o):
         return self._prop.eq(o.get_prop()) and self._q_list == o.get_q_list()
 
@@ -112,12 +136,15 @@ class QBF(object):
     def __hash__(self):
         return hash((hash(self._prop), hash(tuple(self._q_list))))
 
+
 if __name__ == '__main__':
     x = [Bool('x' + str(i)) for i in range(5)]
-    q = QBF(And(*x), [('A' if i % 2 == 0 else 'E', x[i]) for i in range(5)])
+    q = QBF(And(*x), [('A' if i % 2 == 0 else 'E', [x[i]]) for i in range(5)])
     print q.connect()
     print q.negate().connect()
     print q.negate().negate().connect()
 
     q2 = QBF(And(*x))
     print q2.connect()
+
+    print q.renew_quantifiers().connect()

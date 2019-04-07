@@ -64,6 +64,7 @@ class Z3Utils(object):
     Given [B1,...,Bn], R
     Returns (B1(v')|....Bn(v'), R(v,v'))
     '''
+
     @classmethod
     def _get_components_in_quantified(cls, abs_targets, tr):
         tag_input_vector = tr.get_input_vectors()[1]
@@ -72,11 +73,15 @@ class Z3Utils(object):
 
         abs_targets_sub = [target.get_descriptive_formula()
                                .substitute_inputs(new_in_vec, 0)
-                               .substitute(new_state_vars, 0) for target in abs_targets]
+                               .substitute(new_state_vars, 0)
+                               .renew_quantifiers() for target in abs_targets]
         abs_or = Or(*[_t.get_qbf().get_prop() for _t in abs_targets_sub])
-        new_q_list = [_v for _t in abs_targets_sub for _v in _t.get_qbf().get_q_list()]
-        split_by_formula_tag = FormulaWrapper(QBF(abs_or, new_q_list), [new_state_vars], [new_in_vec])
 
+
+        new_q_list = [_v for _t in abs_targets_sub for _v in _t.get_qbf().get_q_list()]
+
+        split_by_formula_tag = FormulaWrapper(QBF(abs_or, new_q_list), [new_state_vars], [new_in_vec])
+## RENAME QUNATIFIED HERE
         transitions_has_sons = tr.substitute(new_state_vars, 1).substitute_inputs(new_in_vec, 0)  # R(u,v) [v<-v']
         return split_by_formula_tag, transitions_has_sons
 
@@ -94,8 +99,8 @@ class Z3Utils(object):
         in_vec, quantified_input = tr.get_input_vectors()
 
         inner = And(tr.get_qbf().get_prop(), split_by.get_qbf().get_prop())
-        q_list = [('E', new_vars + quantified_input)] + split_by.get_qbf().get_q_list() + tr.get_qbf().get_q_list()
-     #   exists_formula = cls.apply_qe(simplify(Exists(new_vars + in_vec, inner)), qe_policy)
+        q_list = [('E', new_vars + in_vec)] + split_by.get_qbf().get_q_list() + tr.get_qbf().get_q_list()
+        #   exists_formula = cls.apply_qe(simplify(Exists(new_vars + in_vec, inner)), qe_policy)
 
         return FormulaWrapper(QBF(inner, q_list), [prev_vars], [in_vec])
 
@@ -114,8 +119,8 @@ class Z3Utils(object):
 
         neg_tr = tr.negate()
         inner = Or(neg_tr.get_qbf().get_prop(), split_by.get_qbf().get_prop())
-       # forall_formula = cls.apply_qe(simplify(ForAll(new_vars + in_vec, innektr)), qe_policy)
-        q_list = [('A', new_vars + quantified_input)] + split_by.get_qbf().get_q_list() + neg_tr.get_qbf().get_q_list()
+        # forall_formula = cls.apply_qe(simplify(ForAll(new_vars + in_vec, innektr)), qe_policy)
+        q_list = [('A', new_vars + in_vec)] + split_by.get_qbf().get_q_list() + neg_tr.get_qbf().get_q_list()
 
         return FormulaWrapper(QBF(inner, q_list), [prev_vars], [in_vec])
 
@@ -142,7 +147,10 @@ class Z3Utils(object):
         neg_qbf = QBF(inner_neg, q_list_neg)
         neg = FormulaWrapper(neg_qbf, [neg_state_vars], [neg_input])
 
-        return pos, neg, (to_split_pos, q_list_pos)
+        logger.debug("ASSERTING WELL NAMEDNESS")
+        assert pos.well_named()
+        assert neg.well_named()
+        return pos, neg, (to_split_pos, pos)
 
     @classmethod
     def get_ex_split_formulas(cls, to_split, split_by, transitions):
@@ -229,7 +237,7 @@ class Z3Utils(object):
 
         tr_qbf = transitions.get_qbf()
         inner_prop = simplify(And(src_qbf.get_prop(), Or(Not(tr_qbf.get_prop()), dst.get_prop())))
-        query = QBF(inner_prop, src_qbf.get_q_list()+[('A', dst_vars)]+ tr_qbf.get_q_list()+dst.get_q_list())
+        query = QBF(inner_prop, src_qbf.get_q_list() + [('A', dst_vars)] + tr_qbf.get_q_list() + dst.get_q_list())
 
         solver = Z3QbfSolver()
         res, model = solver.solve(query.connect())
@@ -260,7 +268,7 @@ class Z3Utils(object):
 
         tr_qbf = transitions.get_qbf()
         inner_prop = simplify(And(src_qbf.get_prop(), tr_qbf.get_prop(), dst.get_prop()))
-        query = QBF(inner_prop, src_qbf.get_q_list()+tr_qbf.get_q_list()+dst.get_q_list())
+        query = QBF(inner_prop, src_qbf.get_q_list() + tr_qbf.get_q_list() + dst.get_q_list())
         #   logger.debug('Check start')
         solver = Z3QbfSolver()
         res, model = solver.solve(query.connect())
@@ -271,9 +279,9 @@ class Z3Utils(object):
         for s in get_states(model, src_vars, kripke):
             f = to_close.get_descriptive_formula().assign_state(s).is_sat()
             if not f:
-                print 'agag'
-                to_close.get_classification_node()._classifier.classify(s)
-                f = to_close.get_descriptive_formula().assign_state(s).is_sat()
+                print 'EE-closure is all messed up!'
+                print 'The src is supposed to be in '+to_close.get_debug_name()
+                print 'But is classified to '+to_close.get_classification_node()._classifier.classify(s).get_debug_name()
         return EEClosureViolation(next(get_states(model, src_vars, kripke)), next(get_states(model, dst_vars, kripke)))
 
     @classmethod

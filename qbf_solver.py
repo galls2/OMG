@@ -17,6 +17,7 @@ class DepQbfSimpleSolver(QbfSolver):
 
     def incremental_solve(self, formulas, stop_res):
         for i in range(len(formulas)):
+            print i
             is_sat, res = self.solve(formulas[i])
             if is_sat == stop_res:
                 return i, res
@@ -35,7 +36,10 @@ class Z3QbfSolver(QbfSolver):
     def incremental_solve(self, formulas, stop_res):
         s = Solver()
         for i in range(len(formulas)):
-            res = s.check(formulas[i].get_qbf().connect())
+            f = formulas[i].get_qbf().connect()
+    #        print i
+            res = s.check(f)
+    #        print 'done' + str(i)
             if res == stop_res:
                 return i, (s.model() if res == sat else False)
         return False, False

@@ -15,7 +15,7 @@ TIMEOUT = 3600
 BUG_LINE = '<------------------------------------------------------ BUG -------------------------------------'
 SEP = '---------'
 
-DEFAULT_FLAGS = {'-bu': True, '-tse': False, '--qe_policy': 'no-qe', '-timeout': TIMEOUT, '-few_aps': False}
+DEFAULT_FLAGS = {'-bu': True, '-tse': True, '--qe_policy': 'no-qe', '-timeout': TIMEOUT, '-few_aps': False}
 
 DEBUG = True
 
@@ -173,6 +173,13 @@ def test_AV():
 
     check_files(aig_file_paths, ctl_formula_paths)
 
+def test_AV2():
+    logging.getLogger('OMG').info('Checking AVs:')
+    aig_file_paths = ['iimc_aigs/gray.aig']
+    ctl_formula_paths = ['iimc_aigs/gray_AV_abs.ctl']
+
+    check_files(aig_file_paths, ctl_formula_paths)
+
 
 def test_EV():
     logging.getLogger('OMG').info('Checking EVs:')
@@ -183,7 +190,7 @@ def test_EV():
 
 def test_iimc():
     logging.getLogger('OMG').info('Checking Actual IIMC examples:')
-    TEST_NAMES = ['af_ag', 'debug', 'gray', 'gatedClock', 'microwave', 'tstrst']
+    TEST_NAMES = ['af_ag',  'gray', 'gatedClock', 'microwave', 'tstrst', 'debug']
 
     aig_file_paths = ['iimc_aigs/' + test_name + '.aig' for test_name in TEST_NAMES]
     ctl_formula_paths = [(''.join(aig_path[:-4]) + '.ctl') for aig_path in aig_file_paths]
@@ -214,16 +221,15 @@ def test_all_iimc():
 
 
 def regression_tests():
-    #test_propositional()
-    #test_nexts()
-   # test_AV()
-    #test_EV()
+    test_propositional()
+    test_nexts()
+    test_AV()
+    test_EV()
     test_iimc()
 
 
 if __name__ == '__main__':
     create_logger()
-
     test_specific_tests(['debug'])
 
 #    regression_tests()
