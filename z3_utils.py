@@ -276,12 +276,15 @@ class Z3Utils(object):
         if res == unsat:
             return True
 
+        '''
         for s in get_states(model, src_vars, kripke):
             f = to_close.get_descriptive_formula().assign_state(s).is_sat()
             if not f:
                 print 'EE-closure is all messed up!'
                 print 'The src is supposed to be in '+to_close.get_debug_name()
                 print 'But is classified to '+to_close.get_classification_node()._classifier.classify(s).get_debug_name()
+        '''
+
         return EEClosureViolation(next(get_states(model, src_vars, kripke)), next(get_states(model, dst_vars, kripke)))
 
     @classmethod

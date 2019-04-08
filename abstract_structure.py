@@ -1,20 +1,17 @@
 import logging
 
-from common import abstract_states_to_int, subset_abs, in_abs, add_elems_to_abs, remove_elems
-from formula_wrapper import FormulaWrapper, unsat, QBF
-from qbf_solver import DepQbfSimpleSolver, Z3QbfSolver
-from var_manager import VarManager
-from z3_utils import Z3Utils, Solver, And, Not, Bool, Implies
 from z3 import *
+
+from common import abstract_states_to_int, subset_abs, in_abs, add_elems_to_abs, remove_elems
+from qbf_solver import DepQbfSimpleSolver
+from var_manager import VarManager
+from z3_utils import Z3Utils
 
 logger = logging.getLogger('OMG')
 
 
 def init_dict_by_key(d, key, val):
-    if key not in d.keys():
-        d[key] = {val}
-    else:
-        d[key].add(val)
+    d[key] = d.get(key, set()) | {val}
     return d
 
 

@@ -31,7 +31,7 @@ class AigKripkeStructure(KripkeStructure):
 
         self._tr, initial_states_gen, self._output_formula = self._aig_parser.get_tr_and_initial(qe_policy, self)
         self._input_vars = self._tr.get_input_vectors()[0]
-        self._initial_states = list(initial_states_gen)
+        self._initial_states = initial_states_gen
         self._ap_conversion = self._aig_parser.get_ap_mapping()
 
     def get_output_formula(self):
