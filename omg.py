@@ -259,13 +259,14 @@ class OmgModelChecker(object):
                     to_close_node = next((_to for _to in to_close_nodes
                                           if _to.get_abstract_label() == abs_src_witness), None)
 
+                    '''
                     if to_close_node is None:
                         print 'nodes: ' + str(len(to_close_nodes))
                         for _t in to_close_nodes:
                             print _t.description()
                         print str(src_to_witness)
 
-                    '''
+                    
                     logger.debug(
                         'Splitting ' + abs_src_witness.get_classification_node().get_binary_string() + ' w.r.t. ' + \
                         self._find_abstract_classification_for_state(
@@ -309,8 +310,7 @@ class OmgModelChecker(object):
             visited.add(node_to_explore.concrete_label)
             self._handle_ctl_and_recur(node_to_explore, p)
             if node_to_explore.is_labeled_positively_with(p):
-                logger.debug(
-                    'EV:: Found PROVING finite trace from ' + node.description() + ' to ' + node_to_explore.description())
+                #logger.debug('EV:: PROVING trace from ' + node.description() + ' to ' + node_to_explore.description())
                 return self._handle_proving_trace(is_strengthen, node, node_to_explore, spec,
                                                   to_return=True)
             else:
@@ -321,7 +321,7 @@ class OmgModelChecker(object):
             inductive_res = self._check_inductive_ev(is_strengthen, node, node_to_explore, spec)
             if inductive_res:
                 return True
-        logger.debug('EV:: Pruned all paths from ' + node.description() + ': returning FALSE')
+        #logger.debug('EV:: Pruned all paths from ' + node.description() + ': returning FALSE')
         if is_strengthen:
             self._strengthen_subtree(node, lambda _n: _n.is_developed(goal))
             return label_subtree(node, spec, False, goal)
@@ -330,10 +330,11 @@ class OmgModelChecker(object):
 
     def _check_inductive_ev(self, is_strengthen, node, node_to_explore, spec):
         lasso_res = node_to_explore.is_lasso(node.get_parent())
+        if lasso_res is True:  # concrete lasso found! ## THIS GOES UP
+            #logger.debug('EV:: Found concrete lasso to: ' + node_to_explore.description())
+            return self._handle_proving_trace(is_strengthen, node, node_to_explore, spec, to_return=True)
+
         while lasso_res is not False:
-            if lasso_res is True:  # concrete lasso found! ## THIS GOES UP
-                logger.debug('EV:: Found concrete lasso to: ' + node_to_explore.description())
-                return self._handle_proving_trace(is_strengthen, node, node_to_explore, spec, to_return=True)
 
             logger.debug('EV:: STARTING ABSTRACT CLOSURE ATTEMPT')
 
@@ -349,13 +350,13 @@ class OmgModelChecker(object):
 
             while abstract_states_nodes_loop:
                 to_close_abs, to_close_nodes = abstract_states_nodes_loop[0]
-                logger.debug('EV:: Trying to close abstract state of' + to_close_nodes[0].description() + ' :')
+                #logger.debug('EV:: Trying to close abstract state of' + to_close_nodes[0].description() + ' :')
                 res = self._abs_structure.is_AE_closure(to_close_abs, loop_abstract_states)
                 if res is True:
-                    logger.debug(' Success!')
+                    #logger.debug(' Success!')
                     abstract_states_nodes_loop = abstract_states_nodes_loop[1:]
                 else:
-                    logger.debug(' Failed!')
+                    #logger.debug(' Failed!')
                     abs_src_witness = self._find_abs_classification_for_state(res)
                     to_close_node = next(_to for _to in to_close_nodes
                                          if _to.get_abstract_label() == abs_src_witness)
@@ -366,7 +367,7 @@ class OmgModelChecker(object):
                     break
 
             if not abstract_states_nodes_loop:
-                logger.debug(' EV:: FOUND ABSTRACT CLOSURE!')
+                #logger.debug(' EV:: FOUND ABSTRACT CLOSURE!')
 
                 if is_strengthen:
                     self._strengthen_trace(node, base)
