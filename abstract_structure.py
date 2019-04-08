@@ -183,12 +183,12 @@ class AbstractStructure(object):
             formula_getter(abs_to_close, abstract_sons, kripke.get_tr_formula())
 
         if self._trivial_split and check_trivial_split:  #######HERE AND Z3UTILS
-            solver = Z3QbfSolver()
-            res, _ = solver.solve(pos_formula.get_qbf().connect())
+            solver = DepQbfSimpleSolver()
+            res, _ = solver.solve(pos_formula.get_qbf())
             if res == unsat:
                 logger.debug('TSE applied!')
                 return False, abs_to_close
-            res, _ = solver.solve(neg_formula.get_qbf().connect())
+            res, _ = solver.solve(neg_formula.get_qbf())
             if res == unsat:
                 logger.debug('TSE applied!')
                 return True, abs_to_close

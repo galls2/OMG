@@ -3,6 +3,8 @@ from z3 import *
 from common import int_vec_to_z3, foldr
 from var_manager import VarManager
 
+q_to_z3 = {1: ForAll, -1: Exists}
+
 
 class FormulaWrapper(object):
     def __init__(self, qbf, var_vectors, input_vectors):
@@ -63,11 +65,11 @@ class FormulaWrapper(object):
 
     def is_sat(self):
         s = Solver()
-        return s.check(self._qbf.connect()) == sat
+        return s.check(self._qbf.to_z3()) == sat
 
     def sat_get_model(self):
         s = Solver()
-        return True, s.model() if s.check(self._qbf.connect()) else False
+        return True, s.model() if s.check(self._qbf.to_z3()) else False
 
     def __hash__(self):
         return hash(self._qbf)
@@ -93,6 +95,7 @@ class FormulaWrapper(object):
 
 
 class QBF(object):
+
     def __init__(self, prop_formula, q_list=None):
         super(QBF, self).__init__()
         if q_list is None:
@@ -106,13 +109,13 @@ class QBF(object):
     def get_q_list(self):
         return self._q_list
 
-    def connect(self):
-        return foldr(lambda (_q, _v), f: (Exists if _q == 'E' else ForAll)(_v, f), self._prop, self._q_list)
+    def to_z3(self):
+        return foldr(lambda (_q, _v), f: q_to_z3[_q](_v, f), self._prop, self._q_list)
 
     def negate(self):
-        new_q_list = [(chr(134 - ord(_q)), _v) for (_q, _v) in self._q_list]
-        is_not = self._prop.decl().name() == 'not'
-        return QBF(self._prop.children()[0] if is_not else Not(self._prop), new_q_list)
+        new_q_list = [(-_q, _v) for (_q, _v) in self._q_list]
+        _is_not = self._prop.decl().name() == 'not'
+        return QBF(self._prop.children()[0] if _is_not else Not(self._prop), new_q_list)
 
     def renew_quantifiers(self):
         n_q_vecs = len(self._q_list)
@@ -121,11 +124,10 @@ class QBF(object):
         vec_len = len(self._q_list[0][1])
         new_quantified_vectors = [VarManager.duplicate_vars(q_vars) for (_, q_vars) in self._q_list]
         new_q_list = [(self._q_list[_i][0], new_quantified_vectors[_i]) for _i in range(n_q_vecs)]
-        substitutions = [(self._q_list[_i][1][_j], new_q_list[_i][1][_j]) for _i in range(n_q_vecs) for _j in range(vec_len)]
+        substitutions = [(self._q_list[_i][1][_j], new_q_list[_i][1][_j]) for _i in range(n_q_vecs) for _j in
+                         range(vec_len)]
         new_prop = substitute(self._prop, *substitutions)
         return QBF(new_prop, new_q_list)
-
-
 
     def __eq__(self, o):
         return self._prop.eq(o.get_prop()) and self._q_list == o.get_q_list()
@@ -139,12 +141,12 @@ class QBF(object):
 
 if __name__ == '__main__':
     x = [Bool('x' + str(i)) for i in range(5)]
-    q = QBF(And(*x), [('A' if i % 2 == 0 else 'E', [x[i]]) for i in range(5)])
-    print q.connect()
-    print q.negate().connect()
-    print q.negate().negate().connect()
+    q = QBF(And(*x), [(1 if i % 2 == 0 else -1, [x[i]]) for i in range(5)])
+    print q.to_z3()
+    print q.negate().to_z3()
+    print q.negate().negate().to_z3()
 
     q2 = QBF(And(*x))
-    print q2.connect()
+    print q2.to_z3()
 
-    print q.renew_quantifiers().connect()
+    print q.renew_quantifiers().to_z3()

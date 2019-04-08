@@ -1,4 +1,8 @@
+import pydepqbf
+
 from z3 import *
+from pydepqbf import *
+
 
 class QbfSolver(object):
     def solve(self, formula):
@@ -12,23 +16,50 @@ class QbfSolver(object):
 
 
 class DepQbfSimpleSolver(QbfSolver):
-    def solve(self, formula):
-        pass
+    def solve(self, qbf):
+        cnfer = Tactic('tseitin-cnf')
+
+        cnf_prop = cnfer(qbf.get_prop()).as_expr()
+        g = Goal()
+        g.add(cnf_prop)
+        dimacs = g.dimacs().split('\n')
+
+        first_conversion_line = next(i for i in range(len(dimacs)) if dimacs[i].startswith('c'))
+        conversion_lines = dimacs[first_conversion_line:]
+        names_to_nums = {_l.split()[2]: int(_l.split()[1]) for _l in conversion_lines}
+
+        try:
+            quantifiers = [(_q, [names_to_nums[_v.decl().name()] for _v in v_list]) for (_q, v_list) in qbf.get_q_list()]
+        except:
+            print 'lalalal'
+        clause_lines = dimacs[1:first_conversion_line]
+        clauses = [[int(_x) for _x in _line.split()[:-1]] for _line in clause_lines]
+
+        is_sat, certificate = pydepqbf.solve(quantifiers, clauses)
+        print is_sat, certificate
+        if is_sat == QDPLL_RESULT_UNSAT:
+            return unsat, False
+
+        num_to_name = {a: Bool(b) for (b, a) in names_to_nums.items()}
+        model = {num_to_name[abs(val)]: BoolVal(True) if val > 0 else BoolVal(False) for val in certificate}
+        return sat, model
 
     def incremental_solve(self, formulas, stop_res):
         for i in range(len(formulas)):
             print i
-            is_sat, res = self.solve(formulas[i])
+            is_sat, res = self.solve(formulas[i].get_qbf())
             if is_sat == stop_res:
                 return i, res
         return False, False
 
 
 class Z3QbfSolver(QbfSolver):
+    def __init__(self):
+        super(Z3QbfSolver, self).__init__()
 
     def solve(self, formula):
         s = Solver()
-        res = s.check(formula)
+        res = s.check(formula.get_qbf().connect())
         if res == sat:
             return sat, s.model()
         return unsat, False
@@ -36,10 +67,10 @@ class Z3QbfSolver(QbfSolver):
     def incremental_solve(self, formulas, stop_res):
         s = Solver()
         for i in range(len(formulas)):
-            f = formulas[i].get_qbf().connect()
-    #        print i
+            f = formulas[i]
+            #        print i
             res = s.check(f)
-    #        print 'done' + str(i)
+            #        print 'done' + str(i)
             if res == stop_res:
                 return i, (s.model() if res == sat else False)
         return False, False

@@ -4,7 +4,7 @@ import logging
 from z3 import *
 
 from common import z3_val_to_int, EEClosureViolation
-from qbf_solver import Z3QbfSolver
+from qbf_solver import Z3QbfSolver, DepQbfSimpleSolver
 from state import State
 from formula_wrapper import FormulaWrapper, QBF
 from var_manager import VarManager
@@ -99,7 +99,7 @@ class Z3Utils(object):
         in_vec, quantified_input = tr.get_input_vectors()
 
         inner = And(tr.get_qbf().get_prop(), split_by.get_qbf().get_prop())
-        q_list = [('E', new_vars + in_vec)] + split_by.get_qbf().get_q_list() + tr.get_qbf().get_q_list()
+        q_list = [(-1, new_vars + in_vec)] + split_by.get_qbf().get_q_list() + tr.get_qbf().get_q_list()
         #   exists_formula = cls.apply_qe(simplify(Exists(new_vars + in_vec, inner)), qe_policy)
 
         return FormulaWrapper(QBF(inner, q_list), [prev_vars], [in_vec])
@@ -115,12 +115,12 @@ class Z3Utils(object):
 
         split_by, tr = cls._get_components_in_quantified(abstract_targets, transitions)
         prev_vars, new_vars = tr.get_var_vectors()
-        in_vec, quantified_input = transitions.get_input_vectors()
+        in_vec, quantified_input = tr.get_input_vectors()
 
         neg_tr = tr.negate()
         inner = Or(neg_tr.get_qbf().get_prop(), split_by.get_qbf().get_prop())
         # forall_formula = cls.apply_qe(simplify(ForAll(new_vars + in_vec, innektr)), qe_policy)
-        q_list = [('A', new_vars + in_vec)] + split_by.get_qbf().get_q_list() + neg_tr.get_qbf().get_q_list()
+        q_list = [(1, new_vars + in_vec)] + split_by.get_qbf().get_q_list() + neg_tr.get_qbf().get_q_list()
 
         return FormulaWrapper(QBF(inner, q_list), [prev_vars], [in_vec])
 
@@ -164,7 +164,7 @@ class Z3Utils(object):
     def all_sat(cls, formula_wrap):
         s = Solver()
         assignments = []
-        s.add(formula_wrap.get_qbf().connect())
+        s.add(formula_wrap.get_qbf().to_z3())
 
         all_vars = [_v for v_list in formula_wrap.get_var_vectors() for _v in v_list]
         while s.check() == sat:
@@ -211,7 +211,7 @@ class Z3Utils(object):
         f_qbf = QBF(f_inner, abs_formula.get_qbf().get_q_list())
         f = FormulaWrapper(f_qbf, [dst_vars], tr.get_input_vectors())
 
-        i, model = Z3QbfSolver().incremental_solve_flags(f, flags, sat)
+        i, model = DepQbfSimpleSolver().incremental_solve_flags(f, flags, sat)
         if i is False:
             return False
         return nodes_from[i], next(get_states(model, dst_vars, kripke))
@@ -237,10 +237,10 @@ class Z3Utils(object):
 
         tr_qbf = transitions.get_qbf()
         inner_prop = simplify(And(src_qbf.get_prop(), Or(Not(tr_qbf.get_prop()), dst.get_prop())))
-        query = QBF(inner_prop, src_qbf.get_q_list() + [('A', dst_vars)] + tr_qbf.get_q_list() + dst.get_q_list())
+        query = QBF(inner_prop, src_qbf.get_q_list() + [(1, dst_vars)] + tr_qbf.get_q_list() + dst.get_q_list())
 
-        solver = Z3QbfSolver()
-        res, model = solver.solve(query.connect())
+        solver = DepQbfSimpleSolver()
+        res, model = solver.solve(query)
         #  logger.debug('check end.')
         if res == unsat:
             return True
@@ -270,8 +270,8 @@ class Z3Utils(object):
         inner_prop = simplify(And(src_qbf.get_prop(), tr_qbf.get_prop(), dst.get_prop()))
         query = QBF(inner_prop, src_qbf.get_q_list() + tr_qbf.get_q_list() + dst.get_q_list())
         #   logger.debug('Check start')
-        solver = Z3QbfSolver()
-        res, model = solver.solve(query.connect())
+        solver = DepQbfSimpleSolver()
+        res, model = solver.solve(query)
         #  logger.debug('check end.')
         if res == unsat:
             return True

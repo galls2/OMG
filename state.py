@@ -50,7 +50,7 @@ class State(object):
         _, model = self.formula_wrapper.sat_get_model()
 
         state_formula = self.kripke.get_output_formula().get_qbf()
-        prop = And(state_formula.connect(), *[self.ap_lit_by_model(model, ap) for ap in AP])
+        prop = And(state_formula.to_z3(), *[self.ap_lit_by_model(model, ap) for ap in AP])
         bis0 = FormulaWrapper(QBF(prop), self.formula_wrapper.get_var_vectors(), [self.kripke.get_input_var_vector()])
         self.bis0 = bis0
         return bis0
