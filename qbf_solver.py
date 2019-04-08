@@ -16,6 +16,9 @@ class QbfSolver(object):
 
 
 class DepQbfSimpleSolver(QbfSolver):
+    def __init__(self):
+        super(DepQbfSimpleSolver, self).__init__()
+
     def solve(self, qbf):
         cnfer = Tactic('tseitin-cnf')
 
@@ -28,10 +31,9 @@ class DepQbfSimpleSolver(QbfSolver):
         conversion_lines = dimacs[first_conversion_line:]
         names_to_nums = {_l.split()[2]: int(_l.split()[1]) for _l in conversion_lines}
 
-        try:
-            quantifiers = [(_q, [names_to_nums[_v.decl().name()] for _v in v_list]) for (_q, v_list) in qbf.get_q_list()]
-        except:
-            print 'lalalal'
+
+        quantifiers = [(_q, [names_to_nums[_v.decl().name()] for _v in v_list]) for (_q, v_list) in qbf.get_q_list()]
+
         clause_lines = dimacs[1:first_conversion_line]
         clauses = [[int(_x) for _x in _line.split()[:-1]] for _line in clause_lines]
 
@@ -57,9 +59,9 @@ class Z3QbfSolver(QbfSolver):
     def __init__(self):
         super(Z3QbfSolver, self).__init__()
 
-    def solve(self, formula):
+    def solve(self, qbf):
         s = Solver()
-        res = s.check(formula.get_qbf().connect())
+        res = s.check(qbf.to_z3())
         if res == sat:
             return sat, s.model()
         return unsat, False
@@ -67,7 +69,7 @@ class Z3QbfSolver(QbfSolver):
     def incremental_solve(self, formulas, stop_res):
         s = Solver()
         for i in range(len(formulas)):
-            f = formulas[i]
+            f = formulas[i].get_qbf().to_z3()
             #        print i
             res = s.check(f)
             #        print 'done' + str(i)
