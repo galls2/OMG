@@ -3,7 +3,7 @@ import functools
 import logging
 import time
 
-from z3 import BoolVal, Not, And
+from z3 import BoolVal, Not, And, Z3_OP_UNINTERPRETED, AstRef, Bool
 
 logger = logging.getLogger('OMG')
 
@@ -92,6 +92,14 @@ def int_list_to_cube(int_list, _vars):
 # -----------------------------------------------------------------------------------------------------
 # AUXILIARY CLASSES
 # -----------------------------------------------------------------------------------------------------
+class MyModel(object):
+    def __init__(self, assignment):
+        self.assignment = assignment
+
+    def __getitem__(self, item):
+        return self.assignment.get(item)
+
+
 
 class ConcretizationResult(object):
     def __init__(self, src=None, dst=None):
@@ -113,3 +121,5 @@ class EEClosureViolation(object):
 # -----------------------------------------------------------------------------------------------------
 
 foldr = lambda func, acc, xs: functools.reduce(lambda x, y: func(y, x), xs[::-1], acc)
+
+

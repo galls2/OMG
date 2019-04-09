@@ -70,10 +70,12 @@ class AigKripkeStructure(KripkeStructure):
                 continue
             successors = self.get_successors(next_state)
             edges[next_state] = successors
+
+            print str(next_state) + '-> ' + ','.join([str(dst) for dst in edges[next_state]])
+
             to_explore |= set(successors)
 
-        for s in edges.keys():
-            print str(s) + '-> ' + ','.join([str(dst) for dst in edges[s]])
+
 
 
         G = nx.DiGraph()

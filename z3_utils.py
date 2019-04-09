@@ -4,46 +4,12 @@ import logging
 from z3 import *
 
 from common import z3_val_to_int, EEClosureViolation
-from qbf_solver import Z3QbfSolver, DepQbfSimpleSolver
+from qbf_solver import Z3QbfSolver, DepQbfSimpleSolver, QDPLL_QTYPE_EXISTS, QDPLL_QTYPE_FORALL
 from state import State
 from formula_wrapper import FormulaWrapper, QBF
 from var_manager import VarManager
 
 logger = logging.getLogger('OMG')
-
-
-class AstRefKey:
-    def __init__(self, n):
-        self.n = n
-
-    def __hash__(self):
-        return self.n.hash()
-
-    def __eq__(self, other):
-        return self.n.eq(other.n)
-
-    def __repr__(self):
-        return str(self.n)
-
-
-def askey(n):
-    assert isinstance(n, AstRef)
-    return AstRefKey(n)
-
-
-def get_vars(f):
-    r = []
-
-    def collect(f):
-        if is_const(f):
-            if f.decl().kind() == Z3_OP_UNINTERPRETED and not askey(f) in r:
-                r.append(askey(f))
-        else:
-            for c in f.children():
-                collect(c)
-
-    collect(f)
-    return map(lambda d: d.n, list(r))
 
 
 def get_assignments(model, variables):
@@ -67,12 +33,13 @@ class Z3Utils(object):
 
     @classmethod
     def _get_components_in_quantified(cls, abs_targets, tr):
-        tag_input_vector = tr.get_input_vectors()[1]
+        untagged_in_vec, tag_input_vector = tr.get_input_vectors()
         new_state_vars = VarManager.duplicate_vars(tr.get_var_vectors()[0])
-        new_in_vec = VarManager.duplicate_vars(tag_input_vector)
+        new_tag_in_vec = VarManager.duplicate_vars(tag_input_vector)
+        new_untag_in_vec = VarManager.duplicate_vars(untagged_in_vec)
 
         abs_targets_sub = [target.get_descriptive_formula()
-                               .substitute_inputs(new_in_vec, 0)
+                               .substitute_inputs(new_tag_in_vec, 0)
                                .substitute(new_state_vars, 0)
                                .renew_quantifiers() for target in abs_targets]
         abs_or = Or(*[_t.get_qbf().get_prop() for _t in abs_targets_sub])
@@ -80,9 +47,11 @@ class Z3Utils(object):
 
         new_q_list = [_v for _t in abs_targets_sub for _v in _t.get_qbf().get_q_list()]
 
-        split_by_formula_tag = FormulaWrapper(QBF(abs_or, new_q_list), [new_state_vars], [new_in_vec])
+        split_by_formula_tag = FormulaWrapper(QBF(abs_or, new_q_list), [new_state_vars], [new_tag_in_vec])
 ## RENAME QUNATIFIED HERE
-        transitions_has_sons = tr.substitute(new_state_vars, 1).substitute_inputs(new_in_vec, 0)  # R(u,v) [v<-v']
+        transitions_has_sons = tr.substitute(new_state_vars, 1)\
+                                .substitute_inputs(new_untag_in_vec, 0)\
+                                .substitute_inputs(new_tag_in_vec, 1)  # R(u,v) [v<-v']
         return split_by_formula_tag, transitions_has_sons
 
     '''
@@ -237,13 +206,17 @@ class Z3Utils(object):
 
         tr_qbf = transitions.get_qbf()
         inner_prop = simplify(And(src_qbf.get_prop(), Or(Not(tr_qbf.get_prop()), dst.get_prop())))
-        query = QBF(inner_prop, src_qbf.get_q_list() + [(1, dst_vars)] + tr_qbf.get_q_list() + dst.get_q_list())
+        q_list = src_qbf.get_q_list() + [(QDPLL_QTYPE_FORALL, dst_vars)] + tr_qbf.get_q_list() + dst.get_q_list()
+        if q_list:
+            q_list = [(QDPLL_QTYPE_EXISTS, src_vars)] + q_list
+        query = QBF(inner_prop, q_list)
 
         solver = DepQbfSimpleSolver()
         res, model = solver.solve(query)
         #  logger.debug('check end.')
         if res == unsat:
             return True
+
 
         ass = next(get_states(model, src_vars, kripke))
         return ass
@@ -268,7 +241,11 @@ class Z3Utils(object):
 
         tr_qbf = transitions.get_qbf()
         inner_prop = simplify(And(src_qbf.get_prop(), tr_qbf.get_prop(), dst.get_prop()))
-        query = QBF(inner_prop, src_qbf.get_q_list() + tr_qbf.get_q_list() + dst.get_q_list())
+        q_list = dst.get_q_list() + src_qbf.get_q_list() + tr_qbf.get_q_list()
+        if q_list:
+            q_list = [(QDPLL_QTYPE_EXISTS, src_vars+dst_vars)] + q_list
+
+        query = QBF(inner_prop, q_list)
         #   logger.debug('Check start')
         solver = DepQbfSimpleSolver()
         res, model = solver.solve(query)
@@ -276,15 +253,18 @@ class Z3Utils(object):
         if res == unsat:
             return True
 
-        '''
+
         for s in get_states(model, src_vars, kripke):
             f = to_close.get_descriptive_formula().assign_state(s).is_sat()
             if not f:
                 print 'EE-closure is all messed up!'
                 print 'The src is supposed to be in '+to_close.get_debug_name()
                 print 'But is classified to '+to_close.get_classification_node()._classifier.classify(s).get_debug_name()
-        '''
-
+                print 'BUG'
+                get_states(model, src_vars, kripke)
+                solver = DepQbfSimpleSolver()
+                res, model = solver.solve(query)
+                assert False
         return EEClosureViolation(next(get_states(model, src_vars, kripke)), next(get_states(model, dst_vars, kripke)))
 
     @classmethod

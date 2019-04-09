@@ -3,6 +3,10 @@ import pydepqbf
 from z3 import *
 from pydepqbf import *
 
+from z3.z3util import get_vars
+
+from common import MyModel
+
 
 class QbfSolver(object):
     def solve(self, formula):
@@ -31,24 +35,25 @@ class DepQbfSimpleSolver(QbfSolver):
         conversion_lines = dimacs[first_conversion_line:]
         names_to_nums = {_l.split()[2]: int(_l.split()[1]) for _l in conversion_lines}
 
-
-        quantifiers = [(_q, [names_to_nums[_v.decl().name()] for _v in v_list]) for (_q, v_list) in qbf.get_q_list()]
+        quantifiers = [
+            (_q, [names_to_nums[_v.decl().name()] for _v in v_list if _v.decl().name() in names_to_nums.keys()])
+            for (_q, v_list) in qbf.get_q_list()]
 
         clause_lines = dimacs[1:first_conversion_line]
         clauses = [[int(_x) for _x in _line.split()[:-1]] for _line in clause_lines]
 
         is_sat, certificate = pydepqbf.solve(quantifiers, clauses)
-        print is_sat, certificate
+     #   print is_sat, certificate
         if is_sat == QDPLL_RESULT_UNSAT:
             return unsat, False
 
         num_to_name = {a: Bool(b) for (b, a) in names_to_nums.items()}
-        model = {num_to_name[abs(val)]: BoolVal(True) if val > 0 else BoolVal(False) for val in certificate}
+        model = MyModel({num_to_name[abs(val)]: BoolVal(True) if val > 0 else BoolVal(False) for val in certificate})
         return sat, model
 
     def incremental_solve(self, formulas, stop_res):
         for i in range(len(formulas)):
-            print i
+            #print i
             is_sat, res = self.solve(formulas[i].get_qbf())
             if is_sat == stop_res:
                 return i, res

@@ -141,7 +141,7 @@ class OmgModelChecker(object):
         positive_answer = []
         negative_answer = []
         for initial_state in self._kripke.get_initial_states():
-            #self._kripke.get_graph(initial_state)
+          #  self._kripke.get_graph(initial_state)
             model_checking_result = self.handle_ctl(initial_state, specification)
             if model_checking_result:
                 positive_answer.append(initial_state)
@@ -246,8 +246,11 @@ class OmgModelChecker(object):
                     if to_close_node.get_successors() is None:
                         node_to_set = to_close_node
                     else:
-                        node_to_set = next(successor for successor in to_close_node.get_successors()
+                        try:
+                            node_to_set = next(successor for successor in to_close_node.get_successors()
                                            if successor.concrete_label == witness_concrete_state)
+                        except:
+                            print 'gf'
 
                     node_to_set.set_urgent()
                     to_visit[node_to_set] = node_to_set.unwinding_priority()
@@ -405,7 +408,7 @@ class OmgModelChecker(object):
 
     def __validate_abstract_classification(self, concrete_state, abstract_label):
         cl_node = abstract_label.get_classification_node()
-        logger.debug("VALIDATING VALVAL")
+  #      logger.debug("VALIDATING VALVAL")
         def is_papa(possible_dad):
             _l = abstract_label.get_classification_node()
             while _l is not None:
@@ -425,9 +428,11 @@ class OmgModelChecker(object):
             if c_node.get_successors() is not None:
                 to_visit += c_node.get_successors().values()
             if is_papa(c_node):
-                assert abstract_label.get_descriptive_formula().assign_state(concrete_state).is_sat()
+                if not abstract_label.get_descriptive_formula().assign_state(concrete_state).is_sat():
+                    assert False
             else:
-                assert not c_node.get_value().get_descriptive_formula().assign_state(concrete_state).is_sat()
+                if c_node.get_value().get_descriptive_formula().assign_state(concrete_state).is_sat():
+                    assert False
 
     def _find_abs_classification_for_state(self, concrete_state):
         kripke = self._kripke
@@ -446,6 +451,7 @@ class OmgModelChecker(object):
         return abstract_state
 
     def _find_abs_classification_for_node(self, node):
+
         concrete_state = node.concrete_label
         abstract_classification = self._find_abs_classification_for_state(concrete_state)
         node.set_abstract_label(abstract_classification)
