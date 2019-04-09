@@ -230,9 +230,9 @@ def regression_tests():
 
 if __name__ == '__main__':
     create_logger()
-    test_specific_tests(['rrobin'])
+   # test_specific_tests(['rrobin'])
 
 #
-   # regression_tests()
+    regression_tests()
 #    model_checking(parse_input())
   #  test_all_iimc()

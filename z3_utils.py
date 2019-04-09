@@ -177,7 +177,10 @@ class Z3Utils(object):
         all_tr_flagged = simplify(And(*tr_flagged))
 
         f_inner = simplify(And(all_tr_flagged, abs_formula.get_qbf().get_prop()))
-        f_qbf = QBF(f_inner, abs_formula.get_qbf().get_q_list())
+        q_list = abs_formula.get_qbf().get_q_list()
+        if q_list:
+            q_list = [(QDPLL_QTYPE_EXISTS, dst_vars)]+ q_list
+        f_qbf = QBF(f_inner,)
         f = FormulaWrapper(f_qbf, [dst_vars], tr.get_input_vectors())
 
         i, model = DepQbfSimpleSolver().incremental_solve_flags(f, flags, sat)
