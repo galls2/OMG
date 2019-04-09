@@ -9,6 +9,7 @@ from common import MyModel
 
 
 class QbfSolver(object):
+
     def solve(self, formula):
         raise NotImplementedError()
 
@@ -81,3 +82,5 @@ class Z3QbfSolver(QbfSolver):
             if res == stop_res:
                 return i, (s.model() if res == sat else False)
         return False, False
+
+QbfSolverCtor = DepQbfSimpleSolver

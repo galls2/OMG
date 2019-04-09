@@ -182,7 +182,7 @@ class OmgModelChecker(object):
             if node_to_explore.concrete_label in visited:
                 continue
             visited.add(node_to_explore.concrete_label)
-            logger.debug(str(goal)+':: AV:: NOW EXPLORING ' + node_to_explore.description())
+            #logger.debug(str(goal)+':: AV:: NOW EXPLORING ' + node_to_explore.description())
             #  logger.debug(str(node))
 
             abstract_state = self._find_abs_classification_for_node(node_to_explore)
@@ -190,7 +190,7 @@ class OmgModelChecker(object):
 
             self._handle_ctl_and_recur(node_to_explore, q)
             if node_to_explore.is_labeled_negatively_with(q):
-                logger.debug(str(goal) + ':: AV:: FALSE DUE TO TRACE' + node_to_explore.description())
+                #logger.debug(str(goal) + ':: AV:: FALSE DUE TO TRACE' + node_to_explore.description())
                 return self._handle_proving_trace(is_strengthen, node, node_to_explore, spec, to_return=False)
 
             self._handle_ctl_and_recur(node_to_explore, p)
@@ -227,37 +227,34 @@ class OmgModelChecker(object):
             abs_state_lead = get_next_to_av_close(abs_states_lead)
             to_close_abstract, to_close_nodes = abs_state_lead
 
-            logger.debug('AV:: Trying to close abstract state of' + to_close_nodes[0].description() + ' :'+str(goal))
+            #logger.debug('AV:: Trying to close abstract state of' + to_close_nodes[0].description() + ' :'+str(goal))
             res = self._abs_structure.is_EE_closure(to_close_abstract, abs_states)
             if res is True:
-                logger.debug(' Success!')
+                #logger.debug(' Success!')
                 abs_states_lead.remove(abs_state_lead)
             else:
                 src_to_witness, witness_state = res.conc_src, res.conc_dst
 
-                logger.debug(' Failed! Due to ' + str(src_to_witness) + ' to ' + str(witness_state))
+                #logger.debug(' Failed! Due to ' + str(src_to_witness) + ' to ' + str(witness_state))
 
                 concretization_result = self._is_concrete_violation(to_close_nodes, witness_state)
                 if concretization_result.exists():
                     witness_concrete_state = concretization_result.dst_conc
                     to_close_node = concretization_result.src_node
-                    logger.debug("CONC")
+                    #logger.debug("CONC")
 
                     if to_close_node.get_successors() is None:
                         node_to_set = to_close_node
                     else:
-                        try:
-                            node_to_set = next(successor for successor in to_close_node.get_successors()
+                        node_to_set = next(successor for successor in to_close_node.get_successors()
                                            if successor.concrete_label == witness_concrete_state)
-                        except:
-                            print 'gf'
 
                     node_to_set.set_urgent()
                     to_visit[node_to_set] = node_to_set.unwinding_priority()
 
                 else:
 
-                    logger.debug("REFINE")
+                    #logger.debug("REFINE")
                     abs_src_witness = self._find_abs_classification_for_state(src_to_witness)
                     to_close_node = next((_to for _to in to_close_nodes
                                           if _to.get_abstract_label() == abs_src_witness), None)
@@ -294,7 +291,7 @@ class OmgModelChecker(object):
         while to_visit:
             node_to_explore = (to_visit.popitem()[0]).reset_urgent()
 
-            logger.debug('EV:: NOW EXPLORING ' + node_to_explore.description())
+            #logger.debug('EV:: NOW EXPLORING ' + node_to_explore.description())
             self._find_abs_classification_for_node(node_to_explore)
 
             if node_to_explore.concrete_label in visited:
@@ -339,7 +336,7 @@ class OmgModelChecker(object):
 
         while lasso_res is not False:
 
-            logger.debug('EV:: STARTING ABSTRACT CLOSURE ATTEMPT')
+            #logger.debug('EV:: STARTING ABSTRACT CLOSURE ATTEMPT')
 
             base, abstract_states_nodes_loop = lasso_res
             abstract_states_nodes_loop = list(abstract_states_nodes_loop)
@@ -447,7 +444,7 @@ class OmgModelChecker(object):
 
             self._abs_structure.add_abstract_state(abstract_state)
 
-        self.__validate_abstract_classification(concrete_state, abstract_state)
+        #self.__validate_abstract_classification(concrete_state, abstract_state)
         return abstract_state
 
     def _find_abs_classification_for_node(self, node):
@@ -529,19 +526,21 @@ class OmgModelChecker(object):
 
     def _refine_split_ex(self, node_src, dst_states, check_trivial, known_reclassification=None):
         dst_abs_states = [self._find_abs_classification_for_state(dst) for dst in dst_states]
-        logger.debug('EX SPLIT:: '+self._find_abs_classification_for_node(node_src).get_debug_name() + ' by ['+','.join([_d.get_debug_name() for _d in dst_abs_states])+']')
+        #logger.debug('EX SPLIT:: '+self._find_abs_classification_for_node(node_src).get_debug_name() + ' by ['+','.join([_d.get_debug_name() for _d in dst_abs_states])+']')
 
         if self._abs_structure.is_known_E_must_between(node_src.get_abstract_label(), dst_abs_states):
-            logger.debug('SPLIT AVERTED DUE TO KNOWN E_MUST')
+            #logger.debug('SPLIT AVERTED DUE TO KNOWN E_MUST')
             return
         self._refine_split_next(node_src, dst_abs_states, self._abs_structure.split_abstract_state_ex,
                                 Z3Utils.get_exists_successors_in_formula, check_trivial, known_reclassification)
 
+        '''
         p = self._find_abs_classification_for_node(node_src).get_classification_node().get_parent()
         if p is not None:
-            logger.debug('SPLIT PRODUCTS: [FALSE]: {} [True]: {}'.format(p.get_successors()[False].get_value().get_debug_name(), p.get_successors()[True].get_value().get_debug_name()))
+            #logger.debug('SPLIT PRODUCTS: [FALSE]: {} [True]: {}'.format(p.get_successors()[False].get_value().get_debug_name(), p.get_successors()[True].get_value().get_debug_name()))
         else:
-            logger.debug('NO SPLIT WAS DONE')
+            #logger.debug('NO SPLIT WAS DONE')
+        '''
 
     def _refine_split_ax(self, src_node, dst_nodes, check_trivial, known_reclassification=None):
         dst_abs_states = unique([dst.get_abstract_label() for dst in dst_nodes])
