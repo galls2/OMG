@@ -1,13 +1,10 @@
-import datetime
 import pydepqbf
-
-from z3 import *
 from pydepqbf import *
 
-from z3.z3util import get_vars
+from z3 import *
 
-from common import MyModel
-from formula_wrapper import QBF
+from common import MyModel, foldr
+from formula_wrapper import QBF, FormulaWrapper
 
 
 def to_file(path, txt_lines):
@@ -31,7 +28,16 @@ class QbfSolver(object):
 def to_qdimacs(dimacs, quantifiers):
     q_lines = [('a' if _q == 1 else 'e') + ' ' + ' '.join([str(_t) for _t in _vs]) + ' 0' for (_q, _vs) in quantifiers]
     clasues_no_comments = [_l for _l in dimacs[1:] if not _l.startswith('c')]
-    return '\n'.join(dimacs[0:1]+q_lines+clasues_no_comments)
+    return '\n'.join(dimacs[0:1] + q_lines + clasues_no_comments)
+
+
+def build_z3(quantifiers, clauses):
+    def parse_clause(clause):
+        return Or(*[Bool(str(lit)) if lit > 0 else Not(Bool(str(lit))) for lit in clause])
+
+    cnf = And(*[parse_clause(clause) for clause in clauses])
+    qs = [(_q, [Bool(_x) for _x in vs]) for (_q, vs) in quantifiers]
+    return foldr(lambda (_q, _v), f: (Exists if _q == -1 else ForAll)(_v, f), cnf, qs)
 
 
 class DepQbfSimpleSolver(QbfSolver):
@@ -44,19 +50,33 @@ class DepQbfSimpleSolver(QbfSolver):
         old_qbf = formula_wrapper.get_qbf()
         prop = old_qbf.get_prop()
         q_list = old_qbf.get_q_list()
-        if q_list:
-            q_list = [(-1, [_v for v_vec in formula_wrapper.get_var_vectors() for _v in v_vec])] + old_qbf.get_q_list()
 
-        qbf = QBF(prop, q_list)
 
-        cnf_prop = cnfer(qbf.get_prop()).as_expr()
+        cnf_prop = cnfer(old_qbf.get_prop()).as_expr()
         g = Goal()
         g.add(cnf_prop)
         dimacs = g.dimacs().split('\n')
 
         first_conversion_line = next(i for i in range(len(dimacs)) if dimacs[i].startswith('c'))
         conversion_lines = dimacs[first_conversion_line:]
+#        print conversion_lines
         names_to_nums = {_l.split()[2]: int(_l.split()[1]) for _l in conversion_lines}
+
+
+        if q_list:
+            new_vars_to_quantify = [_v for v_vec in formula_wrapper.get_var_vectors()+formula_wrapper.get_input_vectors() for _v in v_vec]
+            q_list = [(QDPLL_QTYPE_EXISTS, new_vars_to_quantify)] + old_qbf.get_q_list()
+
+            old_quantified_vars = set([_v for (_, _vs) in old_qbf.get_q_list() for _v in _vs])
+
+            tseitin_vars = (set([Bool(_u) for _u in names_to_nums.keys()]) - old_quantified_vars) - set(new_vars_to_quantify)
+            q_list = q_list + [(QDPLL_QTYPE_EXISTS, tseitin_vars)]
+            print tseitin_vars
+
+
+        qbf = QBF(prop, q_list)
+
+
 
         quantifiers = [
             (_q, [names_to_nums[_v.decl().name()] for _v in v_list if _v.decl().name() in names_to_nums.keys()])
@@ -66,14 +86,20 @@ class DepQbfSimpleSolver(QbfSolver):
         clauses = [[int(_x) for _x in _line.split()[:-1]] for _line in clause_lines]
 
         is_sat, certificate = pydepqbf.solve(quantifiers, clauses)
-
         print 'DEQQBF ', is_sat, certificate
+        '''
         res_z3, cert_z3 = Z3QbfSolver().solve(formula_wrapper)
-        if (res_z3 == sat and is_sat==QDPLL_RESULT_UNSAT) or (res_z3 == unsat and is_sat == QDPLL_RESULT_SAT):
+        if (res_z3 == sat and is_sat == QDPLL_RESULT_UNSAT) or (res_z3 == unsat and is_sat == QDPLL_RESULT_SAT):
             to_file('last_qdimacs', to_qdimacs(dimacs, quantifiers))
+            print Z3QbfSolver().solve(FormulaWrapper(qbf, [], []))
+            re_z3 = build_z3(quantifiers, clauses)
+      #      to_file('WOW', do_qdimacs(formula_wrapper))
+            print 'REZ#', Solver().check(re_z3)
+            #    self.solve(formula_wrapper)
+            #     formula_with_values = formula_wrapper.assign_int_vec([1,0,1,0,1,0], 1).assign_int_vec([1,0,1,1,1,0])
+            #    self.solve(formula_with_values)
             assert False
-
-
+        '''
         if is_sat == QDPLL_RESULT_UNSAT:
             return unsat, False
 

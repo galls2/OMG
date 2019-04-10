@@ -69,7 +69,7 @@ class Z3Utils(object):
         in_vec, quantified_input = tr.get_input_vectors()
 
         inner = And(tr.get_qbf().get_prop(), split_by.get_qbf().get_prop())
-        q_list = [(-1, new_vars + in_vec)] + split_by.get_qbf().get_q_list() + tr.get_qbf().get_q_list()
+        q_list = [(-1, new_vars + in_vec + quantified_input)] + split_by.get_qbf().get_q_list() + tr.get_qbf().get_q_list()
         #   exists_formula = cls.apply_qe(simplify(Exists(new_vars + in_vec, inner)), qe_policy)
 
         return FormulaWrapper(QBF(inner, q_list), [prev_vars], [in_vec])
@@ -90,7 +90,9 @@ class Z3Utils(object):
         neg_tr = tr.negate()
         inner = Or(neg_tr.get_qbf().get_prop(), split_by.get_qbf().get_prop())
         # forall_formula = cls.apply_qe(simplify(ForAll(new_vars + in_vec, innektr)), qe_policy)
-        q_list = [(1, new_vars + in_vec)] + split_by.get_qbf().get_q_list() + neg_tr.get_qbf().get_q_list()
+        q_list = [(QDPLL_QTYPE_FORALL, new_vars + in_vec)] + \
+                 [(QDPLL_QTYPE_EXISTS, quantified_input)] + \
+                 split_by.get_qbf().get_q_list() + neg_tr.get_qbf().get_q_list() # quantification over q_in may be false
 
         return FormulaWrapper(QBF(inner, q_list), [prev_vars], [in_vec])
 
@@ -234,6 +236,7 @@ class Z3Utils(object):
         src_wrapper = to_close.get_descriptive_formula().substitute(src_vars, 0).substitute_inputs(input_vars, 0)
         src_qbf_old_q = src_wrapper.get_qbf()
         src_qbf = src_qbf_old_q.renew_quantifiers()
+
         dst_formulas = [
             closer.get_descriptive_formula()
                 .substitute(dst_vars, 0)
@@ -249,6 +252,8 @@ class Z3Utils(object):
 
         query = FormulaWrapper(QBF(inner_prop, q_list), [src_vars, dst_vars], [input_vars])
         #   logger.debug('Check start')
+
+
         solver = QbfSolverCtor()
         res, model = solver.solve(query)
         #  logger.debug('check end.')
