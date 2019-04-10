@@ -117,11 +117,11 @@ class Z3Utils(object):
         neg_qbf = QBF(inner_neg, q_list_neg)
         neg = FormulaWrapper(neg_qbf, [neg_state_vars], [neg_input])
 
-        '''
+
         logger.debug("ASSERTING WELL NAMEDNESS")
         assert pos.well_named()
         assert neg.well_named()
-        '''
+
         return pos, neg, (to_split_pos, pos)
 
     @classmethod
@@ -181,8 +181,6 @@ class Z3Utils(object):
 
         f_inner = simplify(And(all_tr_flagged, abs_formula.get_qbf().get_prop()))
         q_list = abs_formula.get_qbf().get_q_list()
-        if q_list:
-            q_list = [(QDPLL_QTYPE_EXISTS, dst_vars)] + q_list
         f_qbf = QBF(f_inner, q_list)
         f = FormulaWrapper(f_qbf, [dst_vars], tr.get_input_vectors())
 
@@ -213,9 +211,9 @@ class Z3Utils(object):
         tr_qbf = transitions.get_qbf()
         inner_prop = simplify(And(src_qbf.get_prop(), Or(Not(tr_qbf.get_prop()), dst.get_prop())))
         q_list = src_qbf.get_q_list() + [(QDPLL_QTYPE_FORALL, dst_vars)] + tr_qbf.get_q_list() + dst.get_q_list()
-        if q_list:
-            q_list = [(QDPLL_QTYPE_EXISTS, src_vars)] + q_list
-        query = QBF(inner_prop, q_list)
+
+        query = FormulaWrapper(QBF(inner_prop, q_list), [src_vars], [input_vars])
+
 
         solver = QbfSolverCtor()
         res, model = solver.solve(query)
@@ -248,10 +246,8 @@ class Z3Utils(object):
         tr_qbf = transitions.get_qbf()
         inner_prop = simplify(And(src_qbf.get_prop(), tr_qbf.get_prop(), dst.get_prop()))
         q_list = src_qbf.get_q_list() + dst.get_q_list() + tr_qbf.get_q_list()
-        if q_list:
-            q_list = [(QDPLL_QTYPE_EXISTS, src_vars + dst_vars)] + q_list
 
-        query = QBF(inner_prop, q_list)
+        query = FormulaWrapper(QBF(inner_prop, q_list), [src_vars, dst_vars], [input_vars])
         #   logger.debug('Check start')
         solver = QbfSolverCtor()
         res, model = solver.solve(query)
@@ -259,7 +255,7 @@ class Z3Utils(object):
         if res == unsat:
             return True
 
-        '''
+
         for s in get_states(model, src_vars, kripke):
             f = to_close.get_descriptive_formula().assign_state(s).is_sat()
             if not f:
@@ -272,7 +268,7 @@ class Z3Utils(object):
                 solver = DepQbfSimpleSolver()
                 res, model = solver.solve(query)
                 assert False
-        '''
+
         return EEClosureViolation(next(get_states(model, src_vars, kripke)), next(get_states(model, dst_vars, kripke)))
 
     @classmethod

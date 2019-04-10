@@ -1,3 +1,4 @@
+import datetime
 import pydepqbf
 
 from z3 import *
@@ -6,6 +7,13 @@ from pydepqbf import *
 from z3.z3util import get_vars
 
 from common import MyModel
+from formula_wrapper import QBF
+
+
+def to_file(path, txt_lines):
+    f = open(path, 'w')
+    f.write(txt_lines)
+    f.close()
 
 
 class QbfSolver(object):
@@ -20,12 +28,26 @@ class QbfSolver(object):
         return self.incremental_solve([formula.and_flag(flag) for flag in flags], stop_res)
 
 
+def to_qdimacs(dimacs, quantifiers):
+    q_lines = [('a' if _q == 1 else 'e') + ' ' + ' '.join([str(_t) for _t in _vs]) + ' 0' for (_q, _vs) in quantifiers]
+    clasues_no_comments = [_l for _l in dimacs[1:] if not _l.startswith('c')]
+    return '\n'.join(dimacs[0:1]+q_lines+clasues_no_comments)
+
+
 class DepQbfSimpleSolver(QbfSolver):
     def __init__(self):
         super(DepQbfSimpleSolver, self).__init__()
 
-    def solve(self, qbf):
+    def solve(self, formula_wrapper):
         cnfer = Tactic('tseitin-cnf')
+
+        old_qbf = formula_wrapper.get_qbf()
+        prop = old_qbf.get_prop()
+        q_list = old_qbf.get_q_list()
+        if q_list:
+            q_list = [(-1, [_v for v_vec in formula_wrapper.get_var_vectors() for _v in v_vec])] + old_qbf.get_q_list()
+
+        qbf = QBF(prop, q_list)
 
         cnf_prop = cnfer(qbf.get_prop()).as_expr()
         g = Goal()
@@ -44,7 +66,14 @@ class DepQbfSimpleSolver(QbfSolver):
         clauses = [[int(_x) for _x in _line.split()[:-1]] for _line in clause_lines]
 
         is_sat, certificate = pydepqbf.solve(quantifiers, clauses)
-     #   print is_sat, certificate
+
+        print 'DEQQBF ', is_sat, certificate
+        res_z3, cert_z3 = Z3QbfSolver().solve(formula_wrapper)
+        if (res_z3 == sat and is_sat==QDPLL_RESULT_UNSAT) or (res_z3 == unsat and is_sat == QDPLL_RESULT_SAT):
+            to_file('last_qdimacs', to_qdimacs(dimacs, quantifiers))
+            assert False
+
+
         if is_sat == QDPLL_RESULT_UNSAT:
             return unsat, False
 
@@ -54,8 +83,8 @@ class DepQbfSimpleSolver(QbfSolver):
 
     def incremental_solve(self, formulas, stop_res):
         for i in range(len(formulas)):
-            #print i
-            is_sat, res = self.solve(formulas[i].get_qbf())
+            # print i
+            is_sat, res = self.solve(formulas[i])
             if is_sat == stop_res:
                 return i, res
         return False, False
@@ -65,7 +94,8 @@ class Z3QbfSolver(QbfSolver):
     def __init__(self):
         super(Z3QbfSolver, self).__init__()
 
-    def solve(self, qbf):
+    def solve(self, formula_wrapper):
+        qbf = formula_wrapper.get_qbf()
         s = Solver()
         res = s.check(qbf.to_z3())
         if res == sat:
@@ -82,5 +112,6 @@ class Z3QbfSolver(QbfSolver):
             if res == stop_res:
                 return i, (s.model() if res == sat else False)
         return False, False
+
 
 QbfSolverCtor = DepQbfSimpleSolver

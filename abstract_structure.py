@@ -181,11 +181,11 @@ class AbstractStructure(object):
 
         if self._trivial_split and check_trivial_split:  #######HERE AND Z3UTILS
             solver = QbfSolverCtor()
-            res, _ = solver.solve(pos_formula.get_qbf())
+            res, _ = solver.solve(pos_formula)
             if res == unsat:
                 #logger.debug('TSE applied!')
                 return False, abs_to_close
-            res, _ = solver.solve(neg_formula.get_qbf())
+            res, _ = solver.solve(neg_formula)
             if res == unsat:
                 #logger.debug('TSE applied!')
                 return True, abs_to_close
