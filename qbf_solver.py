@@ -51,7 +51,6 @@ class DepQbfSimpleSolver(QbfSolver):
         prop = old_qbf.get_prop()
         q_list = old_qbf.get_q_list()
 
-
         cnf_prop = cnfer(old_qbf.get_prop()).as_expr()
         g = Goal()
         g.add(cnf_prop)
@@ -59,24 +58,23 @@ class DepQbfSimpleSolver(QbfSolver):
 
         first_conversion_line = next(i for i in range(len(dimacs)) if dimacs[i].startswith('c'))
         conversion_lines = dimacs[first_conversion_line:]
-#        print conversion_lines
+        #        print conversion_lines
         names_to_nums = {_l.split()[2]: int(_l.split()[1]) for _l in conversion_lines}
 
-
         if q_list:
-            new_vars_to_quantify = [_v for v_vec in formula_wrapper.get_var_vectors()+formula_wrapper.get_input_vectors() for _v in v_vec]
+            new_vars_to_quantify = [_v for v_vec in
+                                    formula_wrapper.get_var_vectors() + formula_wrapper.get_input_vectors() for _v in
+                                    v_vec]
             q_list = [(QDPLL_QTYPE_EXISTS, new_vars_to_quantify)] + old_qbf.get_q_list()
 
             old_quantified_vars = set([_v for (_, _vs) in old_qbf.get_q_list() for _v in _vs])
 
-            tseitin_vars = (set([Bool(_u) for _u in names_to_nums.keys()]) - old_quantified_vars) - set(new_vars_to_quantify)
+            tseitin_vars = (set([Bool(_u) for _u in names_to_nums.keys()]) - old_quantified_vars) - set(
+                new_vars_to_quantify)
             q_list = q_list + [(QDPLL_QTYPE_EXISTS, tseitin_vars)]
             print tseitin_vars
 
-
         qbf = QBF(prop, q_list)
-
-
 
         quantifiers = [
             (_q, [names_to_nums[_v.decl().name()] for _v in v_list if _v.decl().name() in names_to_nums.keys()])

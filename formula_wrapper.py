@@ -88,11 +88,7 @@ class FormulaWrapper(object):
         return FormulaWrapper(new_qbf, self._var_vectors, self._input_vectors)
 
     def well_named(self):
-        q_list = self._qbf.get_q_list()
-        n_vecs = len(q_list)
-
-        return all([q_list[i] != q_list[j] for i in range(n_vecs) for j in range(n_vecs) if i < j])
-
+        return self._qbf.well_named()
 
 class QBF(object):
 
@@ -128,6 +124,11 @@ class QBF(object):
                          xrange(vec_len)]
         new_prop = substitute(self._prop, *substitutions)
         return QBF(new_prop, new_q_list)
+
+    def well_named(self):
+        q_list = self.get_q_list()
+        n_vecs = len(q_list)
+        return all([q_list[i] != q_list[j] for i in xrange(n_vecs) for j in xrange(i+1, n_vecs)])
 
     def __eq__(self, o):
         return self._prop.eq(o.get_prop()) and self._q_list == o.get_q_list()
