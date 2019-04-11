@@ -1,7 +1,7 @@
 from aig_parser import PythonAigParser
 from z3_utils import Z3Utils
-import networkx as nx
-import matplotlib.pyplot as plt
+# import networkx as nx
+# import matplotlib.pyplot as plt
 
 
 class KripkeStructure(object):
@@ -78,11 +78,11 @@ class AigKripkeStructure(KripkeStructure):
 
 
 
-        G = nx.DiGraph()
-        for state in edges.keys():
-            G.add_node(state, name=str(state))
-        G.add_edges_from([(v, u) for v in edges.keys() for u in edges[v]])
-
-        nx.draw(G)
-        nx.draw_networkx_labels(G, pos = nx.shell_layout(G))
-        plt.savefig('fig.png')
+        # G = nx.DiGraph()
+        # for state in edges.keys():
+        #     G.add_node(state, name=str(state))
+        # G.add_edges_from([(v, u) for v in edges.keys() for u in edges[v]])
+        #
+        # nx.draw(G)
+        # nx.draw_networkx_labels(G, pos = nx.shell_layout(G))
+        # plt.savefig('fig.png')
