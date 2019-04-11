@@ -48,7 +48,7 @@ class DepQbfSimpleSolver(QbfSolver):
         cnfer = Tactic('tseitin-cnf')
 
         old_qbf = formula_wrapper.get_qbf()
-        prop = old_qbf.get_prop()
+        prop = simplify(old_qbf.get_prop())
         q_list = old_qbf.get_q_list()
 
         cnf_prop = cnfer(old_qbf.get_prop()).as_expr()
@@ -71,11 +71,12 @@ class DepQbfSimpleSolver(QbfSolver):
 
             tseitin_vars = (set([Bool(_u) for _u in names_to_nums.keys()]) - old_quantified_vars) - set(
                 new_vars_to_quantify)
-            q_list = q_list + [(QDPLL_QTYPE_EXISTS, tseitin_vars)]
-            print tseitin_vars
+            q_list = q_list + [(QDPLL_QTYPE_EXISTS, list(tseitin_vars))]
+         #   print tseitin_vars
 
         qbf = QBF(prop, q_list)
-
+#        if not qbf.well_named():
+#            print 'gaga'
         quantifiers = [
             (_q, [names_to_nums[_v.decl().name()] for _v in v_list if _v.decl().name() in names_to_nums.keys()])
             for (_q, v_list) in qbf.get_q_list()]
@@ -83,8 +84,11 @@ class DepQbfSimpleSolver(QbfSolver):
         clause_lines = dimacs[1:first_conversion_line]
         clauses = [[int(_x) for _x in _line.split()[:-1]] for _line in clause_lines]
 
+        # for _u in q_list:
+        #     print _u
+     #   print 'BEFORE QBFING'
         is_sat, certificate = pydepqbf.solve(quantifiers, clauses)
-        print 'DEQQBF ', is_sat, certificate
+    #    print 'DEQQBF ', is_sat, certificate
         '''
         res_z3, cert_z3 = Z3QbfSolver().solve(formula_wrapper)
         if (res_z3 == sat and is_sat == QDPLL_RESULT_UNSAT) or (res_z3 == unsat and is_sat == QDPLL_RESULT_SAT):

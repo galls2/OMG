@@ -260,7 +260,7 @@ class Z3Utils(object):
         if res == unsat:
             return True
 
-
+        '''
         for s in get_states(model, src_vars, kripke):
             f = to_close.get_descriptive_formula().assign_state(s).is_sat()
             if not f:
@@ -273,7 +273,7 @@ class Z3Utils(object):
                 solver = DepQbfSimpleSolver()
                 res, model = solver.solve(query)
                 assert False
-
+        '''
         return EEClosureViolation(next(get_states(model, src_vars, kripke)), next(get_states(model, dst_vars, kripke)))
 
     @classmethod

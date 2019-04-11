@@ -20,7 +20,7 @@ class VarManager(object):
     @classmethod
     def new_var_name(cls, var):
         full_name = var.decl().name()
-        return var_name(full_name) + '_' + str(int(cls.copies_counter) + version(full_name))
+        return var_name(full_name) + '_' + str(cls.copies_counter)
 
     @classmethod
     def new_abs_name(cls):
