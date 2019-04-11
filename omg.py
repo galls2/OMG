@@ -526,10 +526,10 @@ class OmgModelChecker(object):
 
     def _refine_split_ex(self, node_src, dst_states, check_trivial, known_reclassification=None):
         dst_abs_states = [self._find_abs_classification_for_state(dst) for dst in dst_states]
-        logger.debug('EX SPLIT:: '+self._find_abs_classification_for_node(node_src).get_debug_name() + ' by ['+','.join([_d.get_debug_name() for _d in dst_abs_states])+']')
+    #    logger.debug('EX SPLIT:: '+self._find_abs_classification_for_node(node_src).get_debug_name() + ' by ['+','.join([_d.get_debug_name() for _d in dst_abs_states])+']')
 
         if self._abs_structure.is_known_E_must_between(node_src.get_abstract_label(), dst_abs_states):
-            logger.debug('SPLIT AVERTED DUE TO KNOWN E_MUST')
+     #       logger.debug('SPLIT AVERTED DUE TO KNOWN E_MUST')
             return
         self._refine_split_next(node_src, dst_abs_states, self._abs_structure.split_abstract_state_ex,
                                 Z3Utils.get_exists_successors_in_formula, check_trivial, known_reclassification)
