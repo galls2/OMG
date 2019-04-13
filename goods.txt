@@ -2,7 +2,6 @@ af_ag.aig
 tstrst.aig
 gray.aig
 gatedClock.aig
-cgw.aig
 rrobin.aig
 debug.aig
 pf.aig
@@ -34,6 +33,7 @@ CAB.aig
 amba8.aig
 am2901.aig
 pcuv.aig
+cgw.aig
 daio_receiver.aig
 vsaR.aig
 IFetchControl.aig
