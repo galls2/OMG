@@ -117,11 +117,11 @@ class QBF(object):
         n_q_vecs = len(self._q_list)
         if n_q_vecs == 0:
             return self
-        vec_len = len(self._q_list[0][1])
+
         new_quantified_vectors = [VarManager.duplicate_vars(q_vars) for (_, q_vars) in self._q_list]
         new_q_list = [(self._q_list[_i][0], new_quantified_vectors[_i]) for _i in xrange(n_q_vecs)]
         substitutions = [(self._q_list[_i][1][_j], new_q_list[_i][1][_j]) for _i in xrange(n_q_vecs) for _j in
-                         xrange(vec_len)]
+                         xrange(len(self._q_list[_i][1]))]
         new_prop = substitute(self._prop, *substitutions)
         return QBF(new_prop, new_q_list)
 

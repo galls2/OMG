@@ -3,7 +3,7 @@ from pydepqbf import *
 
 from z3 import *
 
-from common import MyModel, foldr
+from common import MyModel, foldr, time_me
 from formula_wrapper import QBF, FormulaWrapper
 
 
@@ -71,24 +71,51 @@ class DepQbfSimpleSolver(QbfSolver):
 
             tseitin_vars = (set([Bool(_u) for _u in names_to_nums.keys()]) - old_quantified_vars) - set(
                 new_vars_to_quantify)
-            q_list = q_list + [(QDPLL_QTYPE_EXISTS, list(tseitin_vars))]
-         #   print tseitin_vars
+            _o_q_list = q_list + [(QDPLL_QTYPE_EXISTS, list(tseitin_vars))]
+
+            #TRYING SWAP
+            # l = len(q_list)
+            #
+            # latest_exists = next((i for i in range(l-1, -1, -1) if q_list[i][0] == QDPLL_QTYPE_FORALL), 0) + 1
+            #
+            # q_list[-1] = q_list[latest_exists]
+            # q_list[latest_exists] = (QDPLL_QTYPE_EXISTS, list(tseitin_vars))
+            #
+
+            ## MERGE
+            # for _q in _o_q_list:
+            #     print _q
+            # print '$'
+            alt_idxs = [0] + [i for i in range(1, len(_o_q_list)) if _o_q_list[i][0] != _o_q_list[i-1][0]] + [len(_o_q_list)]
+            # print alt_idxs
+            blocks = [_o_q_list[alt_idxs[i]:alt_idxs[i+1]] for i in range(len(alt_idxs)-1)]
+            q_list = [(b[0][0], [_var for _tup in b for _var in _tup[1]]) for b in blocks]
+            # for _q in q_list:
+            #     print _q
 
         qbf = QBF(prop, q_list)
 #        if not qbf.well_named():
 #            print 'gaga'
-        quantifiers = [
+        try:
+            quantifiers = [
             (_q, [names_to_nums[_v.decl().name()] for _v in v_list if _v.decl().name() in names_to_nums.keys()])
             for (_q, v_list) in qbf.get_q_list()]
+        except:
+            print 'gf'
+        # print 'gf'
+        # for _g in quantifiers:
+        #     print _g
 
         clause_lines = dimacs[1:first_conversion_line]
         clauses = [[int(_x) for _x in _line.split()[:-1]] for _line in clause_lines]
 
         # for _u in q_list:
         #     print _u
-     #   print 'BEFORE QBFING'
-        is_sat, certificate = pydepqbf.solve(quantifiers, clauses)
-    #    print 'DEQQBF ', is_sat, certificate
+        # print 'BEFORE QBFING'
+        # if quantifiers:
+        #     print 'ga'
+        is_sat, certificate = time_me(pydepqbf.solve, [quantifiers, clauses], 'QBF:: ')
+#        print 'DEQQBF ', is_sat, certificate
         '''
         res_z3, cert_z3 = Z3QbfSolver().solve(formula_wrapper)
         if (res_z3 == sat and is_sat == QDPLL_RESULT_UNSAT) or (res_z3 == unsat and is_sat == QDPLL_RESULT_SAT):
