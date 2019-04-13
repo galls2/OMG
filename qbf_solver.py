@@ -94,7 +94,8 @@ class DepQbfSimpleSolver(QbfSolver):
             #     print _q
 
         qbf = QBF(prop, q_list)
-
+        if not qbf.well_named():
+            print 'fd'
 
         quantifiers = [
             (_q, [names_to_nums[_v.decl().name()] for _v in v_list if _v.decl().name() in names_to_nums.keys()])
@@ -104,6 +105,8 @@ class DepQbfSimpleSolver(QbfSolver):
         clauses = [[int(_x) for _x in _line.split()[:-1]] for _line in clause_lines]
 
         print 'BEFORE QBFING'
+        for _q in quantifiers:
+            print _q
         is_sat, certificate = time_me(pydepqbf.solve, [quantifiers, clauses], 'QBF:: ')
         print 'DEQQBF ', is_sat, certificate
         '''

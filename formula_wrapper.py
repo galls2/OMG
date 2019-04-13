@@ -131,7 +131,19 @@ class QBF(object):
     def well_named(self):
         q_list = self.get_q_list()
         n_vecs = len(q_list)
-        return all([q_list[i][1] != q_list[j][1] for i in xrange(n_vecs) for j in xrange(i+1, n_vecs)])
+        if not all([q_list[i][1] != q_list[j][1] for i in xrange(n_vecs) for j in xrange(i+1, n_vecs)]):
+            return False
+        for i in range(n_vecs):
+            for j in range(len(q_list[i][1])):
+                _v = q_list[i][1][j]
+                for __i in range(n_vecs):
+                    for __j in range(len(q_list[__i][1])):
+                        if __i == i and __j == j:
+                            continue
+                        __v =  q_list[__i][1][__j]
+                        if __v.eq(_v):
+                            return False
+        return True
 
     def __eq__(self, o):
         return self._prop.eq(o.get_prop()) and self._q_list == o.get_q_list()

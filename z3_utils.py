@@ -72,7 +72,8 @@ class Z3Utils(object):
         q_list = [(-1, new_vars + in_vec + quantified_input)] + split_by.get_qbf().get_q_list() + tr.get_qbf().get_q_list()
         #   exists_formula = cls.apply_qe(simplify(Exists(new_vars + in_vec, inner)), qe_policy)
 
-        return FormulaWrapper(QBF(inner, q_list), [prev_vars], [in_vec])
+        new_in = VarManager.duplicate_vars(in_vec)
+        return FormulaWrapper(QBF(inner, q_list), [prev_vars], [new_in])
 
     '''
     Returns Av'[TR(v,v') -> OR(targets(v'))]
@@ -94,7 +95,8 @@ class Z3Utils(object):
                  [(QDPLL_QTYPE_EXISTS, quantified_input)] + \
                  split_by.get_qbf().get_q_list() + neg_tr.get_qbf().get_q_list() # quantification over q_in may be false
 
-        return FormulaWrapper(QBF(inner, q_list), [prev_vars], [in_vec])
+        new_in = VarManager.duplicate_vars(in_vec)
+        return FormulaWrapper(QBF(inner, q_list), [prev_vars], [new_in])
 
     @classmethod
     def get_split_formula(cls, to_split, split_by, transitions, quantified_part_getter):
@@ -120,9 +122,9 @@ class Z3Utils(object):
         neg = FormulaWrapper(neg_qbf, [neg_state_vars], [neg_input])
 
         #
-        # logger.debug("ASSERTING WELL NAMEDNESS")
-        # assert pos.well_named()
-        # assert neg.well_named()
+        logger.debug("ASSERTING WELL NAMEDNESS")
+        assert pos.well_named()
+        assert neg.well_named()
 
         return pos, neg, (to_split_pos, pos)
 
