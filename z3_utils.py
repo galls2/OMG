@@ -4,7 +4,8 @@ import logging
 from z3 import *
 
 from common import z3_val_to_int, EEClosureViolation
-from qbf_solver import Z3QbfSolver, DepQbfSimpleSolver, QDPLL_QTYPE_EXISTS, QDPLL_QTYPE_FORALL, QbfSolverCtor
+from qbf_solver import Z3QbfSolver, DepQbfSimpleSolver, QDPLL_QTYPE_EXISTS, QDPLL_QTYPE_FORALL, \
+    QbfSolverSelector
 from state import State
 from formula_wrapper import FormulaWrapper, QBF
 from var_manager import VarManager
@@ -188,7 +189,7 @@ class Z3Utils(object):
         f_qbf = QBF(f_inner, q_list)
         f = FormulaWrapper(f_qbf, [dst_vars], tr.get_input_vectors())
 
-        i, model = QbfSolverCtor().incremental_solve_flags(f, flags, sat)
+        i, model = QbfSolverSelector.QbfSolverCtor().incremental_solve_flags(f, flags, sat)
         if i is False:
             return False
         return nodes_from[i], next(get_states(model, dst_vars, kripke))
@@ -219,7 +220,7 @@ class Z3Utils(object):
         query = FormulaWrapper(QBF(inner_prop, q_list), [src_vars], [input_vars])
 
 
-        solver = QbfSolverCtor()
+        solver = QbfSolverSelector.QbfSolverCtor()
         res, model = solver.solve(query)
         #  logger.debug('check end.')
         if res == unsat:
@@ -256,7 +257,7 @@ class Z3Utils(object):
         #   logger.debug('Check start')
 
 
-        solver = QbfSolverCtor()
+        solver = QbfSolverSelector.QbfSolverCtor()
         res, model = solver.solve(query)
         #  logger.debug('check end.')
         if res == unsat:

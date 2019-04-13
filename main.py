@@ -9,17 +9,17 @@ from common import time_me, profiler
 from ctl import CtlFileParser
 from kripke_structure import AigKripkeStructure
 from omg import OmgBuilder
+from qbf_solver import Z3QbfSolver, CaqeQbfSolver, DepQbfSimpleSolver, QbfSolverSelector
 
 TIMEOUT = 3600
 
 BUG_LINE = '<------------------------------------------------------ BUG -------------------------------------'
 SEP = '---------'
 
-DEFAULT_FLAGS = {'-bu': True, '-tse': True, '--qe_policy': 'no-qe', '-timeout': TIMEOUT, '-few_aps': False}
+DEFAULT_FLAGS = {'-bu': True, '-tse': True, '--qe_policy': 'no-qe', '-timeout': TIMEOUT, '-few_aps': False,
+                 '--qbf_solver': 'depqbf'}
 
 DEBUG = True
-
-AV_CLOSURE = 0.0
 
 
 def create_logger():
@@ -47,6 +47,13 @@ def check_files(aig_paths, ctl_paths):
         input_line = get_input_line_for_files(aig_file_path, ctl_formula_path)
 
         parsed_args = parse_input(input_line.split())
+        global QbfSolverCtor
+
+        QBF_SOLVER_MAPPER = {'z3': Z3QbfSolver,
+                             'caqe': CaqeQbfSolver,
+                             'depqbf': DepQbfSimpleSolver}
+
+        QbfSolverSelector.QbfSolverCtor = QBF_SOLVER_MAPPER[parsed_args.qbf_solver]
 
         model_checking(parsed_args)
         logging.getLogger('OMG').info(SEP)
@@ -128,7 +135,7 @@ RES_DICT = {True: 0, False: 1}
 
 
 def print_results_for_spec(omg, expected_res, spec):
-  #  pos, neg = profiler(omg.check_all_initial_states, [spec])
+    #  pos, neg = profiler(omg.check_all_initial_states, [spec])
     pos, neg = omg.check_all_initial_states(spec)
 
     #  spec_str = spec.str_math()
@@ -173,6 +180,7 @@ def test_AV():
 
     check_files(aig_file_paths, ctl_formula_paths)
 
+
 def test_AV2():
     logging.getLogger('OMG').info('Checking AVs:')
     aig_file_paths = ['iimc_aigs/gray.aig']
@@ -190,7 +198,7 @@ def test_EV():
 
 def test_iimc():
     logging.getLogger('OMG').info('Checking Actual IIMC examples:')
-    TEST_NAMES = ['af_ag',  'gray', 'gatedClock', 'microwave', 'tstrst', 'debug']
+    TEST_NAMES = ['af_ag', 'gray', 'gatedClock', 'microwave', 'tstrst', 'debug']
 
     aig_file_paths = ['iimc_aigs/' + test_name + '.aig' for test_name in TEST_NAMES]
     ctl_formula_paths = [(''.join(aig_path[:-4]) + '.ctl') for aig_path in aig_file_paths]
@@ -207,7 +215,7 @@ def test_specific_tests(test_names):
 
 def test_all_iimc():
     if len(sys.argv) > 1:
-        DEFAULT_FLAGS['--qe_policy'] = sys.argv[1]
+        DEFAULT_FLAGS['--qbf_solver'] = sys.argv[1]
         DEFAULT_FLAGS['-few_aps'] = True if len(sys.argv) > 2 else False
 
     logging.getLogger('OMG').info('Checking All IIMC examples:')
@@ -230,8 +238,8 @@ def regression_tests():
 
 if __name__ == '__main__':
     create_logger()
-   # test_specific_tests(['af_ag'])
-#
+    # test_specific_tests(['af_ag'])
+    #
     regression_tests()
 #    model_checking(parse_input())
 #    test_all_iimc()

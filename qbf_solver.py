@@ -73,7 +73,7 @@ class DepQbfSimpleSolver(QbfSolver):
                 new_vars_to_quantify)
             _o_q_list = q_list + [(QDPLL_QTYPE_EXISTS, list(tseitin_vars))]
 
-            #TRYING SWAP
+            # TRYING SWAP
             # l = len(q_list)
             #
             # latest_exists = next((i for i in range(l-1, -1, -1) if q_list[i][0] == QDPLL_QTYPE_FORALL), 0) + 1
@@ -86,9 +86,10 @@ class DepQbfSimpleSolver(QbfSolver):
             # for _q in _o_q_list:
             #     print _q
             # print '$'
-            alt_idxs = [0] + [i for i in range(1, len(_o_q_list)) if _o_q_list[i][0] != _o_q_list[i-1][0]] + [len(_o_q_list)]
+            alt_idxs = [0] + [i for i in range(1, len(_o_q_list)) if _o_q_list[i][0] != _o_q_list[i - 1][0]] + [
+                len(_o_q_list)]
             # print alt_idxs
-            blocks = [_o_q_list[alt_idxs[i]:alt_idxs[i+1]] for i in range(len(alt_idxs)-1)]
+            blocks = [_o_q_list[alt_idxs[i]:alt_idxs[i + 1]] for i in range(len(alt_idxs) - 1)]
             q_list = [(b[0][0], [_var for _tup in b for _var in _tup[1]]) for b in blocks]
             # for _q in q_list:
             #     print _q
@@ -162,4 +163,16 @@ class Z3QbfSolver(QbfSolver):
         return False, False
 
 
-QbfSolverCtor = DepQbfSimpleSolver
+class CaqeQbfSolver(QbfSolver):
+
+    def solve(self, formula):
+        pass
+
+    def incremental_solve(self, formulas, stop_res):
+        pass
+
+
+class QbfSolverSelector(object):
+    QbfSolverCtor = None
+
+

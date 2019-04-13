@@ -6,7 +6,7 @@ from z3 import sat
 from abstract_structure import AbstractStructure, AbstractState
 from abstraction_classifier import AbstractionClassifier
 from common import ConcretizationResult
-from qbf_solver import QbfSolverCtor, Z3QbfSolver
+from qbf_solver import Z3QbfSolver, CaqeQbfSolver, DepQbfSimpleSolver, QbfSolverSelector
 from unwinding_tree import UnwindingTree
 from z3_utils import Z3Utils
 
@@ -143,7 +143,7 @@ class OmgModelChecker(object):
         positive_answer = []
         negative_answer = []
         for initial_state in self._kripke.get_initial_states():
-          #  self._kripke.get_graph(initial_state)
+            #  self._kripke.get_graph(initial_state)
             model_checking_result = self.handle_ctl(initial_state, specification)
             if model_checking_result:
                 positive_answer.append(initial_state)
@@ -184,7 +184,7 @@ class OmgModelChecker(object):
             if node_to_explore.concrete_label in visited:
                 continue
             visited.add(node_to_explore.concrete_label)
-            #logger.debug('AV:: NOW EXPLORING ' + node_to_explore.description()+ ' FOR GOAL:: '+str(goal))
+            # logger.debug('AV:: NOW EXPLORING ' + node_to_explore.description()+ ' FOR GOAL:: '+str(goal))
             #  logger.debug(str(node))
 
             abstract_state = self._find_abs_classification_for_node(node_to_explore)
@@ -192,7 +192,7 @@ class OmgModelChecker(object):
 
             self._handle_ctl_and_recur(node_to_explore, q)
             if node_to_explore.is_labeled_negatively_with(q):
-                #logger.debug(str(goal) + ':: AV:: FALSE DUE TO TRACE' + node_to_explore.description())
+                # logger.debug(str(goal) + ':: AV:: FALSE DUE TO TRACE' + node_to_explore.description())
                 return self._handle_proving_trace(is_strengthen, node, node_to_explore, spec, to_return=False)
 
             self._handle_ctl_and_recur(node_to_explore, p)
@@ -229,21 +229,21 @@ class OmgModelChecker(object):
             abs_state_lead = get_next_to_av_close(abs_states_lead)
             to_close_abstract, to_close_nodes = abs_state_lead
 
-            #logger.debug('AV:: Trying to close '+ to_close_abstract.get_debug_name()+ ' FOR GOAL :'+str(goal))
+            # logger.debug('AV:: Trying to close '+ to_close_abstract.get_debug_name()+ ' FOR GOAL :'+str(goal))
             res = self._abs_structure.is_EE_closure(to_close_abstract, abs_states)
             if res is True:
-                #logger.debug(' Success!')
+                # logger.debug(' Success!')
                 abs_states_lead.remove(abs_state_lead)
             else:
                 src_to_witness, witness_state = res.conc_src, res.conc_dst
 
-                #logger.debug(' Failed! Due to ' + str(src_to_witness) + ' to ' + str(witness_state))
+                # logger.debug(' Failed! Due to ' + str(src_to_witness) + ' to ' + str(witness_state))
 
                 concretization_result = self._is_concrete_violation(to_close_nodes, witness_state)
                 if concretization_result.exists():
                     witness_concrete_state = concretization_result.dst_conc
                     to_close_node = concretization_result.src_node
-                    #logger.debug("CONC")
+                    # logger.debug("CONC")
 
                     if to_close_node.get_successors() is None:
                         node_to_set = to_close_node
@@ -256,7 +256,7 @@ class OmgModelChecker(object):
 
                 else:
 
-                    #logger.debug("REFINE")
+                    # logger.debug("REFINE")
                     abs_src_witness = self._find_abs_classification_for_state(src_to_witness)
                     to_close_node = next((_to for _to in to_close_nodes
                                           if _to.get_abstract_label() == abs_src_witness), None)
@@ -293,7 +293,7 @@ class OmgModelChecker(object):
         while to_visit:
             node_to_explore = (to_visit.popitem()[0]).reset_urgent()
 
-            #logger.debug('EV:: NOW EXPLORING ' + node_to_explore.description())
+            # logger.debug('EV:: NOW EXPLORING ' + node_to_explore.description())
             self._find_abs_classification_for_node(node_to_explore)
 
             if node_to_explore.concrete_label in visited:
@@ -312,7 +312,7 @@ class OmgModelChecker(object):
             visited.add(node_to_explore.concrete_label)
             self._handle_ctl_and_recur(node_to_explore, p)
             if node_to_explore.is_labeled_positively_with(p):
-                #logger.debug('EV:: PROVING trace from ' + node.description() + ' to ' + node_to_explore.description())
+                # logger.debug('EV:: PROVING trace from ' + node.description() + ' to ' + node_to_explore.description())
                 return self._handle_proving_trace(is_strengthen, node, node_to_explore, spec,
                                                   to_return=True)
             else:
@@ -323,7 +323,7 @@ class OmgModelChecker(object):
             inductive_res = self._check_inductive_ev(is_strengthen, node, node_to_explore, spec)
             if inductive_res:
                 return True
-        #logger.debug('EV:: Pruned all paths from ' + node.description() + ': returning FALSE')
+        # logger.debug('EV:: Pruned all paths from ' + node.description() + ': returning FALSE')
         if is_strengthen:
             self._strengthen_subtree(node, lambda _n: _n.is_developed(goal))
             return label_subtree(node, spec, False, goal)
@@ -333,12 +333,12 @@ class OmgModelChecker(object):
     def _check_inductive_ev(self, is_strengthen, node, node_to_explore, spec):
         lasso_res = node_to_explore.is_lasso(node.get_parent())
         if lasso_res is True:  # concrete lasso found! ## THIS GOES UP
-            #logger.debug('EV:: Found concrete lasso to: ' + node_to_explore.description())
+            # logger.debug('EV:: Found concrete lasso to: ' + node_to_explore.description())
             return self._handle_proving_trace(is_strengthen, node, node_to_explore, spec, to_return=True)
 
         while lasso_res is not False:
 
-            #logger.debug('EV:: STARTING ABSTRACT CLOSURE ATTEMPT')
+            # logger.debug('EV:: STARTING ABSTRACT CLOSURE ATTEMPT')
 
             base, abstract_states_nodes_loop = lasso_res
             abstract_states_nodes_loop = list(abstract_states_nodes_loop)
@@ -352,13 +352,13 @@ class OmgModelChecker(object):
 
             while abstract_states_nodes_loop:
                 to_close_abs, to_close_nodes = abstract_states_nodes_loop[0]
-                #logger.debug('EV:: Trying to close abstract state of' + to_close_nodes[0].description() + ' :')
+                # logger.debug('EV:: Trying to close abstract state of' + to_close_nodes[0].description() + ' :')
                 res = self._abs_structure.is_AE_closure(to_close_abs, loop_abstract_states)
                 if res is True:
-                    #logger.debug(' Success!')
+                    # logger.debug(' Success!')
                     abstract_states_nodes_loop = abstract_states_nodes_loop[1:]
                 else:
-                    #logger.debug(' Failed!')
+                    # logger.debug(' Failed!')
                     abs_src_witness = self._find_abs_classification_for_state(res)
                     to_close_node = next(_to for _to in to_close_nodes
                                          if _to.get_abstract_label() == abs_src_witness)
@@ -369,7 +369,7 @@ class OmgModelChecker(object):
                     break
 
             if not abstract_states_nodes_loop:
-                #logger.debug(' EV:: FOUND ABSTRACT CLOSURE!')
+                # logger.debug(' EV:: FOUND ABSTRACT CLOSURE!')
 
                 if is_strengthen:
                     self._strengthen_trace(node, base)
@@ -403,11 +403,10 @@ class OmgModelChecker(object):
             self._refine_split_ax(node, children_nodes, check_trivial=True, known_reclassification=True)
         return False
 
-
-
     def __validate_abstract_classification(self, concrete_state, abstract_label):
         cl_node = abstract_label.get_classification_node()
-  #      logger.debug("VALIDATING VALVAL")
+
+        #      logger.debug("VALIDATING VALVAL")
         def is_papa(possible_dad):
             _l = abstract_label.get_classification_node()
             while _l is not None:
@@ -418,8 +417,6 @@ class OmgModelChecker(object):
 
         while cl_node.get_parent() is not None:
             cl_node = cl_node.get_parent()
-
-
 
         to_visit = [cl_node]
         while to_visit:
@@ -446,7 +443,7 @@ class OmgModelChecker(object):
 
             self._abs_structure.add_abstract_state(abstract_state)
 
-     #   self.__validate_abstract_classification(concrete_state, abstract_state)
+        #   self.__validate_abstract_classification(concrete_state, abstract_state)
         return abstract_state
 
     def _find_abs_classification_for_node(self, node):
@@ -507,7 +504,8 @@ class OmgModelChecker(object):
         query_formula_wrapper = query_getter(witness_abstract_states, self._kripke.get_tr_formula())
 
         def query(concrete_state):
-            return (QbfSolverCtor if not query_formula_wrapper.is_prop() else Z3QbfSolver)().solve(query_formula_wrapper.assign_state(concrete_state))[0] == sat
+            return (QbfSolverSelector.QbfSolverCtor if not query_formula_wrapper.is_prop() else Z3QbfSolver)().solve(
+                query_formula_wrapper.assign_state(concrete_state))[0] == sat
 
         query_labeling_mapper = {True: abs_pos, False: abs_neg}
 
@@ -528,21 +526,19 @@ class OmgModelChecker(object):
 
     def _refine_split_ex(self, node_src, dst_states, check_trivial, known_reclassification=None):
         dst_abs_states = [self._find_abs_classification_for_state(dst) for dst in dst_states]
-    #    logger.debug('EX SPLIT:: '+self._find_abs_classification_for_node(node_src).get_debug_name() + ' by ['+','.join([_d.get_debug_name() for _d in dst_abs_states])+']')
+        #    logger.debug('EX SPLIT:: '+self._find_abs_classification_for_node(node_src).get_debug_name() + ' by ['+','.join([_d.get_debug_name() for _d in dst_abs_states])+']')
 
         if self._abs_structure.is_known_E_must_between(node_src.get_abstract_label(), dst_abs_states):
-     #       logger.debug('SPLIT AVERTED DUE TO KNOWN E_MUST')
+            #       logger.debug('SPLIT AVERTED DUE TO KNOWN E_MUST')
             return
         self._refine_split_next(node_src, dst_abs_states, self._abs_structure.split_abstract_state_ex,
                                 Z3Utils.get_exists_successors_in_formula, check_trivial, known_reclassification)
-
 
         # p = self._find_abs_classification_for_node(node_src).get_classification_node().get_parent()
         # if p is not None:
         #     logger.debug('SPLIT PRODUCTS: [FALSE]: {} [True]: {}'.format(p.get_successors()[False].get_value().get_debug_name(), p.get_successors()[True].get_value().get_debug_name()))
         # else:
         #     logger.debug('NO SPLIT WAS DONE')
-
 
     def _refine_split_ax(self, src_node, dst_nodes, check_trivial, known_reclassification=None):
         dst_abs_states = unique([dst.get_abstract_label() for dst in dst_nodes])

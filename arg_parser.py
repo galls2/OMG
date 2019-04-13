@@ -12,6 +12,7 @@ class OmgArgumentParser(object):
         parser.add_argument('-tse', '--trivial-split-elimination', action='store_true')
         parser.add_argument('-few_aps', action='store_true')
         parser.add_argument('--qe_policy', choices=['qe', 'qe-light', 'no-qe'], default='no-qe')
+        parser.add_argument('--qbf_solver', choices=['z3', 'caqe', 'depqbf'], default='no-qe')
         parser.add_argument('-timeout', default=None)
         parser.add_argument('-ctl_path', action='store', required=True)
         parser.add_argument('-aig_path', action='store', required=True)

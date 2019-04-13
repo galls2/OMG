@@ -3,7 +3,7 @@ import logging
 from z3 import *
 
 from common import abstract_states_to_int, subset_abs, in_abs, add_elems_to_abs, remove_elems
-from qbf_solver import DepQbfSimpleSolver, QbfSolverCtor
+from qbf_solver import QbfSolverSelector
 from var_manager import VarManager
 from z3_utils import Z3Utils
 
@@ -180,7 +180,8 @@ class AbstractStructure(object):
             formula_getter(abs_to_close, abstract_sons, kripke.get_tr_formula())
 
         if self._trivial_split and check_trivial_split:  #######HERE AND Z3UTILS
-            solver = QbfSolverCtor()
+
+            solver = QbfSolverSelector.QbfSolverCtor()
             res, _ = solver.solve(pos_formula)
             if res == unsat:
                 #logger.debug('TSE applied!')
