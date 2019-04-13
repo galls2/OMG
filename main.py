@@ -231,7 +231,6 @@ def regression_tests():
 if __name__ == '__main__':
     create_logger()
    # test_specific_tests(['af_ag'])
-
 #
     regression_tests()
 #    model_checking(parse_input())
