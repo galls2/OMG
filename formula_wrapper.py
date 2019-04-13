@@ -63,6 +63,9 @@ class FormulaWrapper(object):
         new_qbf = QBF(And(self._qbf.get_prop(), flag), self._qbf.get_q_list())
         return FormulaWrapper(new_qbf, self._var_vectors, self._input_vectors)
 
+    def is_prop(self):
+        return not self._qbf._q_list
+
     def is_sat(self):
         s = Solver()
         return s.check(self._qbf.to_z3()) == sat

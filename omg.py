@@ -1,11 +1,12 @@
 import functools
 import logging
 from heapdict import *
+from z3 import sat
 
 from abstract_structure import AbstractStructure, AbstractState
 from abstraction_classifier import AbstractionClassifier
 from common import ConcretizationResult
-from qbf_solver import QbfSolverCtor
+from qbf_solver import QbfSolverCtor, Z3QbfSolver
 from unwinding_tree import UnwindingTree
 from z3_utils import Z3Utils
 
@@ -506,7 +507,7 @@ class OmgModelChecker(object):
         query_formula_wrapper = query_getter(witness_abstract_states, self._kripke.get_tr_formula())
 
         def query(concrete_state):
-            return QbfSolverCtor().solve(query_formula_wrapper.assign_state(concrete_state))
+            return (QbfSolverCtor if not query_formula_wrapper.is_prop() else Z3QbfSolver)().solve(query_formula_wrapper.assign_state(concrete_state))[0] == sat
 
         query_labeling_mapper = {True: abs_pos, False: abs_neg}
 

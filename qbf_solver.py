@@ -159,4 +159,4 @@ class Z3QbfSolver(QbfSolver):
         return False, False
 
 
-QbfSolverCtor = Z3QbfSolver
+QbfSolverCtor = DepQbfSimpleSolver
