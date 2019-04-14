@@ -72,17 +72,17 @@ def get_cnf(formula_wrapper):
      #   q_list = _o_q_list
 
         # TRYING SWAP
-        l = len(q_list)
-        q_list = q_list + [(QDPLL_QTYPE_EXISTS, list(tseitin_vars))]
-        latest_exists = next((i for i in range(l - 1, -1, -1) if q_list[i][0] == QDPLL_QTYPE_FORALL), 0) + 1
-        q_list[-1] = q_list[latest_exists]
-        q_list[latest_exists] = (QDPLL_QTYPE_EXISTS, list(tseitin_vars))
+        # l = len(q_list)
+        # q_list = q_list + [(QDPLL_QTYPE_EXISTS, list(tseitin_vars))]
+        # latest_exists = next((i for i in range(l - 1, -1, -1) if q_list[i][0] == QDPLL_QTYPE_FORALL), 0) + 1
+        # q_list[-1] = q_list[latest_exists]
+        # q_list[latest_exists] = (QDPLL_QTYPE_EXISTS, list(tseitin_vars))
 
         ## MERGE
-        # alt_idxs = [0] + [i for i in range(1, len(_o_q_list)) if _o_q_list[i][0] != _o_q_list[i - 1][0]] + [
-        #     len(_o_q_list)]
-        # blocks = [_o_q_list[alt_idxs[i]:alt_idxs[i + 1]] for i in range(len(alt_idxs) - 1)]
-        # q_list = [(b[0][0], [_var for _tup in b for _var in _tup[1]]) for b in blocks]
+        alt_idxs = [0] + [i for i in range(1, len(_o_q_list)) if _o_q_list[i][0] != _o_q_list[i - 1][0]] + [
+            len(_o_q_list)]
+        blocks = [_o_q_list[alt_idxs[i]:alt_idxs[i + 1]] for i in range(len(alt_idxs) - 1)]
+        q_list = [(b[0][0], [_var for _tup in b for _var in _tup[1]]) for b in blocks]
 
     qbf = QBF(prop, q_list)
     # if not qbf.well_named():
