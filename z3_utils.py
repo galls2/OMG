@@ -3,7 +3,7 @@ import logging
 
 from z3 import *
 
-from common import z3_val_to_int, EEClosureViolation
+from common import z3_val_to_int, EEClosureViolation, MyModel
 from qbf_solver import Z3QbfSolver, DepQbfSimpleSolver, QDPLL_QTYPE_EXISTS, QDPLL_QTYPE_FORALL, \
     QbfSolverSelector
 from state import State
@@ -21,6 +21,12 @@ def get_assignments(model, variables):
 def get_states(model, variables, kripke):
     res_list = get_assignments(model, variables)
     return (State.from_int_list(raw_state, kripke.get_var_vector(), kripke) for raw_state in res_list)
+
+
+def generalize_cube(z3_formula, model, all_vars):
+    my_model = MyModel({v : model[v] for v in all_vars if model[v] is not None})
+    for _var in  (_v for _v in all_vars if model[_v] is not None):
+        if
 
 
 class Z3Utils(object):
@@ -151,10 +157,10 @@ class Z3Utils(object):
 
             assignments += cubes
             # Not(l1 & ... &ln) = Not(l1) | ... | Not(ln)
-
+            new_model = generalize_cube(s, model, all_vars)
             blocking_cube = Or(
-                *[Not(var) if z3_val_to_int(model[var]) is 1 else var
-                  for var in all_vars if model[var] is not None])
+                *[Not(var) if z3_val_to_int(new_model[var]) is 1 else var
+                  for var in all_vars if new_model[var] is not None])
             s.add(blocking_cube)
         return assignments
 
@@ -210,6 +216,7 @@ class Z3Utils(object):
                 .substitute(dst_vars, 0)
                 .substitute_inputs(input_tag_vars, 0)
                 .get_qbf()
+                .renew_quantifiers()
                 .negate()
             for closer in close_with]
         dst = QBF(And(*[_d.get_prop() for _d in dst_formulas]), [_v for _t in dst_formulas for _v in _t.get_q_list()])
