@@ -103,9 +103,9 @@ class DepQbfSimpleSolver(QbfSolver):
     def solve(self, formula_wrapper):
         dimacs, clauses, num_to_name, quantifiers = get_cnf(formula_wrapper)
 
-        print 'BEFORE QBFING'
+#        print 'BEFORE QBFING'
         is_sat, certificate = time_me(pydepqbf.solve, [quantifiers, clauses], 'QBF:: ')
-        print 'DEQQBF ', is_sat, certificate
+#        print 'DEQQBF ', is_sat, certificate
         '''
         res_z3, cert_z3 = Z3QbfSolver().solve(formula_wrapper)
         if (res_z3 == sat and is_sat == QDPLL_RESULT_UNSAT) or (res_z3 == unsat and is_sat == QDPLL_RESULT_SAT):
@@ -197,3 +197,6 @@ class CaqeQbfSolver(QbfSolver):
 
 class QbfSolverSelector(object):
     QbfSolverCtor = None
+
+class SatSolverSelector(object):
+    SatSolverCtor = None

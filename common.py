@@ -3,7 +3,7 @@ import functools
 import logging
 import time
 
-from z3 import BoolVal, Not, And, Z3_OP_UNINTERPRETED, AstRef, Bool
+from z3 import BoolVal, Not, And, Z3_OP_UNINTERPRETED, AstRef, Bool, Or
 
 logger = logging.getLogger('OMG')
 
@@ -99,7 +99,16 @@ class MyModel(object):
     def __getitem__(self, item):
         return self.assignment.get(item)
 
+    def __setitem__(self, key, value):
+        self.assignment[key] = value
+        return self
 
+    def unassign(self, var):
+        del self.assignment[var]
+        return self
+
+    def blocking_clause(self):
+        return Or(*[Not(var) if self.assignment[var] == BoolVal(True) else var for var in self.assignment.keys()])
 
 class ConcretizationResult(object):
     def __init__(self, src=None, dst=None):

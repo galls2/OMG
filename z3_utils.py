@@ -23,11 +23,23 @@ def get_states(model, variables, kripke):
     return (State.from_int_list(raw_state, kripke.get_var_vector(), kripke) for raw_state in res_list)
 
 
-def generalize_cube(z3_formula, model, all_vars):
-    my_model = MyModel({v : model[v] for v in all_vars if model[v] is not None})
-    for _var in  (_v for _v in all_vars if model[_v] is not None):
-        if
 
+def generalize_cube(z3_formula, model, all_vars):
+    assigned_vars = set([_v for _v in all_vars if model[_v] is not None])
+    my_model = MyModel({v: model[v] for v in assigned_vars})
+    go_over_vars = list(assigned_vars)
+    for _var in go_over_vars:
+        model_tag = MyModel(dict(my_model.assignment))
+
+        model_tag[_var] = BoolVal(False) if z3_val_to_int(my_model[_var]) == 1 else BoolVal(True)
+
+        z3_assigned = substitute(z3_formula, *[(_v, model_tag[_v]) for _v in assigned_vars])
+        if Solver().check(z3_assigned) == sat:
+            assigned_vars -= {_var}
+            my_model.unassign(_var)
+            print 'upupu'
+
+    return my_model
 
 class Z3Utils(object):
     QbfSolverCtor = Z3QbfSolver
@@ -147,21 +159,18 @@ class Z3Utils(object):
     @classmethod
     def all_sat(cls, formula_wrap):
         s = Solver()
-        assignments = []
+        assignments = ()
         s.add(formula_wrap.get_qbf().to_z3())
 
         all_vars = [_v for v_list in formula_wrap.get_var_vectors() for _v in v_list]
         while s.check() == sat:
             model = s.model()
-            cubes = list(get_assignments(model, all_vars))
+            new_model = generalize_cube(And(*s.assertions()), model, all_vars)
 
-            assignments += cubes
-            # Not(l1 & ... &ln) = Not(l1) | ... | Not(ln)
-            new_model = generalize_cube(s, model, all_vars)
-            blocking_cube = Or(
-                *[Not(var) if z3_val_to_int(new_model[var]) is 1 else var
-                  for var in all_vars if new_model[var] is not None])
-            s.add(blocking_cube)
+            assignments = itertools.chain(assignments, get_assignments(new_model, all_vars))
+
+            s.add(new_model.blocking_clause())
+
         return assignments
 
     @classmethod
