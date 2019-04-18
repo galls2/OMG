@@ -85,8 +85,9 @@ def get_cnf(formula_wrapper):
         q_list = [(b[0][0], [_var for _tup in b for _var in _tup[1]]) for b in blocks]
 
     qbf = QBF(prop, q_list)
-    # if not qbf.well_named():
-    #     print 'fd'
+    if not qbf.well_named():
+        print 'fd'
+        assert False
     quantifiers = [
         (_q, [names_to_nums[_v.decl().name()] for _v in v_list if _v.decl().name() in names_to_nums.keys()])
         for (_q, v_list) in qbf.get_q_list()]

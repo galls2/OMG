@@ -70,7 +70,8 @@ class Z3Utils(object):
         in_vec, quantified_input = tr.get_input_vectors()
 
         inner = And(tr.get_qbf().get_prop(), split_by.get_qbf().get_prop())
-        q_list = [(-1, new_vars + in_vec + quantified_input)] + split_by.get_qbf().get_q_list() + tr.get_qbf().get_q_list()
+        q_list = [(-1,
+                   new_vars + in_vec + quantified_input)] + split_by.get_qbf().get_q_list() + tr.get_qbf().get_q_list()
         #   exists_formula = cls.apply_qe(simplify(Exists(new_vars + in_vec, inner)), qe_policy)
 
         new_in = VarManager.duplicate_vars(in_vec)
@@ -94,7 +95,7 @@ class Z3Utils(object):
         # forall_formula = cls.apply_qe(simplify(ForAll(new_vars + in_vec, innektr)), qe_policy)
         q_list = [(QDPLL_QTYPE_FORALL, new_vars + in_vec)] + \
                  [(QDPLL_QTYPE_EXISTS, quantified_input)] + \
-                 split_by.get_qbf().get_q_list() + neg_tr.get_qbf().get_q_list() # quantification over q_in may be false
+                 split_by.get_qbf().get_q_list() + neg_tr.get_qbf().get_q_list()  # quantification over q_in may be false
 
         new_in = VarManager.duplicate_vars(in_vec)
         return FormulaWrapper(QBF(inner, q_list), [prev_vars], [new_in])
@@ -123,9 +124,9 @@ class Z3Utils(object):
         neg = FormulaWrapper(neg_qbf, [neg_state_vars], [neg_input])
 
         #
-        # logger.debug("ASSERTING WELL NAMEDNESS")
-        # assert pos.well_named()
-        # assert neg.well_named()
+        logger.debug("ASSERTING WELL NAMEDNESS")
+        assert pos.well_named()
+        assert neg.well_named()
 
         return pos, neg, (to_split_pos, pos)
 
@@ -219,7 +220,6 @@ class Z3Utils(object):
 
         query = FormulaWrapper(QBF(inner_prop, q_list), [src_vars], [input_vars])
 
-
         solver = QbfSolverSelector.QbfSolverCtor()
         res, model = solver.solve(query)
         #  logger.debug('check end.')
@@ -245,6 +245,7 @@ class Z3Utils(object):
                 .substitute(dst_vars, 0)
                 .substitute_inputs(input_tag_vars, 0)
                 .get_qbf()
+                .renew_quantifiers()
                 .negate()
             for closer in close_with]
         dst = QBF(And(*[_d.get_prop() for _d in dst_formulas]), [_v for _t in dst_formulas for _v in _t.get_q_list()])
@@ -255,7 +256,6 @@ class Z3Utils(object):
 
         query = FormulaWrapper(QBF(inner_prop, q_list), [src_vars, dst_vars], [input_vars])
         #   logger.debug('Check start')
-
 
         solver = QbfSolverSelector.QbfSolverCtor()
         res, model = solver.solve(query)
