@@ -49,8 +49,8 @@ class AigKripkeStructure(KripkeStructure):
     def get_var_vector(self):
         return self._tr.get_var_vectors()[0]
 
-    def get_successors(self, state):
-        return Z3Utils.get_all_successors(self._tr, state)
+    def get_successors(self, state, blocking):
+        return Z3Utils.get_all_successors(self._tr, state, blocking)
 
     def get_initial_states(self):
         return self._initial_states

@@ -1,7 +1,7 @@
 import math
 
 from pysat.solvers import Glucose4
-from z3 import Solver, BoolVal, sat
+from z3 import Solver, BoolVal, sat, Not
 
 from common import MyModel
 from qbf_solver import get_cnf
@@ -47,19 +47,25 @@ class GlucoseSatSolver(SatSolver):
 
     def model(self):
         raw_model = self._solver.get_model()
-        model = MyModel({self._num_to_name[abs(val)]: BoolVal(True) if val > 0 else BoolVal(False) for val in raw_model})
+
+        model = MyModel({self._num_to_name[val]: BoolVal(True) if val > 0 else BoolVal(False) for val in raw_model})
         return model
 
     def add(self, f):
         clauses, dimacs, names_to_nums, num_to_name = get_cnf(f)
+        names_to_nums.update({Not(k): -v for (k,v) in names_to_nums.items()})
         self._name_to_nums = names_to_nums
+        num_to_name.update({-k: v for (k, v) in num_to_name.items()})
         self._num_to_name = num_to_name
         self._solver.append_formula(clauses)
 
     def add_clause(self, cl):
-        cls, _, _, num_to_name = get_cnf(cl)
+        print 'lalalaing'
+        assert cl.decl().name() == 'or'
         name_to_num = self._name_to_nums
-        alt_cls = [[int(math.copysign(name_to_num[num_to_name[abs(l)].decl().name()], l)) for l in cl] for cl in cls]
+
+        alt_cls = [name_to_num[lit] for lit in cl]
+
         self._solver.append_formula(alt_cls)
 
 
