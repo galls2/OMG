@@ -56,7 +56,8 @@ class State(object):
         return bis0
 
     def get_sat_aps(self):
-        return [ap for ap in self.get_all_aps() if self.is_labeled_with(ap)]
+        _, model = self.formula_wrapper.sat_get_model()
+        return [ap for ap in self.get_all_aps() if z3_val_to_bool(model[self.var_for_ap(ap)])]
 
     def __hash__(self):
         return hash(self.formula_wrapper)

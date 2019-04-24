@@ -1,13 +1,13 @@
-import cProfile, pstats, StringIO
+import StringIO
+import cProfile
 import functools
 import logging
+import pstats
 import time
 
-from z3 import BoolVal, Not, And, Z3_OP_UNINTERPRETED, AstRef, Bool, Or
+from z3 import BoolVal, Not, And, Or
 
 logger = logging.getLogger('OMG')
-
-
 
 
 # -----------------------------------------------------------------------------------------------------
@@ -19,7 +19,7 @@ def profiler(func, params):
     res = func(*params)
     pr.disable()
     s = StringIO.StringIO()
-    ps = pstats.Stats(pr, stream=s).sort_stats('cumtime')
+    ps = pstats.Stats(pr, stream=s).sort_stats('tottime')
     ps.print_stats()
     print s.getvalue()
     ps.print_callers(1.0, '*')
@@ -110,6 +110,7 @@ class MyModel(object):
     def blocking_clause(self):
         return Or(*[Not(var) if self.assignment[var] == BoolVal(True) else var for var in self.assignment.keys()])
 
+
 class ConcretizationResult(object):
     def __init__(self, src=None, dst=None):
         self.src_node = src
@@ -130,5 +131,3 @@ class EEClosureViolation(object):
 # -----------------------------------------------------------------------------------------------------
 
 foldr = lambda func, acc, xs: functools.reduce(lambda x, y: func(y, x), xs[::-1], acc)
-
-

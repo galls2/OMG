@@ -197,6 +197,3 @@ class CaqeQbfSolver(QbfSolver):
 
 class QbfSolverSelector(object):
     QbfSolverCtor = None
-
-class SatSolverSelector(object):
-    SatSolverCtor = None

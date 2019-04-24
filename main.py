@@ -11,7 +11,9 @@ from common import time_me, profiler
 from ctl import CtlFileParser
 from kripke_structure import AigKripkeStructure
 from omg import OmgBuilder
-from qbf_solver import Z3QbfSolver, CaqeQbfSolver, DepQbfSimpleSolver, QbfSolverSelector, SatSolverSelector
+from qbf_solver import Z3QbfSolver, CaqeQbfSolver, DepQbfSimpleSolver, QbfSolverSelector
+from sat_solver import SatSolverSelector
+from sat_solver import Z3SatSolver
 
 TIMEOUT = 3600
 
@@ -56,7 +58,7 @@ def check_files(aig_paths, ctl_paths):
                              'depqbf': DepQbfSimpleSolver}
 
         QbfSolverSelector.QbfSolverCtor = QBF_SOLVER_MAPPER[parsed_args.qbf_solver]
-        SatSolverSelector.SatSolverCtor = Solver
+        SatSolverSelector.SatSolverCtor = Z3SatSolver
 
         model_checking(parsed_args)
         logging.getLogger('OMG').info(SEP)
@@ -138,7 +140,7 @@ RES_DICT = {True: 0, False: 1}
 
 
 def print_results_for_spec(omg, expected_res, spec):
- #   pos, neg = profiler(omg.check_all_initial_states, [spec])
+  #  pos, neg = profiler(omg.check_all_initial_states, [spec])
     pos, neg = omg.check_all_initial_states(spec)
 
     #  spec_str = spec.str_math()
@@ -246,4 +248,4 @@ if __name__ == '__main__':
     regression_tests()
 #    model_checking(parse_input())
 
-    #test_all_iimc()
+#    test_all_iimc()

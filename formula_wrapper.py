@@ -1,6 +1,7 @@
 from z3 import *
 
 from common import int_vec_to_z3, foldr
+from sat_solver import SatSolverSelector
 from var_manager import VarManager
 
 q_to_z3 = {1: ForAll, -1: Exists}
@@ -67,12 +68,14 @@ class FormulaWrapper(object):
         return not self._qbf._q_list
 
     def is_sat(self):
-        s = Solver()
-        return s.check(self._qbf.to_z3()) == sat
+        s = SatSolverSelector.SatSolverCtor()
+        s.add(self._qbf.to_z3())
+        return s.check() == sat
 
     def sat_get_model(self):
-        s = Solver()
-        return True, s.model() if s.check(self._qbf.to_z3()) else False
+        s = SatSolverSelector.SatSolverCtor()
+        s.add(self._qbf.to_z3())
+        return True, s.model() if s.check() else False
 
     def __hash__(self):
         return hash(self._qbf)
@@ -92,6 +95,7 @@ class FormulaWrapper(object):
 
     def well_named(self):
         return self._qbf.well_named()
+
 
 class QBF(object):
 
@@ -129,7 +133,8 @@ class QBF(object):
         return QBF(new_prop, new_q_list)
 
     def well_named(self):
-        q_list = self.get_q_list()
+        '''
+	q_list = self.get_q_list()
 
         appeared = set()
         for _, var_vec in q_list:
@@ -137,6 +142,8 @@ class QBF(object):
                 if _v in appeared:
                     return False
                 appeared.add(_v)
+        return True
+	'''
         return True
 
     def __eq__(self, o):

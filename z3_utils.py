@@ -4,10 +4,11 @@ import logging
 from z3 import *
 
 from common import z3_val_to_int, EEClosureViolation, MyModel
-from qbf_solver import Z3QbfSolver, DepQbfSimpleSolver, QDPLL_QTYPE_EXISTS, QDPLL_QTYPE_FORALL, \
-    QbfSolverSelector
-from state import State
 from formula_wrapper import FormulaWrapper, QBF
+from qbf_solver import Z3QbfSolver, QDPLL_QTYPE_EXISTS, QDPLL_QTYPE_FORALL, \
+    QbfSolverSelector
+from sat_solver import SatSolverSelector
+from state import State
 from var_manager import VarManager
 
 logger = logging.getLogger('OMG')
@@ -34,10 +35,10 @@ def generalize_cube(z3_formula, model, all_vars):
         model_tag[_var] = BoolVal(False) if z3_val_to_int(my_model[_var]) == 1 else BoolVal(True)
 
         z3_assigned = substitute(z3_formula, *[(_v, model_tag[_v]) for _v in assigned_vars])
-        if Solver().check(z3_assigned) == sat:
+        if SatSolverSelector.SatSolverCtor().check(z3_assigned) == sat:
             assigned_vars -= {_var}
             my_model.unassign(_var)
-            print 'upupu'
+    #        print 'upupu'
 
     return my_model
 
@@ -158,7 +159,7 @@ class Z3Utils(object):
 
     @classmethod
     def all_sat(cls, formula_wrap):
-        s = Solver()
+        s = SatSolverSelector.SatSolverCtor()
         assignments = ()
         s.add(formula_wrap.get_qbf().to_z3())
 
