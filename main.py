@@ -15,7 +15,7 @@ from qbf_solver import Z3QbfSolver, CaqeQbfSolver, DepQbfSimpleSolver, QbfSolver
 from sat_solver import SatSolverSelector
 from sat_solver import Z3SatSolver
 
-TIMEOUT = 3600
+TIMEOUT = 7200
 
 BUG_LINE = '<------------------------------------------------------ BUG -------------------------------------'
 SEP = '---------'
@@ -245,7 +245,7 @@ if __name__ == '__main__':
     create_logger()
 #    test_specific_tests(['spinner4'])
     #
-    regression_tests()
+#    regression_tests()
 #    model_checking(parse_input())
 
-#    test_all_iimc()
+    test_all_iimc()

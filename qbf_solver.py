@@ -68,26 +68,15 @@ def get_cnf(formula_wrapper):
             new_vars_to_quantify)
         _o_q_list = q_list + [(QDPLL_QTYPE_EXISTS, list(tseitin_vars))]
 
-        # REG
-     #   q_list = _o_q_list
-
-        # TRYING SWAP
-        # l = len(q_list)
-        # q_list = q_list + [(QDPLL_QTYPE_EXISTS, list(tseitin_vars))]
-        # latest_exists = next((i for i in range(l - 1, -1, -1) if q_list[i][0] == QDPLL_QTYPE_FORALL), 0) + 1
-        # q_list[-1] = q_list[latest_exists]
-        # q_list[latest_exists] = (QDPLL_QTYPE_EXISTS, list(tseitin_vars))
-
-        ## MERGE
         alt_idxs = [0] + [i for i in range(1, len(_o_q_list)) if _o_q_list[i][0] != _o_q_list[i - 1][0]] + [
             len(_o_q_list)]
         blocks = [_o_q_list[alt_idxs[i]:alt_idxs[i + 1]] for i in range(len(alt_idxs) - 1)]
         q_list = [(b[0][0], [_var for _tup in b for _var in _tup[1]]) for b in blocks]
 
     qbf = QBF(prop, q_list)
-    if not qbf.well_named():
-        print 'fd'
-        assert False
+    # if not qbf.well_named():
+    #     print 'fd'
+    #     assert False
     quantifiers = [
         (_q, [names_to_nums[_v.decl().name()] for _v in v_list if _v.decl().name() in names_to_nums.keys()])
         for (_q, v_list) in qbf.get_q_list()]
@@ -103,27 +92,26 @@ class DepQbfSimpleSolver(QbfSolver):
     def solve(self, formula_wrapper):
         dimacs, clauses, num_to_name, quantifiers = get_cnf(formula_wrapper)
 
-#        print 'BEFORE QBFING'
-        is_sat, certificate = time_me(pydepqbf.solve, [quantifiers, clauses], 'QBF:: ')
-#        print 'DEQQBF ', is_sat, certificate
-        '''
-        res_z3, cert_z3 = Z3QbfSolver().solve(formula_wrapper)
-        if (res_z3 == sat and is_sat == QDPLL_RESULT_UNSAT) or (res_z3 == unsat and is_sat == QDPLL_RESULT_SAT):
-            to_file('last_qdimacs', to_qdimacs(dimacs, quantifiers))
-            print Z3QbfSolver().solve(FormulaWrapper(qbf, [], []))
-            re_z3 = build_z3(quantifiers, clauses)
-      #      to_file('WOW', do_qdimacs(formula_wrapper))
-            print 'REZ#', Solver().check(re_z3)
-            #    self.solve(formula_wrapper)
-            #     formula_with_values = formula_wrapper.assign_int_vec([1,0,1,0,1,0], 1).assign_int_vec([1,0,1,1,1,0])
-            #    self.solve(formula_with_values)
-            assert False
-        '''
+        is_sat, certificate = pydepqbf.solve(quantifiers, clauses)
         if is_sat == QDPLL_RESULT_UNSAT:
             return unsat, False
+        #     '''
+        #     res_z3, cert_z3 = Z3QbfSolver().solve(formula_wrapper)
+        #     if (res_z3 == sat and is_sat == QDPLL_RESULT_UNSAT) or (res_z3 == unsat and is_sat == QDPLL_RESULT_SAT):
+        #         to_file('last_qdimacs', to_qdimacs(dimacs, quantifiers))
+        #         print Z3QbfSolver().solve(FormulaWrapper(qbf, [], []))
+        #         re_z3 = build_z3(quantifiers, clauses)
+        #   #      to_file('WOW', do_qdimacs(formula_wrapper))
+        #         print 'REZ#', Solver().check(re_z3)
+        #         #    self.solve(formula_wrapper)
+        #         #     formula_with_values = formula_wrapper.assign_int_vec([1,0,1,0,1,0], 1).assign_int_vec([1,0,1,1,1,0])
+        #         #    self.solve(formula_with_values)
+        #         assert False
+        #     '''
 
         model = MyModel({num_to_name[abs(val)]: BoolVal(True) if val > 0 else BoolVal(False) for val in certificate})
         return sat, model
+
 
     def incremental_solve(self, formulas, stop_res):
         for i in range(len(formulas)):

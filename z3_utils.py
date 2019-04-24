@@ -143,9 +143,9 @@ class Z3Utils(object):
         neg = FormulaWrapper(neg_qbf, [neg_state_vars], [neg_input])
 
         #
-        logger.debug("ASSERTING WELL NAMEDNESS")
-        assert pos.well_named()
-        assert neg.well_named()
+        # logger.debug("ASSERTING WELL NAMEDNESS")
+        # assert pos.well_named()
+        # assert neg.well_named()
 
         return pos, neg, (to_split_pos, pos)
 
