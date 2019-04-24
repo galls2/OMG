@@ -166,12 +166,12 @@ class Z3Utils(object):
         s = SatSolverSelector.SatSolverCtor()
         assignments = ()
 
-        initial_formula = formula_wrap.get_qbf().to_z3()
+        initial_formula = formula_wrap.to_z3()
         s.add(initial_formula)
-        assertions = [formula_wrap.get_qbf().to_z3()]
 
         clauses_to_block = [Or(*[simplify(Not(_k) for _k in cube.children())]) for cube in cubes_to_block]
         [s.add_clause(cl) for cl in clauses_to_block]
+        assertions = [formula_wrap.to_z3()] + [cl for cl in clauses_to_block]
 
         all_vars = [_v for v_list in formula_wrap.get_var_vectors() for _v in v_list]
         while s.check():
@@ -189,7 +189,7 @@ class Z3Utils(object):
     @classmethod
     def get_all_successors(cls, tr, state, blocking):
         assigned_tr = tr.assign_state(state)
-        next_assignments = cls.all_sat(assigned_tr, [s.formula_wrapper.get_z3() for s in blocking])
+        next_assignments = cls.all_sat(assigned_tr, [s.formula_wrapper.to_z3() for s in blocking])
         _vars = state.formula_wrapper.get_var_vectors()[0]
         return [State.from_int_list(cube, _vars, state.kripke) for cube in next_assignments]
 

@@ -129,9 +129,8 @@ class Z3QbfSolver(QbfSolver):
         super(Z3QbfSolver, self).__init__()
 
     def solve(self, formula_wrapper):
-        qbf = formula_wrapper.get_qbf()
         s = Solver()
-        res = s.check(qbf.to_z3())
+        res = s.check(formula_wrapper.to_z3())
         if res == sat:
             return sat, s.model()
         return unsat, False
@@ -139,7 +138,7 @@ class Z3QbfSolver(QbfSolver):
     def incremental_solve(self, formulas, stop_res):
         s = Solver()
         for i in range(len(formulas)):
-            f = formulas[i].get_qbf().to_z3()
+            f = formulas[i].to_z3()
             #        print i
             res = s.check(f)
             #        print 'done' + str(i)

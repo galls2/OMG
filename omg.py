@@ -197,7 +197,7 @@ class OmgModelChecker(object):
 
             self._handle_ctl_and_recur(node_to_explore, p)
             if node_to_explore.is_labeled_negatively_with(p):
-                children_nodes = node_to_explore.unwind_further()
+                children_nodes = node_to_explore.unwind_further(visited)
                 for child_node in children_nodes:
                     if child_node.concrete_label in visited:
                         continue

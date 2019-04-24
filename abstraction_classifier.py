@@ -102,7 +102,7 @@ class AbstractionClassifier(object):
             ret += print_tree(self._classification_trees[bis0],
                               lambda n: [] if n.get_successors() is None else n.get_successors().to_int_vec(),
                               lambda l: inspect.getsource(l.get_query()) if not l.is_leaf() else
-                              str(l.get_value().get_descriptive_formula().get_z3()))
+                              str(l.get_value().get_descriptive_formula().to_z3()))
         return ret
 
 

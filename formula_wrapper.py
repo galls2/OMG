@@ -69,12 +69,12 @@ class FormulaWrapper(object):
 
     def is_sat(self):
         s = SatSolverSelector.SatSolverCtor()
-        s.add(self._qbf.to_z3())
+        s.add(self.to_z3())
         return s.check()
 
     def sat_get_model(self):
         s = SatSolverSelector.SatSolverCtor()
-        s.add(self._qbf.to_z3())
+        s.add(self.to_z3())
         return True, s.model() if s.check() else False
 
     def __hash__(self):
@@ -95,6 +95,9 @@ class FormulaWrapper(object):
 
     def well_named(self):
         return self._qbf.well_named()
+
+    def to_z3(self):
+        return self._qbf.to_z3()
 
 
 class QBF(object):
