@@ -7,7 +7,7 @@ from common import z3_val_to_int, EEClosureViolation, MyModel
 from formula_wrapper import FormulaWrapper, QBF
 from qbf_solver import Z3QbfSolver, QDPLL_QTYPE_EXISTS, QDPLL_QTYPE_FORALL, \
     QbfSolverSelector
-from sat_solver import SatSolverSelector
+from sat_solver import SatSolverSelector, Z3SatSolver
 from state import State
 from var_manager import VarManager
 
@@ -34,8 +34,10 @@ def generalize_cube(z3_formula, model, all_vars):
 
         model_tag[_var] = BoolVal(False) if z3_val_to_int(my_model[_var]) == 1 else BoolVal(True)
 
-        z3_assigned = substitute(z3_formula, *[(_v, model_tag[_v]) for _v in assigned_vars])
-        if SatSolverSelector.SatSolverCtor().check(z3_assigned) == sat:
+        z3_assigned = simplify(substitute(z3_formula, *[(_v, model_tag[_v]) for _v in assigned_vars]))
+        s = Z3SatSolver()
+        s.add(z3_assigned)
+        if s.check():
             assigned_vars -= {_var}
             my_model.unassign(_var)
     #        print 'upupu'
@@ -161,16 +163,21 @@ class Z3Utils(object):
     def all_sat(cls, formula_wrap):
         s = SatSolverSelector.SatSolverCtor()
         assignments = ()
-        s.add(formula_wrap.get_qbf().to_z3())
+
+        initial_formula = formula_wrap.get_qbf().to_z3()
+        s.add(initial_formula)
+        assertions = [formula_wrap.get_qbf().to_z3()]
 
         all_vars = [_v for v_list in formula_wrap.get_var_vectors() for _v in v_list]
-        while s.check() == sat:
+        while s.check():
             model = s.model()
-            new_model = generalize_cube(And(*s.assertions()), model, all_vars)
+            new_model = generalize_cube(And(*assertions), model, all_vars)
 
             assignments = itertools.chain(assignments, get_assignments(new_model, all_vars))
 
-            s.add(new_model.blocking_clause())
+            blocking_clause = new_model.blocking_clause()
+            s.add_clause(blocking_clause)
+            assertions.append(blocking_clause)
 
         return assignments
 

@@ -70,7 +70,7 @@ class FormulaWrapper(object):
     def is_sat(self):
         s = SatSolverSelector.SatSolverCtor()
         s.add(self._qbf.to_z3())
-        return s.check() == sat
+        return s.check()
 
     def sat_get_model(self):
         s = SatSolverSelector.SatSolverCtor()

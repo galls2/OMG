@@ -4,7 +4,6 @@ from pydepqbf import *
 from z3 import *
 
 from common import MyModel, foldr, time_me
-from formula_wrapper import QBF, FormulaWrapper
 
 CAQE_PATH = '/home/galls2/Desktop/caqe/target/release/caqe'
 
@@ -42,20 +41,13 @@ def build_z3(quantifiers, clauses):
     return foldr(lambda (_q, _v), f: (Exists if _q == -1 else ForAll)(_v, f), cnf, qs)
 
 
-def get_cnf(formula_wrapper):
-    cnfer = Tactic('tseitin-cnf')
+def get_qcnf(formula_wrapper):
     old_qbf = formula_wrapper.get_qbf()
     prop = simplify(old_qbf.get_prop())
+
+    clauses, dimacs, names_to_nums, num_to_name = get_cnf(prop)
+
     q_list = old_qbf.get_q_list()
-    cnf_prop = cnfer(old_qbf.get_prop()).as_expr()
-    g = Goal()
-    g.add(cnf_prop)
-    dimacs = g.dimacs().split('\n')
-    first_conversion_line = next(i for i in range(len(dimacs)) if dimacs[i].startswith('c'))
-    conversion_lines = dimacs[first_conversion_line:]
-    #        print conversion_lines
-    names_to_nums = {_l.split()[2]: int(_l.split()[1]) for _l in conversion_lines}
-    num_to_name = {a: Bool(b) for (b, a) in names_to_nums.items()}
     if q_list:
         new_vars_to_quantify = [_v for v_vec in
                                 formula_wrapper.get_var_vectors() + formula_wrapper.get_input_vectors() for _v in
@@ -73,16 +65,26 @@ def get_cnf(formula_wrapper):
         blocks = [_o_q_list[alt_idxs[i]:alt_idxs[i + 1]] for i in range(len(alt_idxs) - 1)]
         q_list = [(b[0][0], [_var for _tup in b for _var in _tup[1]]) for b in blocks]
 
-    qbf = QBF(prop, q_list)
-    # if not qbf.well_named():
-    #     print 'fd'
-    #     assert False
     quantifiers = [
         (_q, [names_to_nums[_v.decl().name()] for _v in v_list if _v.decl().name() in names_to_nums.keys()])
-        for (_q, v_list) in qbf.get_q_list()]
+        for (_q, v_list) in q_list]
+    return dimacs, clauses, num_to_name, quantifiers
+
+
+def get_cnf(prop):
+    cnfer = Tactic('tseitin-cnf')
+    cnf_prop = cnfer(prop).as_expr()
+    g = Goal()
+    g.add(cnf_prop)
+    dimacs = g.dimacs().split('\n')
+    first_conversion_line = next(i for i in range(len(dimacs)) if dimacs[i].startswith('c'))
+    conversion_lines = dimacs[first_conversion_line:]
+    #        print conversion_lines
+    names_to_nums = {_l.split()[2]: int(_l.split()[1]) for _l in conversion_lines}
+    num_to_name = {a: Bool(b) for (b, a) in names_to_nums.items()}
     clause_lines = dimacs[1:first_conversion_line]
     clauses = [[int(_x) for _x in _line.split()[:-1]] for _line in clause_lines]
-    return dimacs, clauses, num_to_name, quantifiers
+    return clauses, dimacs, names_to_nums, num_to_name
 
 
 class DepQbfSimpleSolver(QbfSolver):
@@ -90,7 +92,7 @@ class DepQbfSimpleSolver(QbfSolver):
         super(DepQbfSimpleSolver, self).__init__()
 
     def solve(self, formula_wrapper):
-        dimacs, clauses, num_to_name, quantifiers = get_cnf(formula_wrapper)
+        dimacs, clauses, num_to_name, quantifiers = get_qcnf(formula_wrapper)
 
         is_sat, certificate = pydepqbf.solve(quantifiers, clauses)
         if is_sat == QDPLL_RESULT_UNSAT:
@@ -153,7 +155,7 @@ def del_file(path):
 class CaqeQbfSolver(QbfSolver):
 
     def solve(self, formula):
-        dimacs, clauses, num_to_name, quantifiers = get_cnf(formula)
+        dimacs, clauses, num_to_name, quantifiers = get_qcnf(formula)
 
         print 'BEFORE CAEQ'
         qdimacs = to_qdimacs(dimacs, quantifiers)
