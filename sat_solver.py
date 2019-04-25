@@ -63,8 +63,7 @@ class GlucoseSatSolver(SatSolver):
         self._solver.append_formula(clauses)
 
     def add_clause(self, cl):
-        print 'lalalaing'
-        assert cl.decl().name() == 'or'
+
         name_to_num = self._name_to_nums
 
         alt_cls = [name_to_num[lit] for lit in cl.children()]

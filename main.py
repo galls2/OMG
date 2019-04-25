@@ -58,7 +58,7 @@ def check_files(aig_paths, ctl_paths):
                              'depqbf': DepQbfSimpleSolver}
 
         QbfSolverSelector.QbfSolverCtor = QBF_SOLVER_MAPPER[parsed_args.qbf_solver]
-        SatSolverSelector.SatSolverCtor = Z3SatSolver
+        SatSolverSelector.SatSolverCtor = GlucoseSatSolver
 
         model_checking(parsed_args)
         logging.getLogger('OMG').info(SEP)
@@ -245,7 +245,7 @@ if __name__ == '__main__':
     create_logger()
 #    test_specific_tests(['spinner4'])
     #
-    regression_tests()
+#    regression_tests()
 #    model_checking(parse_input())
 
-#    test_all_iimc()
+    test_all_iimc()
