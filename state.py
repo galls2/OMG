@@ -24,7 +24,8 @@ class State(object):
 
     def __str__(self):
         s = SatSolverSelector.SatSolverCtor()
-        s.check(self.formula_wrapper.get_z3())
+        s.add(self.formula_wrapper.to_z3())
+        s.check()
         model = s.model()
         vs = self.formula_wrapper.get_var_vectors()[0]
         return str([1 if z3_val_to_bool(model[v]) else 0 for v in vs])

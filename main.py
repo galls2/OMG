@@ -244,7 +244,7 @@ if __name__ == '__main__':
     create_logger()
 #    test_specific_tests(['spinner4'])
     #
-#    regression_tests()
+    regression_tests()
 #    model_checking(parse_input())
 
-    test_all_iimc()
+#    test_all_iimc()

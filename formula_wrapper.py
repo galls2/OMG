@@ -69,13 +69,13 @@ class FormulaWrapper(object):
 
     def is_sat(self):
         s = SatSolverSelector.SatSolverCtor()
-        s.add(self.to_z3())
-        return s.check()
+        res = s.add(self.to_z3())
+        return res and s.check()
 
     def sat_get_model(self):
         s = SatSolverSelector.SatSolverCtor()
-        s.add(self.to_z3())
-        return True, s.model() if s.check() else False
+        res = s.add(self.to_z3())
+        return True, s.model() if res and s.check() else False
 
     def __hash__(self):
         return hash(self._qbf)

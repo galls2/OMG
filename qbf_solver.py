@@ -74,6 +74,8 @@ def get_qcnf(formula_wrapper):
 def get_cnf(prop):
     cnfer = Tactic('tseitin-cnf')
     cnf_prop = cnfer(prop).as_expr()
+    if cnf_prop.eq(BoolVal(False)):
+        return False, False, False, False
     g = Goal()
     g.add(cnf_prop)
     dimacs = g.dimacs().split('\n')

@@ -24,7 +24,6 @@ def get_states(model, variables, kripke):
     return (State.from_int_list(raw_state, kripke.get_var_vector(), kripke) for raw_state in res_list)
 
 
-
 def generalize_cube(z3_formula, model, all_vars):
     assigned_vars = set([_v for _v in all_vars if model[_v] is not None])
     my_model = MyModel({v: model[v] for v in assigned_vars})
@@ -35,14 +34,23 @@ def generalize_cube(z3_formula, model, all_vars):
         model_tag[_var] = BoolVal(False) if z3_val_to_int(my_model[_var]) == 1 else BoolVal(True)
 
         z3_assigned = simplify(substitute(z3_formula, *[(_v, model_tag[_v]) for _v in assigned_vars]))
-        s = Z3SatSolver()
-        s.add(z3_assigned)
-        if s.check():
+        if z3_assigned.eq(BoolVal(False)):
+            continue
+
+        s = SatSolverSelector.SatSolverCtor()
+        res = s.add(z3_assigned)
+
+        # if res and s.check() != (z3.Solver().check(z3_assigned) == sat):
+        #     print 'gfd'
+        #     ss = SatSolverSelector.SatSolverCtor()
+        #     ss.add(z3_assigned)
+        if res and s.check():
             assigned_vars -= {_var}
             my_model.unassign(_var)
     #        print 'upupu'
 
     return my_model
+
 
 class Z3Utils(object):
 
@@ -165,12 +173,12 @@ class Z3Utils(object):
         assignments = ()
 
         initial_formula = formula_wrap.to_z3()
-        s.add(initial_formula)
+        res = s.add(initial_formula)
 
         assertions = [formula_wrap.to_z3()]
 
         all_vars = [_v for v_list in formula_wrap.get_var_vectors() for _v in v_list]
-        while s.check():
+        while res and s.check():
             model = s.model()
             new_model = generalize_cube(And(*assertions), model, all_vars)
 

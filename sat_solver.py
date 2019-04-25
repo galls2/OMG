@@ -53,6 +53,8 @@ class GlucoseSatSolver(SatSolver):
 
     def add(self, f):
         clauses, dimacs, names_to_nums, num_to_name = get_cnf(f)
+        if clauses is False:
+            return False
         _names_to_nums = dict(names_to_nums)
         _names_to_nums.update({Not(Bool(k)): -v for (k, v) in names_to_nums.items()})
         _names_to_nums.update({(Bool(k)):  v for (k, v) in names_to_nums.items()})
@@ -61,7 +63,7 @@ class GlucoseSatSolver(SatSolver):
 
         self._num_to_name = num_to_name
         self._solver.append_formula(clauses)
-
+        return True
     def add_clause(self, cl):
 
         name_to_num = self._name_to_nums

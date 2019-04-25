@@ -294,12 +294,13 @@ class OmgModelChecker(object):
         while to_visit:
             node_to_explore = (to_visit.popitem()[0]).reset_urgent()
 
-    #        logger.debug('EV:: NOW EXPLORING ' + node_to_explore.description())
+     #       logger.debug('EV:: NOW EXPLORING ' + node_to_explore.description())
             self._find_abs_classification_for_node(node_to_explore)
 
             if node_to_explore.concrete_label in visited:
                 lasso_res = node_to_explore.is_lasso(node.get_parent())
                 if lasso_res is True:
+      #              logger.debug('truinggg')
                     return self._handle_proving_trace(is_strengthen, node, node_to_explore, spec, to_return=True)
                 else:
                     continue
@@ -323,12 +324,15 @@ class OmgModelChecker(object):
 
             inductive_res = self._check_inductive_ev(is_strengthen, node, node_to_explore, spec)
             if inductive_res:
+       #         print 'yaa'
                 return True
         # logger.debug('EV:: Pruned all paths from ' + node.description() + ': returning FALSE')
         if is_strengthen:
             self._strengthen_subtree(node, lambda _n: _n.is_developed(goal))
+        #    logger.debug('falseingg')
             return label_subtree(node, spec, False, goal)
         else:
+        #    print 'falsingg'
             return False
 
     def _check_inductive_ev(self, is_strengthen, node, node_to_explore, spec):
@@ -392,7 +396,7 @@ class OmgModelChecker(object):
     def _handle_ex(self, node, spec, is_strengthen, operand):
         children_nodes = node.unwind_further()
         for child in children_nodes:
-            # logger.debug('EX:: NOW EXPLORING ' + child_node.description())
+            # logger.debug('EX:: NOW EXPLORING ' + child.description())
             res = self._handle_ctl_and_recur(child, operand)
             if res:
                 # logger.debug('EX:: FOUND! ' + child_node.description() + ' is good!')
