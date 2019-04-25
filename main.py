@@ -51,7 +51,6 @@ def check_files(aig_paths, ctl_paths):
         input_line = get_input_line_for_files(aig_file_path, ctl_formula_path)
 
         parsed_args = parse_input(input_line.split())
-        global QbfSolverCtor
 
         QBF_SOLVER_MAPPER = {'z3': Z3QbfSolver,
                              'caqe': CaqeQbfSolver,

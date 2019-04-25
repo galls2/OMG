@@ -5,6 +5,7 @@ from z3 import Solver, And, sat, Not
 from common import int_list_to_cube
 from formula_wrapper import FormulaWrapper, QBF
 from common import z3_val_to_bool
+from sat_solver import SatSolverSelector
 
 logger = logging.getLogger('OMG')
 
@@ -22,8 +23,11 @@ class State(object):
         return not self == o
 
     def __str__(self):
-        return str([1 if Solver().check(And(self.formula_wrapper.get_qbf().get_prop(), v)) == sat else 0
-                    for v in self.formula_wrapper.get_var_vectors()[0]])
+        s = SatSolverSelector.SatSolverCtor()
+        s.check(self.formula_wrapper.get_z3())
+        model = s.model()
+        vs = self.formula_wrapper.get_var_vectors()[0]
+        return str([1 if z3_val_to_bool(model[v]) else 0 for v in vs])
 
     def var_for_ap(self, ap):
         var_num = self.kripke.get_var_num_for_ap(ap)

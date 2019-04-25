@@ -45,7 +45,6 @@ def generalize_cube(z3_formula, model, all_vars):
     return my_model
 
 class Z3Utils(object):
-    QbfSolverCtor = Z3QbfSolver
 
     def __init__(self):
         super(Z3Utils, self).__init__()
