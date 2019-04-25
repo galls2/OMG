@@ -160,18 +160,15 @@ class Z3Utils(object):
         return cls.get_split_formula(to_split, split_by, transitions, cls.get_forall_successors_in_formula)
 
     @classmethod
-    def all_sat(cls, formula_wrap, cubes_to_block=None):
-        if cubes_to_block is None:
-            cubes_to_block = []
+    def all_sat(cls, formula_wrap):
+
         s = SatSolverSelector.SatSolverCtor()
         assignments = ()
 
         initial_formula = formula_wrap.to_z3()
         s.add(initial_formula)
 
-        clauses_to_block = [Or(*[simplify(Not(_k) for _k in cube.children())]) for cube in cubes_to_block]
-        [s.add_clause(cl) for cl in clauses_to_block]
-        assertions = [formula_wrap.to_z3()] + [cl for cl in clauses_to_block]
+        assertions = [formula_wrap.to_z3()]
 
         all_vars = [_v for v_list in formula_wrap.get_var_vectors() for _v in v_list]
         while s.check():
@@ -187,11 +184,11 @@ class Z3Utils(object):
         return assignments
 
     @classmethod
-    def get_all_successors(cls, tr, state, blocking):
+    def get_all_successors(cls, tr, state):
         assigned_tr = tr.assign_state(state)
-        next_assignments = cls.all_sat(assigned_tr, [s.formula_wrapper.to_z3() for s in blocking])
+        nexts = cls.all_sat(assigned_tr)
         _vars = state.formula_wrapper.get_var_vectors()[0]
-        return [State.from_int_list(cube, _vars, state.kripke) for cube in next_assignments]
+        return [State.from_int_list(cube, _vars, state.kripke) for cube in nexts]
 
     @classmethod
     def concrete_transition_to_abstract(cls, nodes_from, abstract_witness):

@@ -58,7 +58,7 @@ def check_files(aig_paths, ctl_paths):
                              'depqbf': DepQbfSimpleSolver}
 
         QbfSolverSelector.QbfSolverCtor = QBF_SOLVER_MAPPER[parsed_args.qbf_solver]
-        SatSolverSelector.SatSolverCtor = GlucoseSatSolver
+        SatSolverSelector.SatSolverCtor = Z3SatSolver
 
         model_checking(parsed_args)
         logging.getLogger('OMG').info(SEP)

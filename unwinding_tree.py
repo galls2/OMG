@@ -20,12 +20,11 @@ class UnwindingTree(object):
         self.URGENT = False
         self._developed = set()
 
-    def unwind_further(self, blocking=None):
+    def unwind_further(self):
         if self._successors is None:
-            if blocking is None:
-                blocking = []
+
             kripke = self._kripke
-            concrete_successors = kripke.get_successors(self.concrete_label, blocking)
+            concrete_successors = kripke.get_successors(self.concrete_label)
             self._successors = [UnwindingTree(kripke, self, None, concrete_successor)
                                 for concrete_successor in concrete_successors]
 

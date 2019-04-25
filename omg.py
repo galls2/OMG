@@ -184,7 +184,7 @@ class OmgModelChecker(object):
             if node_to_explore.concrete_label in visited:
                 continue
             visited.add(node_to_explore.concrete_label)
-            # logger.debug('AV:: NOW EXPLORING ' + node_to_explore.description()+ ' FOR GOAL:: '+str(goal))
+          #  logger.debug('AV:: NOW EXPLORING ' + node_to_explore.description()+ ' FOR GOAL:: '+str(goal))
             #  logger.debug(str(node))
 
             abstract_state = self._find_abs_classification_for_node(node_to_explore)
@@ -197,7 +197,7 @@ class OmgModelChecker(object):
 
             self._handle_ctl_and_recur(node_to_explore, p)
             if node_to_explore.is_labeled_negatively_with(p):
-                children_nodes = node_to_explore.unwind_further(visited)
+                children_nodes = node_to_explore.unwind_further()
                 for child_node in children_nodes:
                     if child_node.concrete_label in visited:
                         continue
@@ -293,7 +293,7 @@ class OmgModelChecker(object):
         while to_visit:
             node_to_explore = (to_visit.popitem()[0]).reset_urgent()
 
-            # logger.debug('EV:: NOW EXPLORING ' + node_to_explore.description())
+    #        logger.debug('EV:: NOW EXPLORING ' + node_to_explore.description())
             self._find_abs_classification_for_node(node_to_explore)
 
             if node_to_explore.concrete_label in visited:
