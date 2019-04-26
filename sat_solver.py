@@ -1,8 +1,6 @@
-import math
-
 import z3
 from pysat.solvers import Glucose4
-from z3 import Solver, BoolVal, sat, Not, Bool
+from z3 import BoolVal, sat, Not, Bool
 
 from common import MyModel
 from qbf_solver import get_cnf
@@ -49,7 +47,7 @@ class GlucoseSatSolver(SatSolver):
     def model(self):
         raw_model = self._solver.get_model()
 
-        model = MyModel({self._num_to_name[val]: BoolVal(True) if val > 0 else BoolVal(False) for val in raw_model})
+        model = MyModel({self._num_to_name[val]: BoolVal(val > 0) for val in raw_model})
         return model
 
     def add(self, f):

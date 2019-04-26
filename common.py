@@ -77,11 +77,11 @@ def z3_val_to_int(z3_val):
 
 
 def z3_val_to_bool(z3_val):
-    return True if z3_val.sexpr() == 'true' else False
+    return z3_val.sexpr() == 'true'
 
 
 def int_vec_to_z3(int_vec):
-    return [BoolVal(True) if val == 1 else BoolVal(False) for val in int_vec]
+    return [BoolVal(val == 1) for val in int_vec]
 
 
 def int_list_to_cube(int_list, _vars):
