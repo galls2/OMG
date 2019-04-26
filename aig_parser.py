@@ -2,7 +2,7 @@ import itertools
 import os
 import re
 
-from z3 import Bool, Not, And, simplify, Or, substitute, BoolVal
+from z3 import Bool, Not, And, simplify, Or, substitute, BoolVal, is_and, is_not
 
 from formula_wrapper import FormulaWrapper, QBF
 from state import State
@@ -47,10 +47,6 @@ class AigParser(object):
         raise NotImplementedError()
 
 
-def main_connective(f, txt):
-    return f.decl().name() == txt
-
-
 def get_initial_states(i_latches, output_formulas, kripke, tr):
     def get_outputs_for_latch_values(_latch_values):
         return itertools.product(*[out_val_list \
@@ -90,10 +86,10 @@ class PythonAigParser(AigParser):
 
         if to_calc % 2 == 1:
             self._dfs(lit_hash, to_calc - 1, lines, first_and_lit)
-            if main_connective(lit_hash[to_calc - 1], 'and'):
+            if is_and(lit_hash[to_calc - 1]):
                 and_line = lines[(to_calc - first_and_lit) / 2].split()
                 l, r = int(and_line[1]), int(and_line[2])
-                if main_connective(lit_hash[l], 'not') and main_connective(lit_hash[r], 'not'):
+                if is_not(lit_hash[l]) and is_not(lit_hash[r]):
                     lit_hash[to_calc] = Or(lit_hash[l - 1], lit_hash[r - 1])
                     return
             lit_hash[to_calc] = Not(lit_hash[to_calc - 1])

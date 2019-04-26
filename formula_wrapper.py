@@ -120,8 +120,7 @@ class QBF(object):
 
     def negate(self):
         new_q_list = [(-_q, _v) for (_q, _v) in self._q_list]
-        _is_not = self._prop.decl().name() == 'not'
-        return QBF(self._prop.children()[0] if _is_not else Not(self._prop), new_q_list)
+        return QBF(self._prop.children()[0] if is_not(self._prop) else Not(self._prop), new_q_list)
 
     def renew_quantifiers(self):
         n_q_vecs = len(self._q_list)
