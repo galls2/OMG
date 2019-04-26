@@ -158,15 +158,3 @@ class QBF(object):
     def __hash__(self):
         return hash((hash(self._prop), hash(tuple(self._q_list))))
 
-
-if __name__ == '__main__':
-    x = [Bool('x' + str(i)) for i in range(5)]
-    q = QBF(And(*x), [(1 if i % 2 == 0 else -1, [x[i]]) for i in range(5)])
-    print q.to_z3()
-    print q.negate().to_z3()
-    print q.negate().negate().to_z3()
-
-    q2 = QBF(And(*x))
-    print q2.to_z3()
-
-    print q.renew_quantifiers().to_z3()

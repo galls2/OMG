@@ -1,7 +1,7 @@
 import itertools
 import logging
 
-from z3 import BoolVal, is_false, substitute, simplify, Not, Or, Bool, And
+from z3 import BoolVal, is_false, substitute, simplify, Not, Or, Bool, And, unsat, sat
 
 from common import z3_val_to_int, EEClosureViolation, MyModel
 from formula_wrapper import FormulaWrapper, QBF
