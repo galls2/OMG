@@ -1,10 +1,9 @@
 import logging
 
-from z3 import And, Not
+from z3 import And, Not, is_true
 
-from common import int_list_to_cube
+from common import int_list_to_cube, z3_val_to_int
 from formula_wrapper import FormulaWrapper, QBF
-from common import z3_val_to_bool
 from sat_solver import SatSolverSelector
 
 logger = logging.getLogger('OMG')
@@ -28,7 +27,7 @@ class State(object):
         s.check()
         model = s.model()
         vs = self.formula_wrapper.get_var_vectors()[0]
-        return str([1 if z3_val_to_bool(model[v]) else 0 for v in vs])
+        return str([z3_val_to_int(model[v]) for v in vs])
 
     def var_for_ap(self, ap):
         var_num = self.kripke.get_var_num_for_ap(ap)
@@ -40,12 +39,11 @@ class State(object):
     def is_labeled_with(self, ap):
         ap_lit = self.var_for_ap(ap)
         _, model = self.formula_wrapper.sat_get_model()
-        return z3_val_to_bool(model[ap_lit])
+        return is_true(model[ap_lit])
 
     def ap_lit_by_model(self, model, ap):
         var = self.var_for_ap(ap)
-        val = z3_val_to_bool(model[var])
-        return var if val else Not(var)
+        return var if is_true(model[var]) else Not(var)
 
     def get_bis0_formula(self):
         if self.bis0 is not None:
@@ -62,7 +60,7 @@ class State(object):
 
     def get_sat_aps(self):
         _, model = self.formula_wrapper.sat_get_model()
-        return [ap for ap in self.get_all_aps() if z3_val_to_bool(model[self.var_for_ap(ap)])]
+        return [ap for ap in self.get_all_aps() if is_true(model[self.var_for_ap(ap)])]
 
     def __hash__(self):
         return hash(self.formula_wrapper)

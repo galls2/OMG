@@ -5,7 +5,7 @@ import logging
 import pstats
 import time
 
-from z3 import BoolVal, Not, And, Or
+from z3 import BoolVal, Not, And, Or, is_true
 
 logger = logging.getLogger('OMG')
 
@@ -73,11 +73,7 @@ def remove_elems(_elements, remove_from):
 # Z3 VALUE CONVERSIONS
 # -----------------------------------------------------------------------------------------------------
 def z3_val_to_int(z3_val):
-    return 1 if z3_val.sexpr() == 'true' else 0
-
-
-def z3_val_to_bool(z3_val):
-    return z3_val.sexpr() == 'true'
+    return 1 if is_true(z3_val) else 0
 
 
 def int_vec_to_z3(int_vec):
@@ -108,7 +104,7 @@ class MyModel(object):
         return self
 
     def blocking_clause(self):
-        return Or(*[Not(var) if self.assignment[var] == BoolVal(True) else var for var in self.assignment.keys()])
+        return Or(*[Not(var) if is_true(self.assignment[var]) else var for var in self.assignment.keys()])
 
 
 class ConcretizationResult(object):

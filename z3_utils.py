@@ -1,7 +1,7 @@
 import itertools
 import logging
 
-from z3 import *
+from z3 import BoolVal, is_false, substitute, simplify, Not, Or, Bool, And
 
 from common import z3_val_to_int, EEClosureViolation, MyModel
 from formula_wrapper import FormulaWrapper, QBF
@@ -30,10 +30,10 @@ def generalize_cube(z3_formula, model, all_vars):
     for _var in go_over_vars:
         model_tag = MyModel(dict(my_model.assignment))
 
-        model_tag[_var] = BoolVal(False) if z3_val_to_int(my_model[_var]) == 1 else BoolVal(True)
+        model_tag[_var] = BoolVal(is_false(my_model[_var]))
 
         z3_assigned = simplify(substitute(z3_formula, *[(_v, model_tag[_v]) for _v in assigned_vars]))
-        if z3_assigned.decl().name() == 'false':
+        if is_false(z3_assigned):
             continue
 
         s = SatSolverSelector.SatSolverCtor()
