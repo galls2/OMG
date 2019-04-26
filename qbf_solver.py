@@ -72,9 +72,8 @@ def get_qcnf(formula_wrapper):
 
 
 def get_cnf(prop):
-    cnfer = Tactic('tseitin-cnf')
-    cnf_prop = cnfer(prop).as_expr()
-    if cnf_prop.eq(BoolVal(False)):
+    cnf_prop = Tactic('tseitin-cnf')(prop).as_expr()
+    if is_false(cnf_prop):
         return False, False, False, False
     g = Goal()
     g.add(cnf_prop)
@@ -99,19 +98,6 @@ class DepQbfSimpleSolver(QbfSolver):
         is_sat, certificate = pydepqbf.solve(quantifiers, clauses)
         if is_sat == QDPLL_RESULT_UNSAT:
             return unsat, False
-
-        #     res_z3, cert_z3 = Z3QbfSolver().solve(formula_wrapper)
-        #     if (res_z3 == sat and is_sat == QDPLL_RESULT_UNSAT) or (res_z3 == unsat and is_sat == QDPLL_RESULT_SAT):
-        #         to_file('last_qdimacs', to_qdimacs(dimacs, quantifiers))
-        #         print Z3QbfSolver().solve(FormulaWrapper(qbf, [], []))
-        #         re_z3 = build_z3(quantifiers, clauses)
-        #   #      to_file('WOW', do_qdimacs(formula_wrapper))
-        #         print 'REZ#', Solver().check(re_z3)
-        #         #    self.solve(formula_wrapper)
-        #         #     formula_with_values = formula_wrapper.assign_int_vec([1,0,1,0,1,0], 1).assign_int_vec([1,0,1,1,1,0])
-        #         #    self.solve(formula_with_values)
-        #         assert False
-
 
         model = MyModel({num_to_name[abs(val)]: BoolVal(True) if val > 0 else BoolVal(False) for val in certificate})
         return sat, model
