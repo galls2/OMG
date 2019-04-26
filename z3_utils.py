@@ -5,9 +5,8 @@ from z3 import *
 
 from common import z3_val_to_int, EEClosureViolation, MyModel
 from formula_wrapper import FormulaWrapper, QBF
-from qbf_solver import Z3QbfSolver, QDPLL_QTYPE_EXISTS, QDPLL_QTYPE_FORALL, \
-    QbfSolverSelector
-from sat_solver import SatSolverSelector, Z3SatSolver
+from qbf_solver import QDPLL_QTYPE_EXISTS, QDPLL_QTYPE_FORALL, QbfSolverSelector
+from sat_solver import SatSolverSelector
 from state import State
 from var_manager import VarManager
 
@@ -34,20 +33,15 @@ def generalize_cube(z3_formula, model, all_vars):
         model_tag[_var] = BoolVal(False) if z3_val_to_int(my_model[_var]) == 1 else BoolVal(True)
 
         z3_assigned = simplify(substitute(z3_formula, *[(_v, model_tag[_v]) for _v in assigned_vars]))
-        if z3_assigned.eq(BoolVal(False)):
+        if z3_assigned.decl().name() == 'false':
             continue
 
         s = SatSolverSelector.SatSolverCtor()
         res = s.add(z3_assigned)
 
-        # if res and s.check() != (z3.Solver().check(z3_assigned) == sat):
-        #     print 'gfd'
-        #     ss = SatSolverSelector.SatSolverCtor()
-        #     ss.add(z3_assigned)
         if res and s.check():
             assigned_vars -= {_var}
             my_model.unassign(_var)
-    #        print 'upupu'
 
     return my_model
 
@@ -311,36 +305,3 @@ class Z3Utils(object):
                 assert False
         '''
         return EEClosureViolation(next(get_states(model, src_vars, kripke)), next(get_states(model, dst_vars, kripke)))
-
-    @classmethod
-    def apply_qe(cls, formula, qe_policy):
-        if qe_policy == 'no-qe':
-            return formula
-        #  formula = Tactic('ctx-solver-simplify')(formula).as_expr()
-        return Tactic(qe_policy)(formula).as_expr()
-
-    '''
-    @classmethod
-    def combine_ltr_with_bad_formulas(cls, ltr_formula, output_formulas, max_var_ltr):
-        prev_output_vars = [Bool(str(max_var_ltr + i)) for i in xrange(len(output_formulas))]
-        next_output_vars = [Bool(str(max_var_ltr + len(output_formulas) + i)) for i in xrange(len(output_formulas))]
-
-        prev_latch_vars, next_latch_vars = ltr_formula.get_var_vectors()
-
-        # ltr is over(l,l'). We want our final formula over (v,v') where v=l,o and v'=l',o'
-
-        prev_var_vector = prev_latch_vars + prev_output_vars
-        next_var_vector = next_latch_vars + next_output_vars
-
-        var_vectors = [prev_var_vector, next_var_vector]
-
-        substituted_output_z3_formulas = [output_formulas[i]
-                                              .substitute([next_output_vars[i]], 1, [next_output_vars[i]])
-                                              .substitute(next_latch_vars, 0, next_latch_vars)
-                                              .get_z3()
-                                          for i in xrange(len(output_formulas))]
-
-        tr_formula = And(ltr_formula.get_z3(), *substituted_output_z3_formulas)
-
-        return FormulaWrapper(tr_formula, var_vectors)
-    '''

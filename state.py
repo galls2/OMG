@@ -1,6 +1,6 @@
 import logging
 
-from z3 import Solver, And, sat, Not
+from z3 import And, Not
 
 from common import int_list_to_cube
 from formula_wrapper import FormulaWrapper, QBF

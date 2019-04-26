@@ -1,5 +1,6 @@
 import math
 
+import z3
 from pysat.solvers import Glucose4
 from z3 import Solver, BoolVal, sat, Not, Bool
 
@@ -21,7 +22,7 @@ class SatSolver(object):
 class Z3SatSolver(SatSolver):
 
     def __init__(self):
-        self._solver = Solver()
+        self._solver = z3.Solver()
 
     def check(self):
         return self._solver.check() == sat

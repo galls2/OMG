@@ -99,7 +99,7 @@ class DepQbfSimpleSolver(QbfSolver):
         is_sat, certificate = pydepqbf.solve(quantifiers, clauses)
         if is_sat == QDPLL_RESULT_UNSAT:
             return unsat, False
-        #     '''
+
         #     res_z3, cert_z3 = Z3QbfSolver().solve(formula_wrapper)
         #     if (res_z3 == sat and is_sat == QDPLL_RESULT_UNSAT) or (res_z3 == unsat and is_sat == QDPLL_RESULT_SAT):
         #         to_file('last_qdimacs', to_qdimacs(dimacs, quantifiers))
@@ -111,7 +111,7 @@ class DepQbfSimpleSolver(QbfSolver):
         #         #     formula_with_values = formula_wrapper.assign_int_vec([1,0,1,0,1,0], 1).assign_int_vec([1,0,1,1,1,0])
         #         #    self.solve(formula_with_values)
         #         assert False
-        #     '''
+
 
         model = MyModel({num_to_name[abs(val)]: BoolVal(True) if val > 0 else BoolVal(False) for val in certificate})
         return sat, model
