@@ -29,7 +29,8 @@ class Z3SatSolver(SatSolver):
         return self._solver.model()
 
     def add(self, f):
-        return self._solver.add(f)
+        self._solver.add(f)
+        return True
 
     def add_clause(self, cl):
         return self._solver.add(cl)

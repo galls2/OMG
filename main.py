@@ -11,8 +11,7 @@ from ctl import CtlFileParser
 from kripke_structure import AigKripkeStructure
 from omg import OmgBuilder
 from qbf_solver import Z3QbfSolver, CaqeQbfSolver, DepQbfSimpleSolver, QbfSolverSelector
-from sat_solver import SatSolverSelector, GlucoseSatSolver
-
+from sat_solver import SatSolverSelector, GlucoseSatSolver, Z3SatSolver
 
 TIMEOUT = 7200
 
@@ -138,8 +137,8 @@ RES_DICT = {True: 0, False: 1}
 
 
 def print_results_for_spec(omg, expected_res, spec):
-    pos, neg = profiler(omg.check_all_initial_states, [spec])
- #   pos, neg = omg.check_all_initial_states(spec)
+ #   pos, neg = profiler(omg.check_all_initial_states, [spec])
+    pos, neg = omg.check_all_initial_states(spec)
 
     #  spec_str = spec.str_math()
     is_property_satisfied = len(neg) == 0
@@ -243,7 +242,7 @@ if __name__ == '__main__':
     create_logger()
   #  test_specific_tests(['rrobin'])
     #
-    regression_tests()
+#    regression_tests()
 #    model_checking(parse_input())
 
-#    test_all_iimc()
+    test_all_iimc()

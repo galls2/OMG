@@ -19,7 +19,7 @@ def profiler(func, params):
     res = func(*params)
     pr.disable()
     s = StringIO.StringIO()
-    ps = pstats.Stats(pr, stream=s).sort_stats('tottime')
+    ps = pstats.Stats(pr, stream=s).sort_stats('cumtime')
     ps.print_stats()
     print s.getvalue()
     ps.print_callers(1.0, '*')

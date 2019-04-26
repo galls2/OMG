@@ -75,7 +75,7 @@ class FormulaWrapper(object):
     def sat_get_model(self):
         s = SatSolverSelector.SatSolverCtor()
         res = s.add(self.to_z3())
-        return True, s.model() if res and s.check() else False
+        return True, s.model() if (res is not False) and s.check() else False
 
     def __hash__(self):
         return hash(self._qbf)
