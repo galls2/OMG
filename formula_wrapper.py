@@ -1,4 +1,4 @@
-from z3 import *
+from z3 import ForAll, Exists, simplify, substitute, And, is_not, Not
 
 from common import int_vec_to_z3, foldr
 from sat_solver import SatSolverSelector

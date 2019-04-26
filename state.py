@@ -68,6 +68,5 @@ class State(object):
     @staticmethod
     def from_int_list(int_list, _vars, kripke):
         cube = int_list_to_cube(int_list, _vars)
-        qbf = QBF(cube)
-        f_wrap = FormulaWrapper(qbf, [_vars], [kripke.get_input_var_vector()])
+        f_wrap = FormulaWrapper(QBF(cube), [_vars], [kripke.get_input_var_vector()])
         return State(f_wrap, kripke)
