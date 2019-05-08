@@ -224,6 +224,9 @@ def test_all_iimc():
     with open('goods.txt', 'r') as f:
         lines = f.readlines()
         TEST_NAMES = [line.split('.')[0] for line in lines if not line.startswith('#')]
+        IGNORE_LIST = ['gray', 'bufferAlloc', 'heap', 'gatedClock', 'palu', 'coherence2', 'rrobin', 'af_ag', 'twophase', 'pf', 'swap', 'gtdclk2', 'debug', 'spinner4', 'tstrst', 'newnim', 'amba4', 'rrff', 'retherRTF']
+        for _ig in IGNORE_LIST:
+            TEST_NAMES.remove(_ig)
 
     aig_file_paths = ['iimc_aigs/' + test_name + '.aig' for test_name in TEST_NAMES]
     ctl_formula_paths = [(''.join(aig_path[:-4]) + '.ctl') for aig_path in aig_file_paths]
