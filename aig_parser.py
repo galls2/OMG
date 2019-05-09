@@ -48,14 +48,16 @@ class AigParser(object):
 
 
 def get_initial_states(i_latches, output_formulas, kripke, tr):
+
+
     def get_outputs_for_latch_values(_latch_values):
-        return itertools.product(*[out_val_list \
-                                   for out_formula in output_formulas
-                                   for out_val_list in Z3Utils.all_sat(out_formula.assign_int_vec(_latch_values))])
+        return itertools.product(*[[x[0] for x in Z3Utils.all_sat(out_formula.assign_int_vec(_latch_values))] \
+                                   for out_formula in output_formulas])
 
     initial_states = (State.from_int_list(list(i_latch) + list(comb), tr.get_var_vectors()[0], kripke)
                       for i_latch in i_latches
                       for comb in get_outputs_for_latch_values(i_latch))
+ #   k = list(initial_states)
     return initial_states
 
 
@@ -143,7 +145,8 @@ class PythonAigParser(AigParser):
         ltr_z3 = And(ltr_no_prev_output_z3, *outputs_z3_prev)
 
         output_formulas = [
-            FormulaWrapper(QBF(outputs_z3_next[_o]), [next_state_vars, [next_output_vars[_o]]], [next_in_vars]) for _o in
+            FormulaWrapper(QBF(outputs_z3_next[_o]), [next_state_vars, [next_output_vars[_o]]], [next_in_vars]) for _o
+            in
             xrange(self._O)]
 
         prev_var_vector = prev_state_vars + prev_output_vars

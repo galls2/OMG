@@ -169,7 +169,7 @@ class Z3Utils(object):
         initial_formula = formula_wrap.to_z3()
         res = s.add(initial_formula)
 
-        assertions = [formula_wrap.to_z3()]
+        assertions = [initial_formula]
 
         all_vars = [_v for v_list in formula_wrap.get_var_vectors() for _v in v_list]
         while res and s.check():

@@ -145,6 +145,7 @@ class OmgModelChecker(object):
         negative_answer = []
         for initial_state in self._kripke.get_initial_states():
             #  self._kripke.get_graph(initial_state)
+           # print str(initial_state)
             model_checking_result = self.handle_ctl(initial_state, specification)
             if model_checking_result:
                 positive_answer.append(initial_state)
