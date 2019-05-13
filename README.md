@@ -1,10 +1,9 @@
 # OMG
 
 OMG (On the fly Model checking with Guided abstraction) is a model checking framework for CTL propetries. 
-** Add paper sometime **
 
 ## Input
-Run python main.py -help to view command line arguments and their usage.
+Run python main.py --help to view command line arguments and their usage.
 
 ## Output
 FILL OUT SOMETIME!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
