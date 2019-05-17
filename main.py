@@ -18,7 +18,7 @@ TIMEOUT = 7200
 BUG_LINE = '<------------------------------------------------------ BUG -------------------------------------'
 SEP = '---------'
 
-DEFAULT_FLAGS = {'-bu': True, '-tse': True, '--qe_policy': 'no-qe', '-timeout': TIMEOUT, '-few_aps': False,
+DEFAULT_FLAGS = {'-bu': True, '-tse': True, '-timeout': TIMEOUT, '-few_aps': False,
                  '--qbf_solver': 'depqbf'}
 
 DEBUG = True
@@ -97,7 +97,7 @@ def model_checking(parsed_args):
         try:
             if not few_aps:
                 aps = functools.reduce(lambda x, y: x | y, ap_chunks.values())
-                kripke = time_me(AigKripkeStructure, [aig_path, aps, parsed_args.qe_policy],
+                kripke = time_me(AigKripkeStructure, [aig_path, aps],
                                  "Construction")
                 omg = OmgBuilder() \
                     .set_kripke(kripke) \
@@ -110,7 +110,7 @@ def model_checking(parsed_args):
 
                 if few_aps:
                     aps = ap_chunks[i]
-                    kripke = time_me(AigKripkeStructure, [aig_path, aps, parsed_args.qe_policy],
+                    kripke = time_me(AigKripkeStructure, [aig_path, aps],
                                      "Constuction")
                     omg = OmgBuilder() \
                         .set_kripke(kripke) \
@@ -224,7 +224,8 @@ def test_all_iimc():
     with open('goods.txt', 'r') as f:
         lines = f.readlines()
         TEST_NAMES = [line.split('.')[0] for line in lines if not line.startswith('#')]
-        IGNORE_LIST = ['gray', 'bufferAlloc', 'heap', 'gatedClock', 'palu', 'coherence2', 'rrobin', 'af_ag', 'twophase', 'pf', 'swap', 'gtdclk2', 'debug', 'spinner4', 'tstrst', 'newnim', 'amba4', 'rrff', 'retherRTF']
+       # IGNORE_LIST = ['gray', 'bufferAlloc', 'heap', 'gatedClock', 'palu', 'coherence2', 'rrobin', 'af_ag', 'twophase', 'pf', 'swap', 'gtdclk2', 'debug', 'spinner4', 'tstrst', 'newnim', 'amba4', 'rrff', 'retherRTF']
+        IGNORE_LIST = []
         for _ig in IGNORE_LIST:
             TEST_NAMES.remove(_ig)
 
@@ -243,9 +244,9 @@ def regression_tests():
 
 if __name__ == '__main__':
     create_logger()
-#    test_specific_tests(['s1269b'])
-    #
- #   regression_tests()
+    #test_specific_tests(['gtdclk2', 'af_ag', 'gatedClock', 'rrobin', 'debug', 'spinner4', 'heap'])
+   # test_specific_tests(['rrobin'])
+#    regression_tests()
 #    model_checking(parse_input())
 
     test_all_iimc()

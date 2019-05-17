@@ -85,7 +85,6 @@ class Z3Utils(object):
     @classmethod
     def get_exists_successors_in_formula(cls, abstract_targets, transitions):
         kripke = abstract_targets[0].get_kripke()
-        qe_policy = kripke.get_qe_policy()
 
         split_by, tr = cls._get_components_in_quantified(abstract_targets, transitions)
         prev_vars, new_vars = tr.get_var_vectors()
@@ -106,7 +105,6 @@ class Z3Utils(object):
     @classmethod
     def get_forall_successors_in_formula(cls, abstract_targets, transitions):
         kripke = abstract_targets[0].get_kripke()
-        qe_policy = kripke.get_qe_policy()
 
         split_by, tr = cls._get_components_in_quantified(abstract_targets, transitions)
         prev_vars, new_vars = tr.get_var_vectors()

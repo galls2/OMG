@@ -37,7 +37,7 @@ def _latch_lines_to_init_values(latch_lines, line_value_extractor):
 
 
 class AigParser(object):
-    def get_tr_and_initial(self, qe_policy, kripke):
+    def get_tr_and_initial(self, kripke):
         raise NotImplementedError()
 
     def get_ap_mapping(self):
@@ -110,7 +110,7 @@ class PythonAigParser(AigParser):
     def get_num_latches(self):
         return self._L
 
-    def get_tr_and_initial(self, qe_policy, kripke):
+    def get_tr_and_initial(self, kripke):
         aag_lines = self._get_aag_lines()
 
         self._prefetch_ap_mapping(aag_lines)

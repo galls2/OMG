@@ -23,24 +23,21 @@ class KripkeStructure(object):
 
 
 class AigKripkeStructure(KripkeStructure):
-    def __init__(self, aig_path, aps, qe_policy):
+    def __init__(self, aig_path, aps):
         super(AigKripkeStructure, self).__init__(aps)
-        self._qe_policy = qe_policy
         self._aig_parser = PythonAigParser(aig_path)
         self._num_latches = self._aig_parser.get_num_latches()
 
-        self._tr, initial_states_gen, self._output_formula = self._aig_parser.get_tr_and_initial(qe_policy, self)
+        self._tr, initial_states_gen, self._output_formula = self._aig_parser.get_tr_and_initial(self)
         self._input_vars = self._tr.get_input_vectors()[0]
         self._initial_states = initial_states_gen
   #      self._initial_states = list(initial_states_gen)
 
         self._ap_conversion = self._aig_parser.get_ap_mapping()
+        self._known_successors = {}
 
     def get_output_formula(self):
         return self._output_formula
-
-    def get_qe_policy(self):
-        return self._qe_policy
 
     def get_tr_formula(self):
         return self._tr
@@ -52,7 +49,14 @@ class AigKripkeStructure(KripkeStructure):
         return self._tr.get_var_vectors()[0]
 
     def get_successors(self, state):
-        return Z3Utils.get_all_successors(self._tr, state)
+   #     return Z3Utils.get_all_successors(self._tr, state)
+
+        if state in self._known_successors.keys():
+            return list(self._known_successors[state])
+        res = Z3Utils.get_all_successors(self._tr, state)
+        self._known_successors[state] = tuple(res)
+        return res
+
 
     def get_initial_states(self):
         return self._initial_states
